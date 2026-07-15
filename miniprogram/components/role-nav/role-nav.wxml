@@ -1,0 +1,12 @@
+<view class="role-nav safe-bottom">
+  <view
+    wx:for="{{tabs}}"
+    wx:key="pagePath"
+    class="nav-item {{item.pagePath === current ? 'active' : ''}}"
+    data-path="{{item.pagePath}}"
+    bindtap="onTap"
+  >
+    <text class="icon">{{item.icon}}</text>
+    <text class="label">{{item.text}}</text>
+  </view>
+</view>

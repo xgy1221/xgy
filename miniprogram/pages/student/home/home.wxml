@@ -1,0 +1,32 @@
+<view class="container">
+  <view class="page-title">你好，{{parentName}}</view>
+  <view class="page-sub">正在陪读：{{studentName}} · {{grade}}</view>
+
+  <view class="grid-2 section">
+    <stat-card label="在读课程" value="{{courseCount}}" hint="本学期" />
+    <stat-card label="本周课次" value="{{weekLessons}}" hint="记得准时到课" />
+  </view>
+
+  <view class="section">
+    <view class="section-title">今日安排</view>
+    <view class="card" wx:for="{{today}}" wx:key="id">
+      <view class="row">
+        <view>
+          <view class="item-title">{{item.course}}</view>
+          <view class="muted">{{item.time}} · {{item.room}}</view>
+        </view>
+        <view class="tag">{{item.teacher}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">待办提醒</view>
+    <view class="card">
+      <view class="list-item" wx:for="{{todos}}" wx:key="*this">
+        <text>{{item}}</text>
+      </view>
+    </view>
+  </view>
+  <role-nav current="/pages/student/home/home" />
+</view>

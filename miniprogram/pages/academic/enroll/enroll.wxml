@@ -1,0 +1,19 @@
+<view class="container">
+  <view class="page-title">报名管理</view>
+  <view class="page-sub">跟踪缴费与入学状态</view>
+  <view class="section">
+    <view class="card" wx:for="{{list}}" wx:key="id">
+      <view class="row">
+        <view>
+          <view class="item-title">{{item.student}}</view>
+          <view class="muted">{{item.course}}</view>
+        </view>
+        <view class="right">
+          <view class="amount">{{item.amount}}</view>
+          <view class="tag warn">{{item.status}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+  <role-nav current="/pages/academic/enroll/enroll" />
+</view>

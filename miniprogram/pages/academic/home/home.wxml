@@ -1,0 +1,21 @@
+<view class="container">
+  <view class="page-title">教务工作台</view>
+  <view class="page-sub">{{campus}} · 今日待办</view>
+  <view class="grid-2 section">
+    <stat-card label="待排课" value="{{pendingSchedule}}" />
+    <stat-card label="待缴费报名" value="{{pendingPay}}" />
+  </view>
+  <view class="section">
+    <view class="section-title">报名动态</view>
+    <view class="card">
+      <view class="list-item" wx:for="{{enrolls}}" wx:key="id">
+        <view>
+          <view class="item-title">{{item.student}}</view>
+          <view class="muted">{{item.course}}</view>
+        </view>
+        <view class="tag warn">{{item.status}}</view>
+      </view>
+    </view>
+  </view>
+  <role-nav current="/pages/academic/home/home" />
+</view>

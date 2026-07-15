@@ -1,0 +1,4 @@
+.item-title{font-size:30rpx;font-weight:600;margin-bottom:8rpx;}
+.progress-wrap{margin:20rpx 0 10rpx;height:12rpx;background:#e8f2f1;border-radius:999rpx;overflow:hidden;}
+.progress{height:100%;background:#0f3d3e;border-radius:999rpx;}
+.muted{margin-top:8rpx;}

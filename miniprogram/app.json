@@ -1,0 +1,38 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/role-select/role-select",
+    "pages/student/home/home",
+    "pages/student/courses/courses",
+    "pages/student/schedule/schedule",
+    "pages/student/mine/mine",
+    "pages/teacher/home/home",
+    "pages/teacher/classes/classes",
+    "pages/teacher/students/students",
+    "pages/teacher/mine/mine",
+    "pages/academic/home/home",
+    "pages/academic/courses/courses",
+    "pages/academic/schedule/schedule",
+    "pages/academic/enroll/enroll",
+    "pages/academic/mine/mine",
+    "pages/partner/home/home",
+    "pages/partner/performance/performance",
+    "pages/partner/team/team",
+    "pages/partner/mine/mine",
+    "pages/admin/home/home",
+    "pages/admin/users/users",
+    "pages/admin/org/org",
+    "pages/admin/settings/settings",
+    "pages/admin/mine/mine"
+  ],
+  "window": {
+    "navigationBarTitleText": "学管云",
+    "navigationBarBackgroundColor": "#0F3D3E",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F3F6F5",
+    "backgroundTextStyle": "dark"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

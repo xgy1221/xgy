@@ -1,0 +1,14 @@
+<view class="container">
+  <view class="page-title">课表</view>
+  <view class="page-sub">本周上课安排</view>
+  <view class="section card">
+    <view class="list-item" wx:for="{{list}}" wx:key="id">
+      <view>
+        <view class="item-title">{{item.course}}</view>
+        <view class="muted">{{item.date}} {{item.time}} · {{item.room}}</view>
+      </view>
+      <view class="tag">{{item.teacher}}</view>
+    </view>
+  </view>
+  <role-nav current="/pages/student/schedule/schedule" />
+</view>

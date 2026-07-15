@@ -1,0 +1,148 @@
+page {
+  --brand: #0f3d3e;
+  --brand-soft: #1a5c5e;
+  --accent: #d97706;
+  --accent-soft: #fef3c7;
+  --surface: #ffffff;
+  --bg: #f3f6f5;
+  --text: #14201f;
+  --text-secondary: #5b6b69;
+  --border: #dce5e3;
+  --success: #15803d;
+  --warning: #b45309;
+  --danger: #b91c1c;
+  --radius: 16rpx;
+  --shadow: 0 8rpx 28rpx rgba(15, 61, 62, 0.08);
+
+  background: var(--bg);
+  color: var(--text);
+  font-size: 28rpx;
+  line-height: 1.5;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  box-sizing: border-box;
+}
+
+view,
+text,
+button,
+input,
+textarea {
+  box-sizing: border-box;
+}
+
+.container {
+  min-height: 100vh;
+  padding: 32rpx;
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+}
+
+.page-title {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: var(--brand);
+  letter-spacing: 1rpx;
+}
+
+.page-sub {
+  margin-top: 8rpx;
+  color: var(--text-secondary);
+  font-size: 26rpx;
+}
+
+.section {
+  margin-top: 32rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 28rpx;
+  box-shadow: var(--shadow);
+}
+
+.card + .card {
+  margin-top: 20rpx;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  background: #e8f2f1;
+  color: var(--brand-soft);
+}
+
+.tag.warn {
+  background: var(--accent-soft);
+  color: var(--warning);
+}
+
+.tag.ok {
+  background: #dcfce7;
+  color: var(--success);
+}
+
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+  border-radius: 999rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  border: none;
+}
+
+.btn-primary::after {
+  border: none;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--brand);
+  border: 2rpx solid var(--brand);
+  border-radius: 999rpx;
+  font-size: 28rpx;
+}
+
+.btn-ghost::after {
+  border: none;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.list-item:last-child {
+  border-bottom: none;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20rpx;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}

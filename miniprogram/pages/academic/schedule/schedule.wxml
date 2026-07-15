@@ -1,0 +1,14 @@
+<view class="container">
+  <view class="page-title">排课管理</view>
+  <view class="page-sub">按班级安排课次（演示数据）</view>
+  <view class="section card">
+    <view class="list-item" wx:for="{{list}}" wx:key="id">
+      <view>
+        <view class="item-title">{{item.name}}</view>
+        <view class="muted">{{item.nextLesson}} · {{item.room}}</view>
+      </view>
+      <view class="tag">{{item.students}}人</view>
+    </view>
+  </view>
+  <role-nav current="/pages/academic/schedule/schedule" />
+</view>

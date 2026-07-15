@@ -1,0 +1,19 @@
+<view class="container">
+  <view class="page-title">账号管理</view>
+  <view class="page-sub">一人可绑定多个角色</view>
+  <view class="section">
+    <view class="card" wx:for="{{list}}" wx:key="id">
+      <view class="row">
+        <view>
+          <view class="item-title">{{item.name}}</view>
+          <view class="muted">{{item.phone}}</view>
+        </view>
+        <view class="tag ok">{{item.status}}</view>
+      </view>
+      <view class="roles">
+        <text class="tag" wx:for="{{item.roles}}" wx:for-item="r" wx:key="*this">{{r}}</text>
+      </view>
+    </view>
+  </view>
+  <role-nav current="/pages/admin/users/users" />
+</view>

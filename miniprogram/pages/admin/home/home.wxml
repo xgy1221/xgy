@@ -1,0 +1,15 @@
+<view class="container">
+  <view class="page-title">管理控制台</view>
+  <view class="page-sub">账号、组织与系统配置</view>
+  <view class="grid-2 section">
+    <stat-card label="账号数" value="{{userCount}}" />
+    <stat-card label="校区/组织" value="{{orgCount}}" />
+  </view>
+  <view class="section card">
+    <view class="section-title">快捷入口</view>
+    <view class="list-item" bindtap="go" data-url="/pages/admin/users/users"><text>账号与角色分配</text><text class="link">进入</text></view>
+    <view class="list-item" bindtap="go" data-url="/pages/admin/org/org"><text>组织架构</text><text class="link">进入</text></view>
+    <view class="list-item" bindtap="go" data-url="/pages/admin/settings/settings"><text>系统设置</text><text class="link">进入</text></view>
+  </view>
+  <role-nav current="/pages/admin/home/home" />
+</view>

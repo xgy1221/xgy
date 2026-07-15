@@ -1,0 +1,2 @@
+.item-title{font-size:30rpx;font-weight:600;margin-bottom:6rpx;}
+.roles{margin-top:16rpx;display:flex;flex-wrap:wrap;gap:10rpx;}

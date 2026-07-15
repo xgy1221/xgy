@@ -1,0 +1,16 @@
+<view class="container">
+  <view class="page-title">组织架构</view>
+  <view class="page-sub">总部 / 校区层级</view>
+  <view class="section">
+    <view class="card" wx:for="{{list}}" wx:key="id">
+      <view class="row">
+        <view>
+          <view class="item-title">{{item.name}}</view>
+          <view class="muted">类型：{{item.type}}</view>
+        </view>
+        <view class="tag">{{item.children}} 个子节点</view>
+      </view>
+    </view>
+  </view>
+  <role-nav current="/pages/admin/org/org" />
+</view>

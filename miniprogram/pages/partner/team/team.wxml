@@ -1,0 +1,16 @@
+<view class="container">
+  <view class="page-title">团队成员</view>
+  <view class="page-sub">多合伙人或单人 + 顾问结构</view>
+  <view class="section">
+    <view class="card" wx:for="{{list}}" wx:key="id">
+      <view class="row">
+        <view>
+          <view class="item-title">{{item.name}}</view>
+          <view class="muted">{{item.role}} · 学员 {{item.students}}</view>
+        </view>
+        <view class="amount">¥{{item.sales}}</view>
+      </view>
+    </view>
+  </view>
+  <role-nav current="/pages/partner/team/team" />
+</view>

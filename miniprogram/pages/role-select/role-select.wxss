@@ -1,0 +1,24 @@
+.role-list {
+  margin-top: 40rpx;
+}
+
+.role-card {
+  background: #fff;
+  border-radius: 18rpx;
+  padding: 32rpx;
+  margin-bottom: 20rpx;
+  border-left: 10rpx solid #0f3d3e;
+  box-shadow: 0 8rpx 28rpx rgba(15, 61, 62, 0.08);
+}
+
+.role-name {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #14201f;
+}
+
+.role-desc {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: #5b6b69;
+}

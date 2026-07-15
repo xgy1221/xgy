@@ -1,0 +1,26 @@
+<view class="container">
+  <view class="profile card">
+    <view class="avatar">{{avatarText}}</view>
+    <view>
+      <view class="name">{{name}}</view>
+      <view class="muted">{{phone}}</view>
+      <view class="tag">{{roleName}}</view>
+    </view>
+  </view>
+
+  <view class="section card">
+    <view class="list-item" bindtap="onSwitchRole" wx:if="{{multiRole}}">
+      <text>切换身份</text>
+      <text class="link">选择</text>
+    </view>
+    <view class="list-item">
+      <text>当前角色</text>
+      <text>{{roleName}}</text>
+    </view>
+    <view class="list-item" bindtap="onLogout">
+      <text>退出登录</text>
+      <text class="danger">退出</text>
+    </view>
+  </view>
+  <role-nav current="/pages/academic/mine/mine" />
+</view>

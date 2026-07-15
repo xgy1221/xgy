@@ -1,0 +1,21 @@
+<view class="container">
+  <view class="page-title">{{name}}，辛苦了</view>
+  <view class="page-sub">{{title}} · 今日课堂概览</view>
+  <view class="grid-2 section">
+    <stat-card label="带班数量" value="{{classCount}}" />
+    <stat-card label="学员人数" value="{{studentCount}}" />
+  </view>
+  <view class="section">
+    <view class="section-title">今日课次</view>
+    <view class="card" wx:for="{{today}}" wx:key="id">
+      <view class="row">
+        <view>
+          <view class="item-title">{{item.name}}</view>
+          <view class="muted">{{item.nextLesson}} · {{item.room}}</view>
+        </view>
+        <view class="tag warn">待上课</view>
+      </view>
+    </view>
+  </view>
+  <role-nav current="/pages/teacher/home/home" />
+</view>

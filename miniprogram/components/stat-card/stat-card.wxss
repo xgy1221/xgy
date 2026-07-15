@@ -1,0 +1,28 @@
+.stat-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 8rpx 28rpx rgba(15, 61, 62, 0.08);
+  min-height: 150rpx;
+}
+
+.label {
+  display: block;
+  color: #5b6b69;
+  font-size: 24rpx;
+}
+
+.value {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #0f3d3e;
+}
+
+.hint {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #8a9a97;
+}

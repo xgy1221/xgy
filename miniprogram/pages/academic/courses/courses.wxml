@@ -1,0 +1,11 @@
+<view class="container">
+  <view class="page-title">课程管理</view>
+  <view class="page-sub">开班与座位概况</view>
+  <view class="section">
+    <view class="card" wx:for="{{list}}" wx:key="id">
+      <view class="item-title">{{item.name}}</view>
+      <view class="muted">开班 {{item.openClasses}} · 老师 {{item.teachers}} · 座位 {{item.seats}}</view>
+    </view>
+  </view>
+  <role-nav current="/pages/academic/courses/courses" />
+</view>

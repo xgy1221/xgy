@@ -1,0 +1,18 @@
+<view class="container">
+  <view class="page-title">我的课程</view>
+  <view class="page-sub">查看进度与剩余课时</view>
+  <view class="section">
+    <view class="card" wx:for="{{courses}}" wx:key="id">
+      <view class="row">
+        <view class="item-title">{{item.name}}</view>
+        <view class="tag {{item.status==='已结课'?'ok':''}}">{{item.status}}</view>
+      </view>
+      <view class="muted">主讲：{{item.teacher}} · 剩余 {{item.remainHours}} 课时</view>
+      <view class="progress-wrap">
+        <view class="progress" style="width: {{item.progress}}%;"></view>
+      </view>
+      <view class="muted">学习进度 {{item.progress}}%</view>
+    </view>
+  </view>
+  <role-nav current="/pages/student/courses/courses" />
+</view>

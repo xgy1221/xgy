@@ -1,0 +1,15 @@
+<view class="container">
+  <view class="page-title">合伙人看板</view>
+  <view class="page-sub">{{name}} · 分成比例 {{shareRatio}}</view>
+  <view class="grid-2 section">
+    <stat-card label="本月业绩" value="¥{{stats.monthSales}}" />
+    <stat-card label="本月分成" value="¥{{stats.shareAmount}}" />
+    <stat-card label="新增学员" value="{{stats.monthNewStudents}}" />
+    <stat-card label="退费金额" value="¥{{stats.monthRefund}}" />
+  </view>
+  <view class="section card">
+    <view class="section-title">说明</view>
+    <view class="muted">支持单人合伙人，也可绑定多人合伙团队。业绩按校区/顾问维度汇总。</view>
+  </view>
+  <role-nav current="/pages/partner/home/home" />
+</view>

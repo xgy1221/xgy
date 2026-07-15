@@ -1,0 +1,41 @@
+<view class="login-page">
+  <view class="hero">
+    <view class="brand-mark">学</view>
+    <view class="brand">学管云</view>
+    <view class="slogan">培训机构多角色协同：家长 · 老师 · 教务 · 合伙人 · 管理</view>
+  </view>
+
+  <view class="panel">
+    <view class="field-label">手机号登录（演示）</view>
+    <input
+      class="field"
+      type="number"
+      maxlength="11"
+      placeholder="输入演示手机号"
+      value="{{phone}}"
+      bindinput="onPhoneInput"
+    />
+    <button class="btn-primary login-btn" bindtap="onLogin">进入系统</button>
+    <view class="tip">当前为本地 Mock，无需真实微信授权，方便直接体验角色流程。</view>
+  </view>
+
+  <view class="quick">
+    <view class="quick-title">快捷体验账号</view>
+    <view
+      class="quick-item"
+      wx:for="{{accounts}}"
+      wx:key="phone"
+      data-phone="{{item.phone}}"
+      bindtap="onQuickLogin"
+    >
+      <view class="left">
+        <view class="avatar">{{item.avatarText}}</view>
+        <view>
+          <view class="name">{{item.name}}</view>
+          <view class="meta">{{item.phone}} · {{item.roleText}}</view>
+        </view>
+      </view>
+      <text class="enter">进入</text>
+    </view>
+  </view>
+</view>

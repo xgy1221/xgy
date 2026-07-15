@@ -1,0 +1,11 @@
+<view class="container">
+  <view class="page-title">业绩明细</view>
+  <view class="page-sub">本月关键指标</view>
+  <view class="section card">
+    <view class="list-item"><text>销售额</text><text class="strong">¥{{stats.monthSales}}</text></view>
+    <view class="list-item"><text>新增学员</text><text class="strong">{{stats.monthNewStudents}}</text></view>
+    <view class="list-item"><text>退费</text><text class="strong">¥{{stats.monthRefund}}</text></view>
+    <view class="list-item"><text>应分成</text><text class="strong">¥{{stats.shareAmount}}</text></view>
+  </view>
+  <role-nav current="/pages/partner/performance/performance" />
+</view>
