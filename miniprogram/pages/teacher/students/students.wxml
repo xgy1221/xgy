@@ -1,13 +1,27 @@
 <view class="container">
-  <view class="page-title">学员情况</view>
-  <view class="page-sub">出勤与课堂表现</view>
-  <view class="section card">
-    <view class="list-item" wx:for="{{list}}" wx:key="id">
+  <view class="page-title">我的学员</view>
+  <view class="page-sub">在读学员可代录教案与剩余课次</view>
+
+  <view class="section card entry" bindtap="goSetup">
+    <view class="row">
       <view>
-        <view class="item-title">{{item.name}}</view>
-        <view class="muted">{{item.className}} · 出勤 {{item.attendRate}}</view>
+        <view class="item-title">代录 / 完善学员</view>
+        <view class="muted">按家长手机号建档并绑定教案</view>
       </view>
-      <view class="tag">{{item.remark}}</view>
+      <text class="link">去处理</text>
+    </view>
+  </view>
+
+  <view class="section card">
+    <view class="list-item" wx:for="{{list}}" wx:key="id" data-phone="{{item.parentPhone}}" data-id="{{item.id}}" bindtap="goEdit">
+      <view>
+        <view class="item-title">{{item.studentName}}</view>
+        <view class="muted">{{item.parentPhone}} · {{item.grade || '未填年级'}}</view>
+        <view class="muted">报读 {{item.enrollCount}} 个 · {{item.enrollText}}</view>
+      </view>
+      <view class="tag {{item.enrollCount ? 'ok' : 'warn'}}">
+        {{item.enrollCount ? '已绑定' : '待完善'}}
+      </view>
     </view>
   </view>
   <role-nav current="/pages/teacher/students/students" />

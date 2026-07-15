@@ -15,6 +15,7 @@
     "pages/academic/courses/courses",
     "pages/academic/schedule/schedule",
     "pages/academic/enroll/enroll",
+    "pages/academic/setup/setup",
     "pages/academic/import/import",
     "pages/academic/phones/phones",
     "pages/academic/mine/mine",

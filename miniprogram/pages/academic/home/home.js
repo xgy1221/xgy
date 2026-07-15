@@ -22,5 +22,9 @@ Page({
   },
   goPackages() {
     wx.redirectTo({ url: '/pages/academic/courses/courses' })
+  },
+  goSetup() {
+    wx.navigateTo({ url: '/pages/academic/setup/setup' })
   }
 })
+

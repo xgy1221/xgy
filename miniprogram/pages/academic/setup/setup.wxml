@@ -1,0 +1,82 @@
+<view class="container-flat">
+  <view class="banner">
+    <view class="page-title">代录在读学员</view>
+    <view class="page-sub">已经在上课的孩子，由{{roleLabel}}直接建档并绑定教案、剩余课次。</view>
+  </view>
+
+  <view class="card">
+    <view class="label">家长手机号</view>
+    <view class="row-input">
+      <input class="input flex" type="number" maxlength="11" placeholder="必填" value="{{phone}}" bindinput="onPhone" />
+      <button class="btn-ghost mini" size="mini" bindtap="onSearch">查询</button>
+    </view>
+    <view class="label">家长称呼</view>
+    <input class="input" placeholder="如：王女士" value="{{parentName}}" bindinput="onParentName" />
+  </view>
+
+  <view class="card" wx:if="{{familyStudents.length}}">
+    <view class="section-title">该手机号下已有学员</view>
+    <view
+      class="stu {{item.id === studentId ? 'on' : ''}}"
+      wx:for="{{familyStudents}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="onPickStudent"
+    >
+      <view>
+        <view class="name">{{item.studentName}}</view>
+        <view class="muted">{{item.grade || '未填年级'}} · 报读 {{item.enrollCount}} 个</view>
+      </view>
+      <view class="tag {{item.id === studentId ? 'ok' : ''}}">{{item.id === studentId ? '编辑中' : '选择'}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">{{studentId ? '编辑学员' : '新增学员'}}</view>
+    <view class="label">学生姓名</view>
+    <input class="input" placeholder="必填" value="{{form.studentName}}" data-key="studentName" bindinput="onForm" />
+    <view class="label">年级</view>
+    <input class="input" placeholder="如：小学四年级" value="{{form.grade}}" data-key="grade" bindinput="onForm" />
+    <view class="label">校区</view>
+    <input class="input" placeholder="选填" value="{{form.campus}}" data-key="campus" bindinput="onForm" />
+    <view class="label">备注</view>
+    <input class="input" placeholder="选填，如班级名" value="{{form.remark}}" data-key="remark" bindinput="onForm" />
+    <button class="btn-primary save" bindtap="onSaveStudent">保存学员档案</button>
+  </view>
+
+  <view class="card" wx:if="{{studentId}}">
+    <view class="section-title">绑定教案（在读可改剩余课次）</view>
+    <view class="pkg" wx:for="{{packages}}" wx:key="id">
+      <view class="row">
+        <view>
+          <view class="name">{{item.name}}</view>
+          <view class="muted">总 {{item.lessonCount}} 课次 · {{item.subject}}</view>
+        </view>
+        <switch checked="{{item.checked}}" color="#0F3D3E" data-id="{{item.id}}" bindchange="onTogglePkg" />
+      </view>
+      <view class="remain-row" wx:if="{{item.checked}}">
+        <text class="label-inline">剩余课次</text>
+        <input
+          class="remain-input"
+          type="number"
+          value="{{item.remainLessons}}"
+          data-id="{{item.id}}"
+          bindinput="onRemain"
+        />
+        <text class="muted">/ {{item.lessonCount}}</text>
+      </view>
+    </view>
+    <button class="btn-primary save" bindtap="onSaveEnrolls">保存教案报读</button>
+  </view>
+
+  <view class="card" wx:if="{{currentEnrolls.length}}">
+    <view class="section-title">当前报读</view>
+    <view class="list-item" wx:for="{{currentEnrolls}}" wx:key="id">
+      <view>
+        <view class="name">{{item.packageName}}</view>
+        <view class="muted">剩余 {{item.remainLessons}}/{{item.totalLessons}} · {{item.source}}</view>
+      </view>
+      <view class="tag ok">{{item.status}}</view>
+    </view>
+  </view>
+</view>

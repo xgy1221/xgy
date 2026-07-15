@@ -26,6 +26,16 @@
     </view>
   </view>
 
+  <view class="section card" bindtap="goSetup">
+    <view class="row">
+      <view>
+        <view class="item-title">代录在读学员</view>
+        <view class="muted">已在上课的孩子：建档 + 绑教案 + 改剩余课次</view>
+      </view>
+      <text class="link">去代录</text>
+    </view>
+  </view>
+
   <view class="section card" bindtap="goPackages">
     <view class="row">
       <view>

@@ -5,6 +5,16 @@
     <stat-card label="带班数量" value="{{classCount}}" />
     <stat-card label="学员人数" value="{{studentCount}}" />
   </view>
+  <view class="section card" bindtap="goSetup">
+    <view class="row">
+      <view>
+        <view class="item-title">代录在读学员</view>
+        <view class="muted">给已在上课的孩子绑定教案与剩余课次</view>
+      </view>
+      <text class="link">去处理</text>
+    </view>
+  </view>
+
   <view class="section">
     <view class="section-title">今日课次</view>
     <view class="card" wx:for="{{today}}" wx:key="id">
