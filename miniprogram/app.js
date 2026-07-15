@@ -1,4 +1,6 @@
 const auth = require('./utils/auth')
+const schema = require('./services/schema')
+const orgs = require('./services/orgs')
 const studentsService = require('./services/students')
 const packagesService = require('./services/packages')
 const enrollmentsService = require('./services/enrollments')
@@ -12,6 +14,8 @@ App({
   },
 
   onLaunch() {
+    schema.ensureSchema()
+    orgs.ensureOrgs()
     studentsService.getAllStudents()
     packagesService.getAllPackages()
     enrollmentsService.getAllEnrollments()

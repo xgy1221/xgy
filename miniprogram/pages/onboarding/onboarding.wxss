@@ -163,3 +163,26 @@
   margin-top: 12rpx;
   line-height: 1.5;
 }
+
+.org-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+
+.org-chip {
+  padding: 14rpx 28rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid #dce5e3;
+  color: #5b6b69;
+  font-size: 26rpx;
+  background: #f8faf9;
+}
+
+.org-chip.active {
+  border-color: #0f3d3e;
+  background: #e8f2f1;
+  color: #0f3d3e;
+  font-weight: 700;
+}

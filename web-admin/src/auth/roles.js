@@ -88,6 +88,8 @@ export const DEMO_ACCOUNTS = [
     name: '赵教务',
     role: WEB_ROLES.ACADEMIC,
     campus: '城南校区',
+    orgId: 'org_xuequ',
+    orgName: '学趣思维',
     desc: '学员/老师/课程/教案可维护，聚焦排课运营'
   },
   {
@@ -95,6 +97,8 @@ export const DEMO_ACCOUNTS = [
     name: '陈合伙人',
     role: WEB_ROLES.PARTNER,
     campus: '城南校区',
+    orgId: 'org_xuequ',
+    orgName: '学趣思维',
     shareRatio: 0.15,
     desc: '查看本校区业绩与分成财务，业务数据只读'
   },
@@ -103,8 +107,19 @@ export const DEMO_ACCOUNTS = [
     name: '周总（管理员）',
     role: WEB_ROLES.ADMIN,
     campus: '总部',
+    orgId: 'org_xuequ',
+    orgName: '学趣思维',
     shareRatio: 0.3,
     desc: '全校区财务、账号权限与全部配置'
+  },
+  {
+    phone: '13800000040',
+    name: '启航教务',
+    role: WEB_ROLES.ACADEMIC,
+    campus: '河东校区',
+    orgId: 'org_qihang',
+    orgName: '启航英语',
+    desc: '启航英语机构教务，仅可见本机构数据'
   }
 ]
 

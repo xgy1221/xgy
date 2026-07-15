@@ -7,33 +7,43 @@ const LESSON_KEY = 'xgy_lessons'
 
 const SEED_CLASSES = [
   {
-    id: 'class_math_a',
+    id: 'class_xuequ_math_a',
+    orgId: 'org_xuequ',
     name: '四年级数学 A 班',
     teacherId: 'u_teacher',
     teacherName: '李老师',
-    packageId: 'pkg_math_48',
+    packageId: 'pkg_xuequ_math_48',
     packageName: '小学数学思维提升',
     room: 'A203',
-    studentIds: ['stu_yn', 'stu_lz']
+    studentIds: ['stu_xuequ_yn', 'stu_xuequ_lz']
   },
   {
-    id: 'class_write_b',
+    id: 'class_xuequ_write_b',
+    orgId: 'org_xuequ',
     name: '一年级书写 B 班',
     teacherId: 'u_teacher',
     teacherName: '李老师',
-    packageId: 'pkg_write_16',
+    packageId: 'pkg_xuequ_write_16',
     packageName: '硬笔书写课',
     room: 'C102',
-    studentIds: ['stu_yr', 'stu_cs']
+    studentIds: ['stu_xuequ_yr', 'stu_xuequ_cs']
+  },
+  {
+    id: 'class_qihang_en_a',
+    orgId: 'org_qihang',
+    name: '河东英语 A 班',
+    teacherId: 'u_qh_teacher',
+    teacherName: '韩老师',
+    packageId: 'pkg_qihang_en_36',
+    packageName: '少儿英语进阶营',
+    room: 'E201',
+    studentIds: ['stu_qihang_yn', 'stu_qihang_ly']
   }
 ]
 
 function buildAttendee(studentId, type, homeClass) {
   const stu = studentsService.getStudentById(studentId) || {}
-  const enrollment = enrollmentsService.pickEnrollmentForPackage(
-    studentId,
-    homeClass.packageId
-  )
+  const enrollment = enrollmentsService.pickEnrollmentForPackage(studentId, homeClass.packageId)
   return {
     studentId,
     studentName: stu.studentName || '学员',
@@ -50,112 +60,146 @@ function buildAttendee(studentId, type, homeClass) {
   }
 }
 
+function stampOrg(lesson, cls) {
+  return { ...lesson, orgId: cls.orgId || lesson.orgId }
+}
+
 function buildSeedLessons() {
   studentsService.getAllStudents()
   enrollmentsService.getAllEnrollments()
   const today = todayKey()
   const classA = SEED_CLASSES[0]
   const classB = SEED_CLASSES[1]
+  const classQ = SEED_CLASSES[2]
 
-  const lessonTodayA = {
-    id: 'les_today_a',
-    date: today,
-    startTime: '16:00',
-    endTime: '17:30',
-    classId: classA.id,
-    className: classA.name,
-    teacherId: classA.teacherId,
-    teacherName: classA.teacherName,
-    packageId: classA.packageId,
-    packageName: classA.packageName,
-    room: classA.room,
-    status: 'ongoing', // upcoming | ongoing | finished
-    attendees: classA.studentIds.map((id) => buildAttendee(id, 'regular', classA))
-  }
+  const lessonTodayA = stampOrg(
+    {
+      id: 'les_xuequ_today_a',
+      date: today,
+      startTime: '16:00',
+      endTime: '17:30',
+      classId: classA.id,
+      className: classA.name,
+      teacherId: classA.teacherId,
+      teacherName: classA.teacherName,
+      packageId: classA.packageId,
+      packageName: classA.packageName,
+      room: classA.room,
+      status: 'ongoing',
+      attendees: classA.studentIds.map((id) => buildAttendee(id, 'regular', classA))
+    },
+    classA
+  )
 
-  const lessonTodayB = {
-    id: 'les_today_b',
-    date: today,
-    startTime: '15:00',
-    endTime: '16:00',
-    classId: classB.id,
-    className: classB.name,
-    teacherId: classB.teacherId,
-    teacherName: classB.teacherName,
-    packageId: classB.packageId,
-    packageName: classB.packageName,
-    room: classB.room,
-    status: 'upcoming',
-    attendees: classB.studentIds.map((id) => {
-      const row = buildAttendee(id, 'regular', classB)
-      // 王一然上节旷课，本班正常学员仍在；可被临时插到数学班补课
-      if (id === 'stu_yr') row.absent = false
-      return row
-    })
-  }
+  const lessonTodayB = stampOrg(
+    {
+      id: 'les_xuequ_today_b',
+      date: today,
+      startTime: '15:00',
+      endTime: '16:00',
+      classId: classB.id,
+      className: classB.name,
+      teacherId: classB.teacherId,
+      teacherName: classB.teacherName,
+      packageId: classB.packageId,
+      packageName: classB.packageName,
+      room: classB.room,
+      status: 'upcoming',
+      attendees: classB.studentIds.map((id) => buildAttendee(id, 'regular', classB))
+    },
+    classB
+  )
 
-  const lessonTomorrowA = {
-    id: 'les_tmr_a',
-    date: addDays(today, 1),
-    startTime: '16:00',
-    endTime: '17:30',
-    classId: classA.id,
-    className: classA.name,
-    teacherId: classA.teacherId,
-    teacherName: classA.teacherName,
-    packageId: classA.packageId,
-    packageName: classA.packageName,
-    room: classA.room,
-    status: 'upcoming',
-    attendees: classA.studentIds.map((id) => buildAttendee(id, 'regular', classA))
-  }
+  const lessonTomorrowA = stampOrg(
+    {
+      id: 'les_xuequ_tmr_a',
+      date: addDays(today, 1),
+      startTime: '16:00',
+      endTime: '17:30',
+      classId: classA.id,
+      className: classA.name,
+      teacherId: classA.teacherId,
+      teacherName: classA.teacherName,
+      packageId: classA.packageId,
+      packageName: classA.packageName,
+      room: classA.room,
+      status: 'upcoming',
+      attendees: classA.studentIds.map((id) => buildAttendee(id, 'regular', classA))
+    },
+    classA
+  )
 
-  const lessonYesterdayB = {
-    id: 'les_yday_b',
-    date: addDays(today, -2),
-    startTime: '15:00',
-    endTime: '16:00',
-    classId: classB.id,
-    className: classB.name,
-    teacherId: classB.teacherId,
-    teacherName: classB.teacherName,
-    packageId: classB.packageId,
-    packageName: classB.packageName,
-    room: classB.room,
-    status: 'finished',
-    attendees: classB.studentIds.map((id) => {
-      const row = buildAttendee(id, 'regular', classB)
-      if (id === 'stu_yr') {
-        row.absent = true
-        row.consumed = false
-      } else {
-        row.studentRated = true
-        row.teacherRated = true
-        row.studentRating = { score: 5, comment: '认真' }
-        row.teacherRating = { score: 5, comment: '专注' }
-        row.consumed = true
-      }
-      return row
-    })
-  }
+  const lessonYesterdayB = stampOrg(
+    {
+      id: 'les_xuequ_yday_b',
+      date: addDays(today, -2),
+      startTime: '15:00',
+      endTime: '16:00',
+      classId: classB.id,
+      className: classB.name,
+      teacherId: classB.teacherId,
+      teacherName: classB.teacherName,
+      packageId: classB.packageId,
+      packageName: classB.packageName,
+      room: classB.room,
+      status: 'finished',
+      attendees: classB.studentIds.map((id) => {
+        const row = buildAttendee(id, 'regular', classB)
+        if (id === 'stu_xuequ_yr') {
+          row.absent = true
+          row.consumed = false
+        } else {
+          row.studentRated = true
+          row.teacherRated = true
+          row.studentRating = { score: 5, comment: '认真' }
+          row.teacherRating = { score: 5, comment: '专注' }
+          row.consumed = true
+        }
+        return row
+      })
+    },
+    classB
+  )
 
-  const lessonWeekA = {
-    id: 'les_week_a',
-    date: addDays(today, 3),
-    startTime: '10:00',
-    endTime: '11:30',
-    classId: classA.id,
-    className: classA.name,
-    teacherId: classA.teacherId,
-    teacherName: classA.teacherName,
-    packageId: classA.packageId,
-    packageName: classA.packageName,
-    room: classA.room,
-    status: 'upcoming',
-    attendees: classA.studentIds.map((id) => buildAttendee(id, 'regular', classA))
-  }
+  const lessonWeekA = stampOrg(
+    {
+      id: 'les_xuequ_week_a',
+      date: addDays(today, 3),
+      startTime: '10:00',
+      endTime: '11:30',
+      classId: classA.id,
+      className: classA.name,
+      teacherId: classA.teacherId,
+      teacherName: classA.teacherName,
+      packageId: classA.packageId,
+      packageName: classA.packageName,
+      room: classA.room,
+      status: 'upcoming',
+      attendees: classA.studentIds.map((id) => buildAttendee(id, 'regular', classA))
+    },
+    classA
+  )
 
-  return [lessonYesterdayB, lessonTodayB, lessonTodayA, lessonTomorrowA, lessonWeekA]
+  const lessonQihangToday = stampOrg(
+    {
+      id: 'les_qihang_today',
+      date: today,
+      startTime: '18:00',
+      endTime: '19:30',
+      classId: classQ.id,
+      className: classQ.name,
+      teacherId: classQ.teacherId,
+      teacherName: classQ.teacherName,
+      packageId: classQ.packageId,
+      packageName: classQ.packageName,
+      room: classQ.room,
+      status: 'upcoming',
+      attendees: classQ.studentIds.map((id) => buildAttendee(id, 'regular', classQ))
+    },
+    classQ
+  )
+
+  return [lessonYesterdayB, lessonTodayB, lessonTodayA, lessonTomorrowA, lessonWeekA, lessonQihangToday]
 }
 
 function ensureClasses() {
@@ -173,16 +217,20 @@ function ensureLessons() {
   return seeded
 }
 
-function getClasses() {
-  return ensureClasses().slice()
+function getClasses(orgId) {
+  const list = ensureClasses().slice()
+  if (!orgId) return list
+  return list.filter((c) => c.orgId === orgId)
 }
 
 function getClassById(id) {
-  return getClasses().find((c) => c.id === id) || null
+  return ensureClasses().find((c) => c.id === id) || null
 }
 
-function getAllLessons() {
-  return ensureLessons().slice()
+function getAllLessons(orgId) {
+  const list = ensureLessons().slice()
+  if (!orgId) return list
+  return list.filter((l) => l.orgId === orgId)
 }
 
 function saveLessons(list) {
@@ -190,27 +238,24 @@ function saveLessons(list) {
 }
 
 function getLessonById(id) {
-  return getAllLessons().find((l) => l.id === id) || null
+  return ensureLessons().find((l) => l.id === id) || null
 }
 
-function getLessonsByDate(date) {
-  return getAllLessons().filter((l) => l.date === date)
+function getLessonsByDate(date, orgId) {
+  return getAllLessons(orgId).filter((l) => l.date === date)
 }
 
 function getLessonDatesForStudent(studentId) {
   return getLessonDateMarksForStudent(studentId).map((m) => m.date)
 }
 
-function getLessonDatesForTeacher() {
-  return getLessonDateMarksForTeacher().map((m) => m.date)
+function getLessonDatesForTeacher(orgId) {
+  return getLessonDateMarksForTeacher(orgId).map((m) => m.date)
 }
 
-/**
- * 日历色标：finished 已上 / upcoming 未上 / mixed 当天既有已上又有未上
- */
-function collectDateMarks(matchLesson) {
+function collectDateMarks(matchLesson, orgId) {
   const map = {}
-  getAllLessons().forEach((l) => {
+  getAllLessons(orgId).forEach((l) => {
     if (!matchLesson(l)) return
     if (!map[l.date]) map[l.date] = { hasFinished: false, hasOpen: false }
     if (l.status === 'finished') map[l.date].hasFinished = true
@@ -233,28 +278,23 @@ function getLessonDateMarksForStudent(studentId) {
   )
 }
 
-function getLessonDateMarksForTeacher() {
-  return collectDateMarks(() => true)
+function getLessonDateMarksForTeacher(orgId) {
+  return collectDateMarks(() => true, orgId)
 }
 
 function getStudentLessonsByDate(studentId, date) {
   return getAllLessons().filter(
     (l) =>
-      l.date === date &&
-      l.attendees.some((a) => a.studentId === studentId && !a.absent)
+      l.date === date && l.attendees.some((a) => a.studentId === studentId && !a.absent)
   )
 }
 
-function getTeacherLessonsByDate(date) {
-  return getAllLessons().filter((l) => l.date === date)
+function getTeacherLessonsByDate(date, orgId) {
+  return getAllLessons(orgId).filter((l) => l.date === date)
 }
 
-/**
- * 临时插班补课：不改原班花名册，仅进入本课次 attendees
- * 下次教务排课仍按 homeClassId / 原班
- */
 function addTempMakeupStudent(lessonId, studentId) {
-  const list = getAllLessons()
+  const list = ensureLessons()
   const lesson = list.find((l) => l.id === lessonId)
   if (!lesson) return { ok: false, message: '课次不存在' }
   if (lesson.status === 'finished') return { ok: false, message: '本课已结束' }
@@ -262,14 +302,20 @@ function addTempMakeupStudent(lessonId, studentId) {
     return { ok: false, message: '该学员已在本课名单中' }
   }
 
+  const student = studentsService.getStudentById(studentId)
+  if (!student) return { ok: false, message: '学员不存在' }
+  if (student.orgId !== lesson.orgId) {
+    return { ok: false, message: '不能跨机构临时插班' }
+  }
+
   const homeClass =
-    getClasses().find((c) => (c.studentIds || []).indexOf(studentId) >= 0) ||
+    getClasses(lesson.orgId).find((c) => (c.studentIds || []).indexOf(studentId) >= 0) ||
     getClassById(lesson.classId)
   if (!homeClass) return { ok: false, message: '找不到学员原班' }
 
   const row = buildAttendee(studentId, 'makeup', homeClass)
-  // 临时跟的是当前这节课的教案消课
-  const enrollment = enrollmentsService.pickEnrollmentForPackage(studentId, lesson.packageId) ||
+  const enrollment =
+    enrollmentsService.pickEnrollmentForPackage(studentId, lesson.packageId) ||
     enrollmentsService.pickEnrollmentForPackage(studentId, homeClass.packageId)
   if (enrollment) row.enrollmentId = enrollment.id
 
@@ -288,19 +334,18 @@ function getMakeupCandidates(lessonId) {
   const lesson = getLessonById(lessonId)
   if (!lesson) return []
   const inLesson = new Set(lesson.attendees.map((a) => a.studentId))
-  // 优先：近期旷课学员；其次其他有报读的学员
   const absentIds = new Set()
-  getAllLessons().forEach((l) => {
+  getAllLessons(lesson.orgId).forEach((l) => {
     l.attendees.forEach((a) => {
       if (a.absent) absentIds.add(a.studentId)
     })
   })
 
   return studentsService
-    .getAllStudents()
+    .listStudentsByOrg(lesson.orgId)
     .filter((s) => !inLesson.has(s.id))
     .map((s) => {
-      const home = getClasses().find((c) => (c.studentIds || []).indexOf(s.id) >= 0)
+      const home = getClasses(lesson.orgId).find((c) => (c.studentIds || []).indexOf(s.id) >= 0)
       const isAbsent = absentIds.has(s.id)
       return {
         ...s,
@@ -318,10 +363,6 @@ function getMakeupCandidates(lessonId) {
     })
 }
 
-/**
- * 姓名 / 家长手机号 / 家长姓名 模糊查询
- * 无关键词时返回近期旷课建议，避免一上来堆全量名单
- */
 function searchMakeupCandidates(lessonId, keyword) {
   const all = getMakeupCandidates(lessonId)
   const kw = String(keyword || '')
@@ -352,7 +393,7 @@ function searchMakeupCandidates(lessonId, keyword) {
 }
 
 function finishLesson(lessonId) {
-  const list = getAllLessons()
+  const list = ensureLessons()
   const lesson = list.find((l) => l.id === lessonId)
   if (!lesson) return { ok: false, message: '课次不存在' }
   lesson.status = 'finished'
@@ -361,20 +402,19 @@ function finishLesson(lessonId) {
 }
 
 function rateByStudent(lessonId, studentId, score, comment) {
-  const list = getAllLessons()
+  const list = ensureLessons()
   const lesson = list.find((l) => l.id === lessonId)
   if (!lesson) return { ok: false, message: '课次不存在' }
   const attendee = lesson.attendees.find((a) => a.studentId === studentId)
   if (!attendee || attendee.absent) return { ok: false, message: '不在本课名单' }
   attendee.studentRated = true
   attendee.studentRating = { score: Number(score) || 5, comment: comment || '' }
-  // 学生评老师可选，不影响消课
   saveLessons(list)
   return { ok: true, lesson, consumed: !!attendee.consumed, message: '感谢评价' }
 }
 
 function rateByTeacher(lessonId, studentId, score, comment) {
-  const list = getAllLessons()
+  const list = ensureLessons()
   const lesson = list.find((l) => l.id === lessonId)
   if (!lesson) return { ok: false, message: '课次不存在' }
   const attendee = lesson.attendees.find((a) => a.studentId === studentId)
@@ -388,7 +428,6 @@ function rateByTeacher(lessonId, studentId, score, comment) {
 
 function tryConsumeAttendee(attendee) {
   if (attendee.consumed) return { consumed: true, message: '已消课' }
-  // 消课只依赖老师评学生；学生评老师可选
   if (!attendee.teacherRated) {
     return { consumed: false, message: '老师评价学生后消 1 节课' }
   }
@@ -402,12 +441,14 @@ function tryConsumeAttendee(attendee) {
 }
 
 function markAbsent(lessonId, studentId, absent) {
-  const list = getAllLessons()
+  const list = ensureLessons()
   const lesson = list.find((l) => l.id === lessonId)
   if (!lesson) return { ok: false, message: '课次不存在' }
   const attendee = lesson.attendees.find((a) => a.studentId === studentId)
   if (!attendee) return { ok: false, message: '学员不在名单' }
-  if (attendee.type === 'makeup') return { ok: false, message: '临时插班学员请直接移除逻辑（演示未做移除）' }
+  if (attendee.type === 'makeup') {
+    return { ok: false, message: '临时插班学员请直接移除逻辑（演示未做移除）' }
+  }
   attendee.absent = !!absent
   saveLessons(list)
   return { ok: true, lesson }
@@ -433,6 +474,6 @@ module.exports = {
   rateByStudent,
   rateByTeacher,
   markAbsent,
-  ensureClasses: ensureClasses,
-  ensureLessons: ensureLessons
+  ensureClasses,
+  ensureLessons
 }

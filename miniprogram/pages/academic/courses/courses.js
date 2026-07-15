@@ -10,7 +10,8 @@ Page({
   },
 
   refresh() {
-    const list = packagesService.getAllPackages().map((p) => ({
+    const orgId = auth.getCurrentOrgId()
+    const list = packagesService.listPackagesByOrg(orgId).map((p) => ({
       ...p,
       outlineText: (p.outline || []).join(' / ')
     }))

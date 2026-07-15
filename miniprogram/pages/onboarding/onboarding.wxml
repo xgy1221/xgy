@@ -14,6 +14,17 @@
       {{isNewParent ? '未查到你的手机号建档记录，已为你新建家长账号。' : '机构可能只录入了手机号，接下来由你补充孩子信息。'}}
     </view>
     <view class="phone-box">当前手机号：{{phone}}</view>
+    <view class="label">就读机构（必选，数据按机构隔离）</view>
+    <view class="org-grid">
+      <view
+        class="org-chip {{item.id === selectedOrgId ? 'active' : ''}}"
+        wx:for="{{orgOptions}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="onPickOrg"
+      >{{item.name}}</view>
+    </view>
+    <view class="muted" style="margin-top:12rpx">同一孩子可在多家机构各自建档，互不影响。</view>
     <view class="label">家长称呼</view>
     <input class="input" placeholder="如：王女士 / 张爸爸" value="{{parentName}}" bindinput="onParentName" />
     <button class="btn-primary next" bindtap="goStep2">下一步：添加学员</button>
@@ -21,8 +32,8 @@
 
   <!-- Step 2 -->
   <view class="panel" wx:if="{{step === 2}}">
-    <view class="title">添加学员</view>
-    <view class="sub">一个手机号可以添加多个孩子，先至少添加 1 名。</view>
+    <view class="title">添加学员 · {{selectedOrgName}}</view>
+    <view class="sub">学员档案写入当前机构。换机构请回上一步重选。</view>
 
     <view class="label">学生姓名</view>
     <input class="input" placeholder="必填" value="{{form.studentName}}" data-key="studentName" bindinput="onForm" />
@@ -40,7 +51,7 @@
       <view class="list-item" wx:for="{{students}}" wx:key="id">
         <view>
           <view class="name">{{item.studentName}}</view>
-          <view class="muted">{{item.grade || '未填年级'}}</view>
+          <view class="muted">{{item.orgShortName || item.orgName}} · {{item.grade || '未填年级'}}</view>
         </view>
         <view class="tag">已保存</view>
       </view>
@@ -59,7 +70,7 @@
         wx:key="id"
         data-id="{{item.id}}"
         bindtap="onPickStudent"
-      >{{item.studentName}}</view>
+      >{{item.studentName}}·{{item.orgShortName}}</view>
     </scroll-view>
 
     <view

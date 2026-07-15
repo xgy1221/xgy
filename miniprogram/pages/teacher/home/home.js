@@ -25,8 +25,9 @@ Page({
   },
 
   refresh(date) {
-    const markedDates = lessonsService.getLessonDateMarksForTeacher()
-    const lessons = lessonsService.getTeacherLessonsByDate(date).map((l) => ({
+    const orgId = auth.getCurrentOrgId()
+    const markedDates = lessonsService.getLessonDateMarksForTeacher(orgId)
+    const lessons = lessonsService.getTeacherLessonsByDate(date, orgId).map((l) => ({
       ...l,
       statusText: STATUS_TEXT[l.status] || l.status
     }))

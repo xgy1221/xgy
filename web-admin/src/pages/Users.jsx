@@ -5,7 +5,7 @@ import { listStaffAccounts } from '../data/store'
 export default function Users() {
   const user = getUser()
   if (!canView('users')) return <Navigate to="/" replace />
-  const list = listStaffAccounts()
+  const list = listStaffAccounts(user)
 
   return (
     <div className="panel">

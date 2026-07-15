@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { canEdit } from '../auth/roles'
+import { canEdit, getUser } from '../auth/roles'
 import { listPackages, upsertPackage } from '../data/store'
 
 const empty = {
@@ -13,9 +13,10 @@ const empty = {
 }
 
 export default function Packages() {
+  const user = getUser()
   const editable = canEdit('packages')
   const [tick, setTick] = useState(0)
-  const packages = useMemo(() => listPackages(), [tick])
+  const packages = useMemo(() => listPackages(user), [tick, user])
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(empty)
 

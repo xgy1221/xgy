@@ -23,10 +23,10 @@ export default function Courses() {
   const [tick, setTick] = useState(0)
 
   const classes = useMemo(() => listClasses(user), [tick, user])
-  const packages = useMemo(() => listPackages().filter((p) => p.status === '上架'), [tick])
+  const packages = useMemo(() => listPackages(user).filter((p) => p.status === '上架'), [tick, user])
   const teachers = useMemo(() => listTeachers(user), [tick, user])
   const students = useMemo(() => listStudents(user), [tick, user])
-  const campuses = listCampuses()
+  const campuses = listCampuses(user)
 
   const [openClass, setOpenClass] = useState(false)
   const [manageId, setManageId] = useState('')
@@ -54,7 +54,8 @@ export default function Courses() {
 
   function saveClass() {
     if (!classForm.name.trim()) return alert('请填写班级名')
-    createClass(classForm)
+    const res = createClass(classForm)
+    if (res?.ok === false) return alert(res.message)
     setOpenClass(false)
     setTick((t) => t + 1)
   }

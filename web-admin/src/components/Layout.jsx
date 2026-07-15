@@ -37,6 +37,7 @@ export default function Layout() {
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <span className="muted">
+              {user?.orgName ? `${user.orgName} · ` : ''}
               {user?.name} · {user?.campus}
             </span>
             <button className="btn ghost" type="button" onClick={logout}>

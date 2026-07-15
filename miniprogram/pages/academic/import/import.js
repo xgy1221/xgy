@@ -23,7 +23,8 @@ Page({
   },
 
   refreshFamilies() {
-    const families = studentsService.groupByPhone()
+    const orgId = auth.getCurrentOrgId()
+    const families = studentsService.groupByPhone(studentsService.listStudentsByOrg(orgId))
     const totalStudents = families.reduce((sum, f) => sum + f.students.length, 0)
     this.setData({
       families,
@@ -42,7 +43,7 @@ Page({
   },
 
   onDemoImport() {
-    const result = studentsService.importDemoExcel()
+    const result = studentsService.importDemoExcel(auth.getCurrentOrgId())
     this.applyResult(result)
   },
 
@@ -65,7 +66,7 @@ Page({
                 wx.showToast({ title: '文件无有效数据行', icon: 'none' })
                 return
               }
-              const result = studentsService.importStudentRows(rows)
+              const result = studentsService.importStudentRows(rows, auth.getCurrentOrgId())
               this.applyResult(result)
             } catch (err) {
               wx.showToast({ title: '解析失败，请检查 CSV', icon: 'none' })

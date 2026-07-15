@@ -7,7 +7,8 @@ Page({
 
   onShow() {
     if (!auth.requireAuth()) return
-    const list = enrollmentsService.getAllDetailedEnrollments().map((e) => {
+    const orgId = auth.getCurrentOrgId()
+    const list = enrollmentsService.getAllDetailedEnrollments(orgId).map((e) => {
       const stu = studentsService.getStudentById(e.studentId) || {}
       return {
         ...e,

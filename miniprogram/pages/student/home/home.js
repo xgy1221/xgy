@@ -12,6 +12,7 @@ const STATUS_TEXT = {
 Page({
   data: {
     studentName: '',
+    orgName: '',
     children: [],
     currentStudentId: '',
     selectedDate: '',
@@ -33,16 +34,23 @@ Page({
       wx.reLaunch({ url: '/pages/onboarding/onboarding' })
       return
     }
+    const multiOrg = new Set(children.map((c) => c.orgId)).size > 1
+    const childrenView = children.map((c) => ({
+      ...c,
+      chipText: multiOrg ? `${c.studentName}·${c.orgShortName || c.orgName}` : c.studentName
+    }))
     let currentStudentId = session.currentStudentId
     if (!children.some((c) => c.id === currentStudentId)) {
       currentStudentId = children[0].id
       auth.setCurrentStudentId(currentStudentId)
     }
+    const current = children.find((c) => c.id === currentStudentId) || {}
     const selectedDate = this.data.selectedDate || todayKey()
     this.setData({
-      children,
+      children: childrenView,
       currentStudentId,
-      studentName: (children.find((c) => c.id === currentStudentId) || {}).studentName || '',
+      studentName: current.studentName || '',
+      orgName: current.orgName || '',
       selectedDate
     })
     this.refresh(currentStudentId, selectedDate)
@@ -80,7 +88,8 @@ Page({
     const student = this.data.children.find((c) => c.id === id)
     this.setData({
       currentStudentId: id,
-      studentName: student ? student.studentName : ''
+      studentName: student ? student.studentName : '',
+      orgName: student ? student.orgName : ''
     })
     this.refresh(id, this.data.selectedDate)
   },

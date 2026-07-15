@@ -18,8 +18,11 @@ Page({
   },
 
   refresh() {
-    const list = parentsService.getWhitelist().map((item) => {
-      const students = studentsService.getStudentsByPhone(item.phone)
+    const orgId = auth.getCurrentOrgId()
+    const list = parentsService.getWhitelist(orgId).map((item) => {
+      const students = studentsService
+        .getStudentsByPhone(item.phone)
+        .filter((s) => s.orgId === orgId)
       return {
         ...item,
         hasStudent: students.length > 0,
@@ -54,7 +57,8 @@ Page({
     const result = parentsService.addPhoneToWhitelist(
       phone,
       this.data.parentName.trim(),
-      this.data.note.trim()
+      this.data.note.trim(),
+      auth.getCurrentOrgId()
     )
     if (!result.ok) {
       wx.showToast({ title: result.message, icon: 'none' })

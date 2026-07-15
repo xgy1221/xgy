@@ -1,34 +1,48 @@
 const packagesService = require('./packages')
+const studentsService = require('./students')
 
 const STORAGE_KEY = 'xgy_enrollments'
 
 const SEED_ENROLLMENTS = [
   {
-    id: 'en_yn_math',
-    studentId: 'stu_yn',
-    packageId: 'pkg_math_48',
+    id: 'en_xuequ_yn_math',
+    orgId: 'org_xuequ',
+    studentId: 'stu_xuequ_yn',
+    packageId: 'pkg_xuequ_math_48',
     totalLessons: 48,
     remainLessons: 16,
     status: '学习中',
     source: '教务代录'
   },
   {
-    id: 'en_yn_en',
-    studentId: 'stu_yn',
-    packageId: 'pkg_en_24',
+    id: 'en_xuequ_yn_en',
+    orgId: 'org_xuequ',
+    studentId: 'stu_xuequ_yn',
+    packageId: 'pkg_xuequ_en_24',
     totalLessons: 24,
     remainLessons: 24,
     status: '学习中',
     source: '教务代录'
   },
   {
-    id: 'en_yr_write',
-    studentId: 'stu_yr',
-    packageId: 'pkg_write_16',
+    id: 'en_xuequ_yr_write',
+    orgId: 'org_xuequ',
+    studentId: 'stu_xuequ_yr',
+    packageId: 'pkg_xuequ_write_16',
     totalLessons: 16,
     remainLessons: 10,
     status: '学习中',
     source: '老师代录'
+  },
+  {
+    id: 'en_qihang_yn_en',
+    orgId: 'org_qihang',
+    studentId: 'stu_qihang_yn',
+    packageId: 'pkg_qihang_en_36',
+    totalLessons: 36,
+    remainLessons: 30,
+    status: '学习中',
+    source: '教务代录'
   }
 ]
 
@@ -45,6 +59,11 @@ function getAllEnrollments() {
 
 function saveAll(list) {
   wx.setStorageSync(STORAGE_KEY, list)
+}
+
+function listEnrollmentsByOrg(orgId) {
+  if (!orgId) return []
+  return getAllEnrollments().filter((e) => e.orgId === orgId)
 }
 
 function getEnrollmentsByStudent(studentId) {
@@ -67,13 +86,11 @@ function decorate(e) {
   }
 }
 
-function getAllDetailedEnrollments() {
-  return getAllEnrollments().map(decorate)
+function getAllDetailedEnrollments(orgId) {
+  const list = orgId ? listEnrollmentsByOrg(orgId) : getAllEnrollments()
+  return list.map(decorate)
 }
 
-/**
- * 家长自选：批量新增，不覆盖已有
- */
 function enrollPackagesForStudent(studentId, packageIds, source) {
   const created = []
   ;(packageIds || []).forEach((packageId) => {
@@ -89,14 +106,18 @@ function enrollPackagesForStudent(studentId, packageIds, source) {
   return created
 }
 
-/**
- * 教务/老师代录：可指定剩余课次、状态（适合在读学员）
- */
 function upsertEnrollment(options) {
   const pkg = packagesService.getPackageById(options.packageId)
   if (!pkg) return { ok: false, message: '教案不存在' }
   if (!options.studentId) return { ok: false, message: '缺少学员' }
 
+  const student = studentsService.getStudentById(options.studentId)
+  if (!student) return { ok: false, message: '学员不存在' }
+  if (pkg.orgId && student.orgId && pkg.orgId !== student.orgId) {
+    return { ok: false, message: '不能跨机构绑定教案' }
+  }
+
+  const orgId = student.orgId || pkg.orgId
   const list = getAllEnrollments()
   const existed = list.find(
     (e) => e.studentId === options.studentId && e.packageId === options.packageId
@@ -113,6 +134,7 @@ function upsertEnrollment(options) {
       return { ok: true, created: false, enrollment: existed }
     }
     Object.assign(existed, {
+      orgId,
       totalLessons,
       remainLessons,
       status: options.status || existed.status || '学习中',
@@ -125,6 +147,7 @@ function upsertEnrollment(options) {
 
   const enrollment = {
     id: `en_${options.studentId}_${options.packageId}_${Date.now()}`,
+    orgId,
     studentId: options.studentId,
     packageId: options.packageId,
     totalLessons,
@@ -151,7 +174,6 @@ function updateRemainLessons(enrollmentId, remainLessons) {
   return item
 }
 
-/** 消掉一节课 */
 function consumeOneLesson(enrollmentId) {
   const list = getAllEnrollments()
   const item = list.find((e) => e.id === enrollmentId)
@@ -175,6 +197,7 @@ function pickEnrollmentForPackage(studentId, packageId) {
 
 module.exports = {
   getAllEnrollments,
+  listEnrollmentsByOrg,
   getAllDetailedEnrollments,
   getEnrollmentsByStudent,
   getEnrollmentsDetailedByStudent,

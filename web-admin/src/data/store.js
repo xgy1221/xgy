@@ -1,4 +1,6 @@
-const KEY = 'xgy_web_admin_v2'
+import { getUser } from '../auth/roles'
+
+const KEY = 'xgy_web_admin_v3'
 
 function pad(n) {
   return n < 10 ? `0${n}` : `${n}`
@@ -17,11 +19,19 @@ function money(n) {
   return Math.round(Number(n) || 0)
 }
 
+const ORG_XUEQU = 'org_xuequ'
+const ORG_QIHANG = 'org_qihang'
+
 const SEED = {
+  orgs: [
+    { id: ORG_XUEQU, name: '学趣思维' },
+    { id: ORG_QIHANG, name: '启航英语' }
+  ],
   campuses: [
-    { id: 'camp_south', name: '城南校区' },
-    { id: 'camp_hi', name: '高新校区' },
-    { id: 'camp_hq', name: '总部' }
+    { id: 'camp_south', name: '城南校区', orgId: ORG_XUEQU },
+    { id: 'camp_hi', name: '高新校区', orgId: ORG_XUEQU },
+    { id: 'camp_hq', name: '总部', orgId: ORG_XUEQU },
+    { id: 'camp_hedong', name: '河东校区', orgId: ORG_QIHANG }
   ],
   teachers: [
     {
@@ -31,7 +41,8 @@ const SEED = {
       title: '数学主讲',
       campus: '城南校区',
       status: '在职',
-      subjects: '数学'
+      subjects: '数学',
+      orgId: ORG_XUEQU
     },
     {
       id: 't_zhou',
@@ -40,7 +51,8 @@ const SEED = {
       title: '英语主讲',
       campus: '城南校区',
       status: '在职',
-      subjects: '英语'
+      subjects: '英语',
+      orgId: ORG_XUEQU
     },
     {
       id: 't_shen',
@@ -49,7 +61,18 @@ const SEED = {
       title: '书法主讲',
       campus: '高新校区',
       status: '在职',
-      subjects: '书法'
+      subjects: '书法',
+      orgId: ORG_XUEQU
+    },
+    {
+      id: 't_han',
+      name: '韩老师',
+      phone: '13800000041',
+      title: '英语主讲',
+      campus: '河东校区',
+      status: '在职',
+      subjects: '英语',
+      orgId: ORG_QIHANG
     }
   ],
   packages: [
@@ -61,7 +84,8 @@ const SEED = {
       lessonCount: 48,
       price: 3680,
       status: '上架',
-      outline: '认识规律 / 速算技巧 / 应用题建模 / 阶段测评'
+      outline: '认识规律 / 速算技巧 / 应用题建模 / 阶段测评',
+      orgId: ORG_XUEQU
     },
     {
       id: 'pkg_en_24',
@@ -71,7 +95,8 @@ const SEED = {
       lessonCount: 24,
       price: 3280,
       status: '上架',
-      outline: '绘本跟读 / 词汇闯关 / 短文理解'
+      outline: '绘本跟读 / 词汇闯关 / 短文理解',
+      orgId: ORG_XUEQU
     },
     {
       id: 'pkg_write_16',
@@ -81,7 +106,8 @@ const SEED = {
       lessonCount: 16,
       price: 1680,
       status: '上架',
-      outline: '握笔姿势 / 基本笔画 / 独体字'
+      outline: '握笔姿势 / 基本笔画 / 独体字',
+      orgId: ORG_XUEQU
     },
     {
       id: 'pkg_code_32',
@@ -91,7 +117,30 @@ const SEED = {
       lessonCount: 32,
       price: 4200,
       status: '上架',
-      outline: 'Scratch 入门 / 动画故事 / 简单游戏'
+      outline: 'Scratch 入门 / 动画故事 / 简单游戏',
+      orgId: ORG_XUEQU
+    },
+    {
+      id: 'pkg_qh_adv_36',
+      name: '少儿英语进阶营',
+      subject: '英语',
+      grade: '小学1-6年级',
+      lessonCount: 36,
+      price: 4580,
+      status: '上架',
+      outline: '词汇拓展 / 阅读理解 / 语法进阶',
+      orgId: ORG_QIHANG
+    },
+    {
+      id: 'pkg_qh_speak_20',
+      name: '口语角',
+      subject: '英语',
+      grade: '小学2-6年级',
+      lessonCount: 20,
+      price: 1980,
+      status: '上架',
+      outline: '情景对话 / 发音纠正 / 主题表达',
+      orgId: ORG_QIHANG
     }
   ],
   students: [
@@ -103,7 +152,8 @@ const SEED = {
       grade: '小学四年级',
       campus: '城南校区',
       remark: '',
-      status: '在读'
+      status: '在读',
+      orgId: ORG_XUEQU
     },
     {
       id: 'stu_yr',
@@ -113,7 +163,8 @@ const SEED = {
       grade: '小学一年级',
       campus: '城南校区',
       remark: '同家庭二孩',
-      status: '在读'
+      status: '在读',
+      orgId: ORG_XUEQU
     },
     {
       id: 'stu_lz',
@@ -123,7 +174,8 @@ const SEED = {
       grade: '小学四年级',
       campus: '城南校区',
       remark: '',
-      status: '在读'
+      status: '在读',
+      orgId: ORG_XUEQU
     },
     {
       id: 'stu_cs',
@@ -133,7 +185,30 @@ const SEED = {
       grade: '小学五年级',
       campus: '高新校区',
       remark: '',
-      status: '在读'
+      status: '在读',
+      orgId: ORG_XUEQU
+    },
+    {
+      id: 'stu_qh_yn',
+      studentName: '王一诺',
+      parentPhone: '13800000001',
+      parentName: '王女士',
+      grade: '小学三年级',
+      campus: '河东校区',
+      remark: '',
+      status: '在读',
+      orgId: ORG_QIHANG
+    },
+    {
+      id: 'stu_qh_lyt',
+      studentName: '林雨桐',
+      parentPhone: '13800000051',
+      parentName: '林女士',
+      grade: '小学四年级',
+      campus: '河东校区',
+      remark: '',
+      status: '在读',
+      orgId: ORG_QIHANG
     }
   ],
   classes: [
@@ -145,7 +220,8 @@ const SEED = {
       campus: '城南校区',
       room: 'A203',
       studentIds: ['stu_yn', 'stu_lz'],
-      status: '开班中'
+      status: '开班中',
+      orgId: ORG_XUEQU
     },
     {
       id: 'class_write_b',
@@ -155,7 +231,8 @@ const SEED = {
       campus: '高新校区',
       room: 'C102',
       studentIds: ['stu_yr', 'stu_cs'],
-      status: '开班中'
+      status: '开班中',
+      orgId: ORG_XUEQU
     },
     {
       id: 'class_en_c',
@@ -165,7 +242,19 @@ const SEED = {
       campus: '城南校区',
       room: 'B105',
       studentIds: ['stu_yn'],
-      status: '开班中'
+      status: '开班中',
+      orgId: ORG_XUEQU
+    },
+    {
+      id: 'class_qh_adv',
+      name: '少儿英语进阶 A 班',
+      packageId: 'pkg_qh_adv_36',
+      teacherId: 't_han',
+      campus: '河东校区',
+      room: '101',
+      studentIds: ['stu_qh_yn', 'stu_qh_lyt'],
+      status: '开班中',
+      orgId: ORG_QIHANG
     }
   ],
   lessons: [
@@ -177,7 +266,19 @@ const SEED = {
       classId: 'class_math_a',
       teacherId: 't_li',
       room: 'A203',
-      status: 'upcoming'
+      status: 'upcoming',
+      orgId: ORG_XUEQU
+    },
+    {
+      id: 'les_qh_today',
+      date: todayKey(),
+      startTime: '15:00',
+      endTime: '16:30',
+      classId: 'class_qh_adv',
+      teacherId: 't_han',
+      room: '101',
+      status: 'upcoming',
+      orgId: ORG_QIHANG
     }
   ],
   /** 报名订单 / 财务流水（教培常见：实收、欠费、退费、渠道） */
@@ -193,7 +294,8 @@ const SEED = {
       status: '已缴费',
       channel: '地推',
       partnerId: 'p_chen',
-      createdAt: '2026-06-08'
+      createdAt: '2026-06-08',
+      orgId: ORG_XUEQU
     },
     {
       id: 'ord_2',
@@ -206,7 +308,8 @@ const SEED = {
       status: '部分缴费',
       channel: '老带新',
       partnerId: 'p_chen',
-      createdAt: '2026-06-20'
+      createdAt: '2026-06-20',
+      orgId: ORG_XUEQU
     },
     {
       id: 'ord_3',
@@ -219,7 +322,8 @@ const SEED = {
       status: '部分退费',
       channel: '自然到访',
       partnerId: 'p_chen',
-      createdAt: '2026-05-12'
+      createdAt: '2026-05-12',
+      orgId: ORG_XUEQU
     },
     {
       id: 'ord_4',
@@ -232,7 +336,8 @@ const SEED = {
       status: '已缴费',
       channel: '地推',
       partnerId: 'p_other',
-      createdAt: '2026-07-01'
+      createdAt: '2026-07-01',
+      orgId: ORG_XUEQU
     },
     {
       id: 'ord_5',
@@ -245,7 +350,8 @@ const SEED = {
       status: '已缴费',
       channel: '老带新',
       partnerId: 'p_chen',
-      createdAt: '2026-07-03'
+      createdAt: '2026-07-03',
+      orgId: ORG_XUEQU
     },
     {
       id: 'ord_6',
@@ -258,14 +364,84 @@ const SEED = {
       status: '待缴费',
       channel: '销售跟进',
       partnerId: 'p_chen',
-      createdAt: '2026-07-10'
+      createdAt: '2026-07-10',
+      orgId: ORG_XUEQU
+    },
+    {
+      id: 'ord_qh_1',
+      studentId: 'stu_qh_yn',
+      packageId: 'pkg_qh_adv_36',
+      campus: '河东校区',
+      amount: 4580,
+      paidAmount: 4580,
+      refundAmount: 0,
+      status: '已缴费',
+      channel: '自然到访',
+      partnerId: '',
+      createdAt: '2026-07-05',
+      orgId: ORG_QIHANG
+    },
+    {
+      id: 'ord_qh_2',
+      studentId: 'stu_qh_lyt',
+      packageId: 'pkg_qh_speak_20',
+      campus: '河东校区',
+      amount: 1980,
+      paidAmount: 1000,
+      refundAmount: 0,
+      status: '部分缴费',
+      channel: '地推',
+      partnerId: '',
+      createdAt: '2026-07-12',
+      orgId: ORG_QIHANG
     }
   ],
   staffAccounts: [
-    { id: 'u_aca', name: '赵教务', phone: '13800000003', roles: ['教务'], campus: '城南校区', status: '正常' },
-    { id: 'u_partner', name: '陈合伙人', phone: '13800000004', roles: ['合伙人', '教务', '老师'], campus: '城南校区', status: '正常' },
-    { id: 'u_admin', name: '周总', phone: '13800000000', roles: ['管理员', '合伙人'], campus: '总部', status: '正常' },
-    { id: 'u_tea', name: '李老师', phone: '13800000002', roles: ['老师'], campus: '城南校区', status: '正常' }
+    {
+      id: 'u_aca',
+      name: '赵教务',
+      phone: '13800000003',
+      roles: ['教务'],
+      campus: '城南校区',
+      status: '正常',
+      orgId: ORG_XUEQU
+    },
+    {
+      id: 'u_partner',
+      name: '陈合伙人',
+      phone: '13800000004',
+      roles: ['合伙人', '教务', '老师'],
+      campus: '城南校区',
+      status: '正常',
+      orgId: ORG_XUEQU
+    },
+    {
+      id: 'u_admin',
+      name: '周总',
+      phone: '13800000000',
+      roles: ['管理员', '合伙人'],
+      campus: '总部',
+      status: '正常',
+      orgId: ORG_XUEQU
+    },
+    {
+      id: 'u_tea',
+      name: '李老师',
+      phone: '13800000002',
+      roles: ['老师'],
+      campus: '城南校区',
+      status: '正常',
+      orgId: ORG_XUEQU
+    },
+    {
+      id: 'u_qh_aca',
+      name: '启航教务',
+      phone: '13800000040',
+      roles: ['教务'],
+      campus: '河东校区',
+      status: '正常',
+      orgId: ORG_QIHANG
+    }
   ]
 }
 
@@ -296,51 +472,83 @@ export function resetDb() {
   return structuredClone(SEED)
 }
 
+function scopeByOrg(list, user) {
+  if (!user?.orgId) return []
+  return list.filter((i) => i.orgId === user.orgId)
+}
+
 function scopeByCampus(list, user, field = 'campus') {
   if (!user || user.role === 'admin' || user.role === 'academic') return list
   if (user.role === 'partner') return list.filter((i) => i[field] === user.campus)
   return list
 }
 
-export function listCampuses() {
-  return getDb().campuses
+function resolveOrgId(explicit) {
+  if (explicit) return explicit
+  return getUser()?.orgId || ''
+}
+
+export function listOrgs() {
+  return getDb().orgs || []
+}
+
+export function getOrgName(id) {
+  const org = (getDb().orgs || []).find((o) => o.id === id)
+  return org?.name || '-'
+}
+
+export function listCampuses(user) {
+  return scopeByOrg(getDb().campuses, user)
 }
 
 export function listTeachers(user) {
-  return scopeByCampus(getDb().teachers, user)
+  return scopeByCampus(scopeByOrg(getDb().teachers, user), user)
 }
 
 export function upsertTeacher(teacher) {
   const db = getDb()
+  const orgId = resolveOrgId(teacher.orgId)
   if (teacher.id) {
     const idx = db.teachers.findIndex((t) => t.id === teacher.id)
-    if (idx >= 0) db.teachers[idx] = { ...db.teachers[idx], ...teacher }
+    if (idx >= 0) {
+      const existing = db.teachers[idx]
+      if (existing.orgId && orgId && existing.orgId !== orgId) return db.teachers
+      db.teachers[idx] = { ...existing, ...teacher, orgId: existing.orgId || orgId }
+    }
   } else {
     db.teachers.unshift({
       ...teacher,
       id: uid('t'),
-      status: teacher.status || '在职'
+      status: teacher.status || '在职',
+      orgId
     })
   }
   save(db)
   return db.teachers
 }
 
-export function listPackages() {
-  return getDb().packages
+export function listPackages(user) {
+  return scopeByOrg(getDb().packages, user)
 }
 
 export function upsertPackage(pkg) {
   const db = getDb()
+  const orgId = resolveOrgId(pkg.orgId)
   if (pkg.id) {
     const idx = db.packages.findIndex((p) => p.id === pkg.id)
-    if (idx >= 0) db.packages[idx] = { ...db.packages[idx], ...pkg }
-    else db.packages.unshift({ ...pkg, id: pkg.id })
+    if (idx >= 0) {
+      const existing = db.packages[idx]
+      if (existing.orgId && orgId && existing.orgId !== orgId) return db.packages
+      db.packages[idx] = { ...existing, ...pkg, orgId: existing.orgId || orgId }
+    } else {
+      db.packages.unshift({ ...pkg, id: pkg.id, orgId })
+    }
   } else {
     db.packages.unshift({
       ...pkg,
       id: uid('pkg'),
-      status: pkg.status || '上架'
+      status: pkg.status || '上架',
+      orgId
     })
   }
   save(db)
@@ -348,16 +556,21 @@ export function upsertPackage(pkg) {
 }
 
 export function listStudents(user) {
-  return scopeByCampus(getDb().students, user)
+  return scopeByCampus(scopeByOrg(getDb().students, user), user)
 }
 
 export function upsertStudent(stu) {
   const db = getDb()
+  const orgId = resolveOrgId(stu.orgId)
   if (stu.id) {
     const idx = db.students.findIndex((s) => s.id === stu.id)
-    if (idx >= 0) db.students[idx] = { ...db.students[idx], ...stu }
+    if (idx >= 0) {
+      const existing = db.students[idx]
+      if (existing.orgId && orgId && existing.orgId !== orgId) return db.students
+      db.students[idx] = { ...existing, ...stu, orgId: existing.orgId || orgId }
+    }
   } else {
-    db.students.unshift({ ...stu, id: uid('stu'), status: stu.status || '在读' })
+    db.students.unshift({ ...stu, id: uid('stu'), status: stu.status || '在读', orgId })
   }
   save(db)
   return db.students
@@ -365,7 +578,7 @@ export function upsertStudent(stu) {
 
 export function listClasses(user) {
   const db = getDb()
-  return scopeByCampus(db.classes, user).map((c) => enrichClass(c, db))
+  return scopeByCampus(scopeByOrg(db.classes, user), user).map((c) => enrichClass(c, db))
 }
 
 function enrichClass(c, db) {
@@ -387,6 +600,25 @@ function enrichClass(c, db) {
 
 export function createClass(payload) {
   const db = getDb()
+  const orgId = resolveOrgId(payload.orgId)
+  if (!orgId) return { ok: false, message: '缺少机构信息' }
+
+  const pkg = db.packages.find((p) => p.id === payload.packageId)
+  if (payload.packageId && (!pkg || pkg.orgId !== orgId)) {
+    return { ok: false, message: '教案不属于当前机构' }
+  }
+  const teacher = db.teachers.find((t) => t.id === payload.teacherId)
+  if (payload.teacherId && (!teacher || teacher.orgId !== orgId)) {
+    return { ok: false, message: '教师不属于当前机构' }
+  }
+  const studentIds = payload.studentIds || []
+  for (const sid of studentIds) {
+    const stu = db.students.find((s) => s.id === sid)
+    if (!stu || stu.orgId !== orgId) {
+      return { ok: false, message: '学员不属于当前机构' }
+    }
+  }
+
   const item = {
     id: uid('class'),
     name: payload.name,
@@ -394,8 +626,9 @@ export function createClass(payload) {
     teacherId: payload.teacherId,
     campus: payload.campus || '城南校区',
     room: payload.room || '',
-    studentIds: payload.studentIds || [],
-    status: '开班中'
+    studentIds,
+    status: '开班中',
+    orgId
   }
   db.classes.unshift(item)
   save(db)
@@ -406,6 +639,10 @@ export function addStudentToClass(classId, studentId) {
   const db = getDb()
   const cls = db.classes.find((c) => c.id === classId)
   if (!cls) return { ok: false, message: '班级不存在' }
+  const stu = db.students.find((s) => s.id === studentId)
+  if (!stu || (cls.orgId && stu.orgId !== cls.orgId)) {
+    return { ok: false, message: '学员不属于当前机构' }
+  }
   if ((cls.studentIds || []).includes(studentId)) {
     return { ok: false, message: '学员已在班中' }
   }
@@ -425,7 +662,7 @@ export function removeStudentFromClass(classId, studentId) {
 
 export function listLessons(user) {
   const db = getDb()
-  let list = db.lessons.map((l) => enrichLesson(l, db))
+  let list = scopeByOrg(db.lessons, user).map((l) => enrichLesson(l, db))
   if (user?.role === 'partner') list = list.filter((l) => l.campus === user.campus)
   return list
 }
@@ -438,6 +675,7 @@ function enrichLesson(l, db) {
   const pkg = cls ? db.packages.find((p) => p.id === cls.packageId) : null
   return {
     ...l,
+    orgId: l.orgId || cls?.orgId,
     className: cls?.name || '未知班级',
     campus: cls?.campus || '-',
     teacherName: teacher?.name || '未分配',
@@ -472,6 +710,10 @@ export function createLesson(payload) {
   const db = getDb()
   const cls = db.classes.find((c) => c.id === payload.classId)
   if (!cls) return { ok: false, message: '请选择班级' }
+  const orgId = resolveOrgId(payload.orgId || cls.orgId)
+  if (cls.orgId && orgId && cls.orgId !== orgId) {
+    return { ok: false, message: '班级不属于当前机构' }
+  }
   const item = {
     id: uid('les'),
     date: payload.date,
@@ -480,7 +722,8 @@ export function createLesson(payload) {
     classId: payload.classId,
     teacherId: payload.teacherId || cls.teacherId,
     room: payload.room || cls.room || '',
-    status: 'upcoming'
+    status: 'upcoming',
+    orgId: cls.orgId || orgId
   }
   db.lessons.unshift(item)
   save(db)
@@ -505,7 +748,7 @@ function enrichOrder(o, db) {
 
 export function listOrders(user) {
   const db = getDb()
-  let orders = db.orders.map((o) => enrichOrder(o, db))
+  let orders = scopeByOrg(db.orders, user).map((o) => enrichOrder(o, db))
   if (user?.role === 'partner') {
     orders = orders.filter((o) => o.campus === user.campus && o.partnerId === 'p_chen')
   }
@@ -554,15 +797,15 @@ export function getFinanceSummary(user) {
   }
 }
 
-export function listStaffAccounts() {
-  return getDb().staffAccounts
+export function listStaffAccounts(user) {
+  return scopeByOrg(getDb().staffAccounts, user)
 }
 
 export function getDashboardStats(user) {
   const students = listStudents(user)
   const teachers = listTeachers(user)
   const classes = listClasses(user)
-  const packages = listPackages()
+  const packages = listPackages(user)
   const todayLessons = getLessonsByDate(todayKey(), user)
   const finance = user && (user.role === 'partner' || user.role === 'admin') ? getFinanceSummary(user) : null
   return {

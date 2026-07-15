@@ -14,15 +14,19 @@ Page({
       return
     }
 
+    const orgs = require('../../services/orgs')
     const accounts = DEMO_USERS.map((u) => ({
       ...u,
-      roleText: u.roles.map((r) => ROLE_META[r].shortName).join(' / ')
+      roleText: [
+        u.orgId ? orgs.getOrgShortName(u.orgId) : '跨机构家长',
+        u.roles.map((r) => ROLE_META[r].shortName).join('/')
+      ].join(' · ')
     }))
     accounts.push({
       phone: '13800000031',
       name: '仅录手机号家长',
       avatarText: '新',
-      roleText: '待完善学员'
+      roleText: '学趣 · 待完善学员'
     })
     this.setData({ accounts })
   },

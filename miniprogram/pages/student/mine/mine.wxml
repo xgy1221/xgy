@@ -33,7 +33,7 @@
     <view class="list-item" wx:for="{{children}}" wx:key="id" data-id="{{item.id}}" bindtap="onSwitchChild">
       <view>
         <view class="role-name">{{item.studentName}}</view>
-        <view class="muted">{{item.grade || '未填年级'}}</view>
+        <view class="muted">{{item.orgName || '机构'}} · {{item.grade || '未填年级'}}</view>
       </view>
       <view class="tag {{item.id === currentStudentId ? 'ok' : ''}}">
         {{item.id === currentStudentId ? '当前' : '切换'}}

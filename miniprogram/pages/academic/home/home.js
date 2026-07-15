@@ -6,9 +6,10 @@ Page({
   onShow() {
     if (!auth.requireAuth()) return
     const u = auth.getSession().user
+    const orgs = require('../../../services/orgs')
     const enrolls = mock.ACADEMIC_ENROLLS
     this.setData({
-      campus: u.campus || '校区',
+      campus: `${orgs.getOrgShortName(u.orgId) || ''} · ${u.campus || '校区'}`,
       pendingSchedule: enrolls.filter((e) => e.status === '待排课').length,
       pendingPay: enrolls.filter((e) => e.status === '待缴费').length,
       enrolls

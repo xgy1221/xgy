@@ -16,7 +16,7 @@ export default function Teachers() {
   const editable = canEdit('teachers')
   const [tick, setTick] = useState(0)
   const teachers = useMemo(() => listTeachers(user), [tick, user])
-  const campuses = listCampuses()
+  const campuses = listCampuses(user)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(empty)
 

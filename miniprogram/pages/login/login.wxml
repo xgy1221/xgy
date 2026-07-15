@@ -16,7 +16,7 @@
       bindinput="onPhoneInput"
     />
     <button class="btn-primary login-btn" bindtap="onLogin">进入系统</button>
-    <view class="tip">任意 11 位手机号可体验家长入驻。小程序主战场：家长 / 老师 / 教务。合伙、管理员也可登，只看业绩与全校快览；深度财务与配置用 Web。多角色演示：13800000004，可在「我的」切换。</view>
+    <view class="tip">支持多机构隔离：员工绑定一家机构；家长 13800000001 在「学趣」与「启航」都有孩子，切换学员即切换机构。启航员工：13800000040 / 41。合伙/管理深度财务用 Web。</view>
   </view>
 
   <view class="quick">

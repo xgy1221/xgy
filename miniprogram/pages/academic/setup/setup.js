@@ -61,12 +61,17 @@ Page({
   },
 
   loadFamily(phone, preferredStudentId) {
-    parentsService.ensureParentAccess(phone)
+    const orgId = auth.getCurrentOrgId()
+    parentsService.ensureParentAccess(phone, '', orgId)
     const profile = parentsService.getParentProfile(phone) || {}
-    const students = studentsService.getStudentsByPhone(phone).map((s) => ({
-      ...s,
-      enrollCount: enrollmentsService.getEnrollmentsByStudent(s.id).length
-    }))
+    // 只看本机构孩子，避免把家长在其他机构的学员拉进来改档
+    const students = studentsService
+      .getStudentsByPhone(phone)
+      .filter((s) => s.orgId === orgId)
+      .map((s) => ({
+        ...s,
+        enrollCount: enrollmentsService.getEnrollmentsByStudent(s.id).length
+      }))
 
     let studentId = preferredStudentId || this.data.studentId
     if (studentId && !students.some((s) => s.id === studentId)) studentId = ''
@@ -97,7 +102,8 @@ Page({
 
   resetPackages(selected) {
     const selectedMap = selected || {}
-    const packages = packagesService.getOnSalePackages().map((p) => ({
+    const orgId = auth.getCurrentOrgId()
+    const packages = packagesService.getOnSalePackages(orgId).map((p) => ({
       ...p,
       checked: !!selectedMap[p.id],
       remainLessons:
@@ -145,11 +151,17 @@ Page({
       return
     }
     const parentName = (this.data.parentName || '').trim() || '家长'
-    parentsService.ensureParentAccess(phone, parentName)
+    const orgId = auth.getCurrentOrgId()
+    if (!orgId) {
+      wx.showToast({ title: '缺少机构上下文', icon: 'none' })
+      return
+    }
+    parentsService.ensureParentAccess(phone, parentName, orgId)
     parentsService.ensureParentProfile(phone, { parentName })
 
     const result = studentsService.upsertStudent({
       ...this.data.form,
+      orgId,
       parentPhone: phone,
       parentName
     })

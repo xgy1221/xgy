@@ -33,7 +33,9 @@ export default function Login() {
               <div style={{ fontWeight: 700, marginBottom: 4 }}>
                 {acc.name} · {ROLE_LABEL[acc.role]}
               </div>
-              <div className="muted">{acc.phone} · {acc.campus}</div>
+              <div className="muted">
+                {acc.orgName} · {acc.phone} · {acc.campus}
+              </div>
               <div className="muted" style={{ marginTop: 4 }}>
                 {acc.desc}
               </div>

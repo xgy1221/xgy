@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import MonthCalendar from '../components/MonthCalendar'
+import { getUser } from '../auth/roles'
 import {
   createLesson,
   getLessonDateMarks,
@@ -10,12 +11,13 @@ import {
 } from '../data/store'
 
 export default function Schedule() {
+  const user = getUser()
   const [tick, setTick] = useState(0)
   const [selectedDate, setSelectedDate] = useState(todayKey())
-  const classes = useMemo(() => listClasses(), [tick])
-  const teachers = useMemo(() => listTeachers(), [])
-  const marks = useMemo(() => getLessonDateMarks(), [tick])
-  const dayLessons = useMemo(() => getLessonsByDate(selectedDate), [selectedDate, tick])
+  const classes = useMemo(() => listClasses(user), [tick, user])
+  const teachers = useMemo(() => listTeachers(user), [tick, user])
+  const marks = useMemo(() => getLessonDateMarks(user), [tick, user])
+  const dayLessons = useMemo(() => getLessonsByDate(selectedDate, user), [selectedDate, tick, user])
 
   const [form, setForm] = useState({
     classId: '',

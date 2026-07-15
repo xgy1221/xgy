@@ -2,6 +2,7 @@ const { ROLE_META } = require('./constants')
 
 const SESSION_KEY = 'xgy_session'
 const LAST_ROLE_KEY = 'xgy_last_roles'
+const LAST_ORG_KEY = 'xgy_last_orgs'
 
 function getSession() {
   return wx.getStorageSync(SESSION_KEY) || null
@@ -80,6 +81,65 @@ function setCurrentStudentId(studentId) {
   const session = getSession()
   if (!session) return
   session.currentStudentId = studentId
+  // 切换孩子时同步机构上下文，避免跨机构拉错课表/教案
+  try {
+    const studentsService = require('../services/students')
+    const stu = studentsService.getStudentById(studentId)
+    if (stu && stu.orgId) {
+      session.currentOrgId = stu.orgId
+      if (session.user && session.user.phone) setLastOrg(session.user.phone, stu.orgId)
+    }
+  } catch (e) {
+    // ignore circular init
+  }
+  setSession(session)
+}
+
+function getLastOrgMap() {
+  return wx.getStorageSync(LAST_ORG_KEY) || {}
+}
+
+function getLastOrg(phone) {
+  if (!phone) return null
+  return getLastOrgMap()[phone] || null
+}
+
+function setLastOrg(phone, orgId) {
+  if (!phone || !orgId) return
+  const map = getLastOrgMap()
+  map[phone] = orgId
+  wx.setStorageSync(LAST_ORG_KEY, map)
+}
+
+/**
+ * 当前机构：
+ * - 员工账号：绑定在 user.orgId（一人一机构）
+ * - 家长：跟随当前学员 orgId；无学员时用上次选择 / session.currentOrgId
+ */
+function getCurrentOrgId() {
+  const session = getSession()
+  if (!session) return null
+  const user = session.user || {}
+  if (user.orgId) return user.orgId
+
+  if (session.currentStudentId) {
+    try {
+      const studentsService = require('../services/students')
+      const stu = studentsService.getStudentById(session.currentStudentId)
+      if (stu && stu.orgId) return stu.orgId
+    } catch (e) {
+      // ignore
+    }
+  }
+  if (session.currentOrgId) return session.currentOrgId
+  return getLastOrg(user.phone) || null
+}
+
+function setCurrentOrgId(orgId) {
+  const session = getSession()
+  if (!session || !orgId) return
+  session.currentOrgId = orgId
+  if (session.user && session.user.phone) setLastOrg(session.user.phone, orgId)
   setSession(session)
 }
 
@@ -112,6 +172,10 @@ module.exports = {
   setCurrentRole,
   getCurrentStudentId,
   setCurrentStudentId,
+  getLastOrg,
+  setLastOrg,
+  getCurrentOrgId,
+  setCurrentOrgId,
   getRoleHome,
   requireAuth,
   switchToRoleHome

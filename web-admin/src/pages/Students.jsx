@@ -18,7 +18,7 @@ export default function Students() {
   const [tick, setTick] = useState(0)
   const [keyword, setKeyword] = useState('')
   const students = useMemo(() => listStudents(user), [tick, user])
-  const campuses = listCampuses()
+  const campuses = listCampuses(user)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(empty)
 

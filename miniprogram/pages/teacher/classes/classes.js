@@ -7,7 +7,8 @@ Page({
   onShow() {
     if (!auth.requireAuth()) return
     lessonsService.ensureClasses()
-    const list = lessonsService.getClasses().map((c) => ({
+    const orgId = auth.getCurrentOrgId()
+    const list = lessonsService.getClasses(orgId).map((c) => ({
       ...c,
       students: (c.studentIds || []).length,
       studentNames: (c.studentIds || [])

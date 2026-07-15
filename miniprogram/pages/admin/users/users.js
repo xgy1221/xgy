@@ -5,7 +5,8 @@ Page({
   data: { list: [] },
   onShow() {
     if (!auth.requireAuth()) return
-    const list = mock.getAdminUserList().map((u) => ({
+    const orgId = auth.getCurrentOrgId()
+    const list = mock.getAdminUserList(orgId).map((u) => ({
       ...u,
       rolesText: (u.roles || []).join(' / ')
     }))

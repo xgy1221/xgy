@@ -1,6 +1,6 @@
 <view class="container">
   <view class="page-title">组织架构</view>
-  <view class="page-sub">总部 / 校区层级</view>
+  <view class="page-sub">{{orgName}} · 校区层级（本机构内）</view>
   <view class="section">
     <view class="card" wx:for="{{list}}" wx:key="id">
       <view class="row">

@@ -25,8 +25,9 @@ Page({
   },
 
   refresh(date) {
-    const markedDates = lessonsService.getLessonDateMarksForTeacher()
-    const lessons = lessonsService.getTeacherLessonsByDate(date).map((l) => {
+    const orgId = auth.getCurrentOrgId()
+    const markedDates = lessonsService.getLessonDateMarksForTeacher(orgId)
+    const lessons = lessonsService.getTeacherLessonsByDate(date, orgId).map((l) => {
       const present = l.attendees.filter((a) => !a.absent)
       const ratedCount = present.filter((a) => a.teacherRated || a.studentRated).length
       return {

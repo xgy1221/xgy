@@ -7,8 +7,8 @@ Page({
 
   onShow() {
     if (!auth.requireAuth()) return
-    // 演示：老师可见全部学员档案；后续可按班级过滤
-    const list = studentsService.getAllStudents().map((s) => {
+    const orgId = auth.getCurrentOrgId()
+    const list = studentsService.listStudentsByOrg(orgId).map((s) => {
       const enrolls = enrollmentsService.getEnrollmentsDetailedByStudent(s.id)
       return {
         ...s,
