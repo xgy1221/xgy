@@ -7,15 +7,27 @@
   </view>
 
   <view class="card">
-    <view class="section-title">本课名单</view>
+    <view class="section-head">
+      <view class="section-title">本课名单 · {{lesson.attendees.length}} 人</view>
+      <button
+        wx:if="{{lesson.status !== 'finished'}}"
+        class="btn-primary mini"
+        size="mini"
+        bindtap="goAddTemp"
+      >+ 临时加学员</button>
+    </view>
+
     <view class="stu" wx:for="{{lesson.attendees}}" wx:key="studentId">
       <view>
-        <view class="name">{{item.studentName}}</view>
-        <view class="muted" wx:if="{{item.type === 'makeup'}}">临时补课 · 原班仍是「{{item.homeClassName}}」</view>
-        <view class="muted" wx:elif="{{item.absent}}">标记旷课（不计消课）</view>
+        <view class="name-line">
+          <text class="name">{{item.studentName}}</text>
+          <text class="pill makeup" wx:if="{{item.type === 'makeup'}}">临补</text>
+          <text class="pill absent" wx:elif="{{item.absent}}">旷课</text>
+        </view>
+        <view class="muted" wx:if="{{item.type === 'makeup'}}">原班仍是「{{item.homeClassName}}」</view>
+        <view class="muted" wx:elif="{{item.absent}}">不计消课</view>
         <view class="muted" wx:else>本班学员</view>
         <view class="muted" wx:if="{{item.consumed}}">已消 1 课次</view>
-        <view class="muted" wx:elif="{{item.teacherRated && item.consumed}}">已评价并消课</view>
         <view class="muted" wx:elif="{{item.teacherRated}}">已评价学生</view>
       </view>
       <view class="right">
@@ -40,22 +52,20 @@
     </view>
   </view>
 
-  <view class="card" wx:if="{{lesson.status !== 'finished'}}">
-    <view class="section-title">临时加学员（补课）</view>
-    <view class="muted tip">只进本课次，不改原班。下次教务排课仍按原班。</view>
-    <view class="cand" wx:for="{{candidates}}" wx:key="id">
+  <view class="card entry" wx:if="{{lesson.status !== 'finished'}}" bindtap="goAddTemp">
+    <view class="entry-left">
+      <view class="entry-icon">⌕</view>
       <view>
-        <view class="name">{{item.studentName}}</view>
-        <view class="muted">原班：{{item.homeClassName}} · {{item.reason}}</view>
+        <view class="entry-title">搜索姓名 / 手机号临时加入</view>
+        <view class="muted">模糊查询 · 只进本节 · 不改原班</view>
       </view>
-      <button class="btn-primary mini" size="mini" data-id="{{item.id}}" bindtap="onAddTemp">加入本课</button>
     </view>
-    <view class="muted" wx:if="{{!candidates.length}}">暂无可插入学员</view>
+    <text class="entry-arrow">›</text>
   </view>
 
   <view class="card" wx:if="{{lesson.status !== 'finished'}}">
     <button class="btn-primary" bindtap="onFinish">下课并评价学生</button>
-    <view class="muted tip">下课后老师评价学生即可消 1 节课；学生评价老师可选，不评价也能消课。</view>
+    <view class="muted tip">老师评价学生后消 1 节课；学生评价老师可选。</view>
   </view>
 
   <view class="card" wx:if="{{rateVisible}}">

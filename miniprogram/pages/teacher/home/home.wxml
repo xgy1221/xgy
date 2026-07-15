@@ -42,8 +42,8 @@
           size="mini"
           wx:if="{{item.status !== 'finished'}}"
           data-id="{{item.id}}"
-          bindtap="goDetail"
-        >临时加学员</button>
+          catchtap="goAddTemp"
+        >搜索加学员</button>
       </view>
     </view>
   </view>

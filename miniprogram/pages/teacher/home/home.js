@@ -47,5 +47,12 @@ Page({
     wx.navigateTo({
       url: `/pages/teacher/lesson-detail/lesson-detail?id=${e.currentTarget.dataset.id}`
     })
+  },
+
+  goAddTemp(e) {
+    wx.navigateTo({
+      url: `/pages/teacher/add-temp/add-temp?lessonId=${e.currentTarget.dataset.id}`
+    })
   }
 })
+

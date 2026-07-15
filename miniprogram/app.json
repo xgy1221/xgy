@@ -12,6 +12,7 @@
     "pages/teacher/classes/classes",
     "pages/teacher/students/students",
     "pages/teacher/lesson-detail/lesson-detail",
+    "pages/teacher/add-temp/add-temp",
     "pages/teacher/mine/mine",
     "pages/academic/home/home",
     "pages/academic/courses/courses",

@@ -12,7 +12,6 @@ Page({
     id: '',
     lesson: { attendees: [] },
     statusText: '',
-    candidates: [],
     rateVisible: false,
     rateStudentId: '',
     rateName: '',
@@ -24,6 +23,10 @@ Page({
   onLoad(query) {
     if (!auth.requireAuth()) return
     this.setData({ id: query.id || '' })
+  },
+
+  onShow() {
+    if (!auth.requireAuth()) return
     this.refresh()
   },
 
@@ -35,16 +38,14 @@ Page({
     }
     this.setData({
       lesson,
-      statusText: STATUS_TEXT[lesson.status] || lesson.status,
-      candidates: lessonsService.getMakeupCandidates(lesson.id)
+      statusText: STATUS_TEXT[lesson.status] || lesson.status
     })
   },
 
-  onAddTemp(e) {
-    const studentId = e.currentTarget.dataset.id
-    const result = lessonsService.addTempMakeupStudent(this.data.id, studentId)
-    wx.showToast({ title: result.ok ? '已临时加入' : result.message, icon: 'none' })
-    if (result.ok) this.refresh()
+  goAddTemp() {
+    wx.navigateTo({
+      url: `/pages/teacher/add-temp/add-temp?lessonId=${this.data.id}`
+    })
   },
 
   onToggleAbsent(e) {

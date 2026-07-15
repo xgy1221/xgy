@@ -278,6 +278,12 @@ function addTempMakeupStudent(lessonId, studentId) {
   return { ok: true, lesson, attendee: row }
 }
 
+function maskPhone(phone) {
+  const p = String(phone || '')
+  if (p.length < 7) return p || '-'
+  return `${p.slice(0, 3)}****${p.slice(-4)}`
+}
+
 function getMakeupCandidates(lessonId) {
   const lesson = getLessonById(lessonId)
   if (!lesson) return []
@@ -295,17 +301,54 @@ function getMakeupCandidates(lessonId) {
     .filter((s) => !inLesson.has(s.id))
     .map((s) => {
       const home = getClasses().find((c) => (c.studentIds || []).indexOf(s.id) >= 0)
+      const isAbsent = absentIds.has(s.id)
       return {
         ...s,
         homeClassName: home ? home.name : '未分班',
         homeClassId: home ? home.id : '',
-        reason: absentIds.has(s.id) ? '近期旷课，可补课' : '临时插班'
+        reason: isAbsent ? '近期旷课，可补课' : '临时插班',
+        reasonType: isAbsent ? 'absent' : 'normal',
+        phoneMask: maskPhone(s.parentPhone),
+        avatarText: (s.studentName || '学').slice(0, 1)
       }
     })
     .sort((a, b) => {
-      if (a.reason === b.reason) return 0
-      return a.reason.indexOf('旷课') >= 0 ? -1 : 1
+      if (a.reasonType === b.reasonType) return 0
+      return a.reasonType === 'absent' ? -1 : 1
     })
+}
+
+/**
+ * 姓名 / 家长手机号 / 家长姓名 模糊查询
+ * 无关键词时返回近期旷课建议，避免一上来堆全量名单
+ */
+function searchMakeupCandidates(lessonId, keyword) {
+  const all = getMakeupCandidates(lessonId)
+  const kw = String(keyword || '')
+    .trim()
+    .toLowerCase()
+  const suggestions = all.filter((s) => s.reasonType === 'absent').slice(0, 8)
+
+  if (!kw) {
+    return {
+      mode: 'suggest',
+      list: suggestions,
+      total: all.length
+    }
+  }
+
+  const list = all.filter((s) => {
+    const name = String(s.studentName || '').toLowerCase()
+    const phone = String(s.parentPhone || '')
+    const parent = String(s.parentName || '').toLowerCase()
+    return name.indexOf(kw) >= 0 || phone.indexOf(kw) >= 0 || parent.indexOf(kw) >= 0
+  })
+
+  return {
+    mode: 'search',
+    list,
+    total: all.length
+  }
 }
 
 function finishLesson(lessonId) {
@@ -384,6 +427,8 @@ module.exports = {
   getTeacherLessonsByDate,
   addTempMakeupStudent,
   getMakeupCandidates,
+  searchMakeupCandidates,
+  maskPhone,
   finishLesson,
   rateByStudent,
   rateByTeacher,
