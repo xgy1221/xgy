@@ -8,7 +8,7 @@
     </view>
   </view>
 
-  <view class="section card" wx:if="{{children.length}}">
+  <view class="section card">
     <view class="section-title">绑定学员</view>
     <view class="list-item" wx:for="{{children}}" wx:key="id" data-id="{{item.id}}" bindtap="onSwitchChild">
       <view>
@@ -19,7 +19,9 @@
         {{item.id === currentStudentId ? '当前' : '切换'}}
       </view>
     </view>
-    <view class="muted tip">同一家长手机号可关联多个孩子，数据课表会随切换变化。</view>
+    <view class="muted tip" wx:if="{{children.length}}">同一家长手机号可关联多个孩子，课表会随切换变化。</view>
+    <view class="muted tip" wx:else>还没有学员档案，去添加孩子并选择教案。</view>
+    <button class="btn-primary add-btn" bindtap="onAddChild">添加 / 完善学员</button>
   </view>
 
   <view class="section card">

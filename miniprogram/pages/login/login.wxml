@@ -16,7 +16,7 @@
       bindinput="onPhoneInput"
     />
     <button class="btn-primary login-btn" bindtap="onLogin">进入系统</button>
-    <view class="tip">当前为本地 Mock，无需真实微信授权。家长手机号可绑定多个孩子，演示请用 13800000001（王一诺 / 王一然）。</view>
+    <view class="tip">任意 11 位手机号都可体验家长入驻：未建档会自动新建并引导添加孩子、选择教案。完整家庭演示：13800000001；仅录手机号：13800000031。</view>
   </view>
 
   <view class="quick">

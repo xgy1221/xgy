@@ -1,4 +1,4 @@
-const { ROLE_META } = require('../../utils/constants')
+const { ROLE_META, ROLES } = require('../../utils/constants')
 const { DEMO_USERS, loginByPhone } = require('../../services/mock')
 const auth = require('../../utils/auth')
 
@@ -18,6 +18,12 @@ Page({
       ...u,
       roleText: u.roles.map((r) => ROLE_META[r].shortName).join(' / ')
     }))
+    accounts.push({
+      phone: '13800000031',
+      name: '仅录手机号家长',
+      avatarText: '新',
+      roleText: '待完善学员'
+    })
     this.setData({ accounts })
   },
 
@@ -36,11 +42,6 @@ Page({
   },
 
   doLogin(phone) {
-    if (!phone || phone.length < 11) {
-      wx.showToast({ title: '请输入 11 位手机号', icon: 'none' })
-      return
-    }
-
     const result = loginByPhone(phone)
     if (!result.ok) {
       wx.showToast({ title: result.message, icon: 'none' })
@@ -54,6 +55,10 @@ Page({
   redirectBySession(session) {
     if (!session.currentRole) {
       wx.reLaunch({ url: '/pages/role-select/role-select' })
+      return
+    }
+    if (session.currentRole === ROLES.STUDENT && session.needsOnboarding) {
+      wx.reLaunch({ url: '/pages/onboarding/onboarding' })
       return
     }
     auth.switchToRoleHome(session.currentRole)

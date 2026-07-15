@@ -222,6 +222,38 @@ function resetToSeed() {
   return getAllStudents()
 }
 
+/**
+ * 家长自助添加学员；同手机号+同名视为更新
+ */
+function upsertStudent(input) {
+  const item = {
+    studentName: (input.studentName || '').trim(),
+    parentPhone: (input.parentPhone || '').replace(/\s+/g, ''),
+    parentName: (input.parentName || '').trim(),
+    grade: (input.grade || '').trim(),
+    campus: (input.campus || '').trim(),
+    remark: (input.remark || '').trim()
+  }
+  const errors = validateStudent(item)
+  if (errors.length) {
+    return { ok: false, message: errors.join('；') }
+  }
+
+  const list = getAllStudents()
+  const key = `${item.parentPhone}__${item.studentName}`
+  const existed = list.find((s) => `${s.parentPhone}__${s.studentName}` === key)
+  if (existed) {
+    Object.assign(existed, item)
+    saveAllStudents(list)
+    return { ok: true, student: existed, created: false }
+  }
+
+  const student = { id: makeId(item), ...item }
+  list.push(student)
+  saveAllStudents(list)
+  return { ok: true, student, created: true }
+}
+
 module.exports = {
   IMPORT_HEADERS,
   DEMO_EXCEL_ROWS,
@@ -233,5 +265,6 @@ module.exports = {
   groupByPhone,
   getTemplateHint,
   resetToSeed,
-  normalizeRow
+  normalizeRow,
+  upsertStudent
 }

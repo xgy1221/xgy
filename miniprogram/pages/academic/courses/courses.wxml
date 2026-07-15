@@ -1,11 +1,35 @@
 <view class="container">
-  <view class="page-title">课程管理</view>
-  <view class="page-sub">开班与座位概况</view>
+  <view class="page-title">教案 / 课程包</view>
+  <view class="page-sub">管理可售教案：含多少课次、适用年级、大纲</view>
+
   <view class="section">
     <view class="card" wx:for="{{list}}" wx:key="id">
-      <view class="item-title">{{item.name}}</view>
-      <view class="muted">开班 {{item.openClasses}} · 老师 {{item.teachers}} · 座位 {{item.seats}}</view>
+      <view class="row">
+        <view>
+          <view class="item-title">{{item.name}}</view>
+          <view class="muted">{{item.subject}} · {{item.grade}}</view>
+        </view>
+        <view class="tag {{item.status === '上架' ? 'ok' : 'warn'}}">{{item.status}}</view>
+      </view>
+      <view class="meta row">
+        <text class="strong">{{item.lessonCount}} 课次</text>
+        <text class="price">¥{{item.price}}</text>
+      </view>
+      <view class="muted outline">大纲：{{item.outlineText}}</view>
+      <view class="ops">
+        <button class="btn-ghost mini" size="mini" data-id="{{item.id}}" bindtap="onToggle">
+          {{item.status === '上架' ? '下架' : '上架'}}
+        </button>
+      </view>
     </view>
   </view>
+
+  <view class="section card tip-card">
+    <view class="section-title">怎么用</view>
+    <view class="muted">1. 教务在这里维护教案（产品）</view>
+    <view class="muted">2. 家长引导时勾选「买了哪个教案」</view>
+    <view class="muted">3. 后续排课/消课扣的是报读里的剩余课次</view>
+  </view>
+
   <role-nav current="/pages/academic/courses/courses" />
 </view>

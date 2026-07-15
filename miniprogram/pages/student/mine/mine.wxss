@@ -47,3 +47,7 @@
   margin-top: 12rpx;
   line-height: 1.5;
 }
+
+.add-btn {
+  margin-top: 24rpx;
+}

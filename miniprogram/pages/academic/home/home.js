@@ -16,5 +16,11 @@ Page({
   },
   goImport() {
     wx.navigateTo({ url: '/pages/academic/import/import' })
+  },
+  goPhones() {
+    wx.navigateTo({ url: '/pages/academic/phones/phones' })
+  },
+  goPackages() {
+    wx.redirectTo({ url: '/pages/academic/courses/courses' })
   }
 })

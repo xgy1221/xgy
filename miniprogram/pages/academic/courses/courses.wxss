@@ -1,1 +1,40 @@
-.item-title{font-size:32rpx;font-weight:700;margin-bottom:10rpx;}
+.item-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  margin-bottom: 8rpx;
+}
+
+.meta {
+  margin-top: 16rpx;
+}
+
+.strong {
+  font-weight: 700;
+  color: #0f3d3e;
+}
+
+.price {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.outline {
+  margin-top: 12rpx;
+  line-height: 1.5;
+}
+
+.ops {
+  margin-top: 18rpx;
+}
+
+.mini {
+  display: inline-block;
+  padding: 0 24rpx;
+  line-height: 56rpx;
+  font-size: 24rpx;
+}
+
+.tip-card .muted {
+  margin-top: 8rpx;
+  line-height: 1.6;
+}

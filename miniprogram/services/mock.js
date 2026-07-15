@@ -1,5 +1,6 @@
 const { ROLES } = require('../utils/constants')
 const studentsService = require('./students')
+const parentsService = require('./parents')
 
 /** 演示账号：一个手机号可绑定多个角色，用于体验权限切换 */
 
@@ -53,18 +54,6 @@ const DEMO_USERS = [
   }
 ]
 
-const STUDENT_COURSES = {
-  stu_yn: [
-    { id: 'c1', name: '小学数学思维提升', teacher: '李老师', progress: 72, remainHours: 16, status: '学习中' },
-    { id: 'c2', name: '英语阅读加油站', teacher: '周老师', progress: 40, remainHours: 24, status: '学习中' },
-    { id: 'c3', name: '硬笔书写课', teacher: '沈老师', progress: 100, remainHours: 0, status: '已结课' }
-  ],
-  stu_yr: [
-    { id: 'c4', name: '拼音启蒙课', teacher: '沈老师', progress: 55, remainHours: 18, status: '学习中' },
-    { id: 'c5', name: '绘本阅读课', teacher: '周老师', progress: 30, remainHours: 20, status: '学习中' }
-  ]
-}
-
 const STUDENT_SCHEDULE = {
   stu_yn: [
     { id: 's1', date: '今天', time: '16:00-17:30', course: '小学数学思维提升', room: 'A203', teacher: '李老师' },
@@ -72,14 +61,10 @@ const STUDENT_SCHEDULE = {
     { id: 's3', date: '周六', time: '10:00-11:30', course: '小学数学思维提升', room: 'A203', teacher: '李老师' }
   ],
   stu_yr: [
-    { id: 's4', date: '今天', time: '15:00-16:00', course: '拼音启蒙课', room: 'C102', teacher: '沈老师' },
+    { id: 's4', date: '今天', time: '15:00-16:00', course: '硬笔书写课', room: 'C102', teacher: '沈老师' },
     { id: 's5', date: '周日', time: '10:00-11:00', course: '绘本阅读课', room: 'B106', teacher: '周老师' }
   ]
 }
-
-const DEFAULT_COURSES = [
-  { id: 'c0', name: '体验课（待分班）', teacher: '待分配', progress: 0, remainHours: 0, status: '待开课' }
-]
 
 const DEFAULT_SCHEDULE = [
   { id: 's0', date: '待排课', time: '-', course: '暂无课次', room: '-', teacher: '-' }
@@ -94,12 +79,6 @@ const TEACHER_STUDENTS = [
   { id: 'st1', name: '王一诺', className: '四年级数学 A 班', attendRate: '96%', remark: '课堂专注' },
   { id: 'st2', name: '刘梓轩', className: '四年级数学 A 班', attendRate: '88%', remark: '作业需督促' },
   { id: 'st3', name: '陈思琪', className: '五年级数学冲刺班', attendRate: '100%', remark: '进步明显' }
-]
-
-const ACADEMIC_COURSES = [
-  { id: 'ac1', name: '小学数学思维提升', openClasses: 3, teachers: 2, seats: '46/54' },
-  { id: 'ac2', name: '英语阅读加油站', openClasses: 2, teachers: 1, seats: '28/36' },
-  { id: 'ac3', name: '编程启蒙 L1', openClasses: 1, teachers: 1, seats: '10/16' }
 ]
 
 const ACADEMIC_ENROLLS = [
@@ -138,9 +117,11 @@ function findUserByPhone(phone) {
   return DEMO_USERS.find((u) => u.phone === phone) || null
 }
 
-function buildParentUserFromStudents(phone, linkedStudents) {
-  const first = linkedStudents[0]
-  const parentName = first.parentName || '家长'
+function buildParentUser(phone, linkedStudents, profile) {
+  const parentName =
+    (profile && profile.parentName) ||
+    (linkedStudents[0] && linkedStudents[0].parentName) ||
+    '家长'
   return {
     id: `u_parent_${phone}`,
     name: parentName,
@@ -150,23 +131,49 @@ function buildParentUserFromStudents(phone, linkedStudents) {
   }
 }
 
+/**
+ * 登录规则：
+ * 1) 员工演示账号按角色登录
+ * 2) 任意 11 位手机号均可作为家长登录；未录过则自动建档
+ * 3) 家长若尚无学员，标记 needsOnboarding
+ */
 function loginByPhone(phone) {
+  if (!/^1\d{10}$/.test(phone || '')) {
+    return { ok: false, message: '请输入正确的 11 位手机号' }
+  }
+
   studentsService.getAllStudents()
+  const staff = findUserByPhone(phone)
   const linkedStudents = studentsService.getStudentsByPhone(phone)
-  let user = findUserByPhone(phone)
 
-  if (!user && linkedStudents.length) {
-    user = buildParentUserFromStudents(phone, linkedStudents)
+  if (staff && !staff.roles.includes(ROLES.STUDENT)) {
+    return {
+      ok: true,
+      session: {
+        token: `demo_${staff.id}_${Date.now()}`,
+        user: staff,
+        currentRole: staff.roles.length === 1 ? staff.roles[0] : null,
+        currentStudentId: null,
+        needsOnboarding: false,
+        loggedAt: Date.now()
+      }
+    }
   }
 
-  if (!user) {
-    return { ok: false, message: '演示账号不存在，请点下方快捷入口' }
-  }
+  const knownBefore =
+    parentsService.isPhoneKnown(phone) || linkedStudents.length > 0 || !!(staff && staff.roles.includes(ROLES.STUDENT))
 
-  let currentStudentId = null
-  if (user.roles.includes(ROLES.STUDENT) && linkedStudents.length) {
-    currentStudentId = linkedStudents[0].id
-  }
+  const profile = parentsService.ensureParentAccess(
+    phone,
+    (staff && staff.name) || (linkedStudents[0] && linkedStudents[0].parentName) || ''
+  )
+
+  const user = staff && staff.roles.includes(ROLES.STUDENT)
+    ? { ...staff, name: profile.parentName || staff.name }
+    : buildParentUser(phone, linkedStudents, profile)
+
+  const needsOnboarding = linkedStudents.length === 0
+  const currentStudentId = linkedStudents.length ? linkedStudents[0].id : null
 
   return {
     ok: true,
@@ -175,13 +182,11 @@ function loginByPhone(phone) {
       user,
       currentRole: user.roles.length === 1 ? user.roles[0] : null,
       currentStudentId,
+      needsOnboarding,
+      isNewParent: !knownBefore,
       loggedAt: Date.now()
     }
   }
-}
-
-function getCoursesForStudent(studentId) {
-  return STUDENT_COURSES[studentId] || DEFAULT_COURSES
 }
 
 function getScheduleForStudent(studentId) {
@@ -190,11 +195,9 @@ function getScheduleForStudent(studentId) {
 
 module.exports = {
   DEMO_USERS,
-  STUDENT_COURSES,
   STUDENT_SCHEDULE,
   TEACHER_CLASSES,
   TEACHER_STUDENTS,
-  ACADEMIC_COURSES,
   ACADEMIC_ENROLLS,
   PARTNER_STATS,
   PARTNER_TEAM,
@@ -202,6 +205,5 @@ module.exports = {
   ORG_NODES,
   findUserByPhone,
   loginByPhone,
-  getCoursesForStudent,
   getScheduleForStudent
 }

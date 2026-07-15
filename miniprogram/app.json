@@ -2,6 +2,7 @@
   "pages": [
     "pages/login/login",
     "pages/role-select/role-select",
+    "pages/onboarding/onboarding",
     "pages/student/home/home",
     "pages/student/courses/courses",
     "pages/student/schedule/schedule",
@@ -15,6 +16,7 @@
     "pages/academic/schedule/schedule",
     "pages/academic/enroll/enroll",
     "pages/academic/import/import",
+    "pages/academic/phones/phones",
     "pages/academic/mine/mine",
     "pages/partner/home/home",
     "pages/partner/performance/performance",

@@ -44,6 +44,10 @@ Page({
     wx.showToast({ title: '已切换学员', icon: 'success' })
   },
 
+  onAddChild() {
+    wx.navigateTo({ url: '/pages/onboarding/onboarding' })
+  },
+
   onSwitchRole() {
     wx.navigateTo({ url: '/pages/role-select/role-select' })
   },

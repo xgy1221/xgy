@@ -1,0 +1,88 @@
+<view class="wrap">
+  <view class="steps">
+    <view class="step {{step >= 1 ? 'on' : ''}}">1 家长</view>
+    <view class="line {{step >= 2 ? 'on' : ''}}"></view>
+    <view class="step {{step >= 2 ? 'on' : ''}}">2 学员</view>
+    <view class="line {{step >= 3 ? 'on' : ''}}"></view>
+    <view class="step {{step >= 3 ? 'on' : ''}}">3 教案</view>
+  </view>
+
+  <!-- Step 1 -->
+  <view class="panel" wx:if="{{step === 1}}">
+    <view class="title">{{isNewParent ? '欢迎加入学管云' : '完善家长信息'}}</view>
+    <view class="sub">
+      {{isNewParent ? '未查到你的手机号建档记录，已为你新建家长账号。' : '机构可能只录入了手机号，接下来由你补充孩子信息。'}}
+    </view>
+    <view class="phone-box">当前手机号：{{phone}}</view>
+    <view class="label">家长称呼</view>
+    <input class="input" placeholder="如：王女士 / 张爸爸" value="{{parentName}}" bindinput="onParentName" />
+    <button class="btn-primary next" bindtap="goStep2">下一步：添加学员</button>
+  </view>
+
+  <!-- Step 2 -->
+  <view class="panel" wx:if="{{step === 2}}">
+    <view class="title">添加学员</view>
+    <view class="sub">一个手机号可以添加多个孩子，先至少添加 1 名。</view>
+
+    <view class="label">学生姓名</view>
+    <input class="input" placeholder="必填" value="{{form.studentName}}" data-key="studentName" bindinput="onForm" />
+    <view class="label">年级</view>
+    <input class="input" placeholder="如：小学三年级" value="{{form.grade}}" data-key="grade" bindinput="onForm" />
+    <view class="label">校区</view>
+    <input class="input" placeholder="选填" value="{{form.campus}}" data-key="campus" bindinput="onForm" />
+    <view class="label">备注</view>
+    <input class="input" placeholder="选填" value="{{form.remark}}" data-key="remark" bindinput="onForm" />
+
+    <button class="btn-primary next" bindtap="onAddStudent">保存学员</button>
+    <button class="btn-ghost next" bindtap="goStep3" wx:if="{{students.length}}">已添加 {{students.length}} 人，去选教案</button>
+
+    <view class="list" wx:if="{{students.length}}">
+      <view class="list-item" wx:for="{{students}}" wx:key="id">
+        <view>
+          <view class="name">{{item.studentName}}</view>
+          <view class="muted">{{item.grade || '未填年级'}}</view>
+        </view>
+        <view class="tag">已保存</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- Step 3 -->
+  <view class="panel" wx:if="{{step === 3}}">
+    <view class="title">选择已购教案</view>
+    <view class="sub">先为「{{activeStudentName}}」选择课程包，可多选。教案内课次数已标明。</view>
+
+    <scroll-view scroll-x class="child-scroll" wx:if="{{students.length > 1}}">
+      <view
+        class="child-chip {{item.id === activeStudentId ? 'active' : ''}}"
+        wx:for="{{students}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="onPickStudent"
+      >{{item.studentName}}</view>
+    </scroll-view>
+
+    <view
+      class="pkg {{item.checked ? 'checked' : ''}}"
+      wx:for="{{packages}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="onTogglePkg"
+    >
+      <view class="row">
+        <view>
+          <view class="name">{{item.name}}</view>
+          <view class="muted">{{item.grade}} · {{item.subject}}</view>
+        </view>
+        <view class="right">
+          <view class="lessons">{{item.lessonCount}} 课次</view>
+          <view class="price">¥{{item.price}}</view>
+        </view>
+      </view>
+      <view class="outline muted">含：{{item.outlineText}}</view>
+    </view>
+
+    <button class="btn-primary next" bindtap="onSavePackages">保存教案并完成</button>
+    <button class="btn-ghost next" bindtap="onSkipPackages">暂时跳过，稍后在课程页补选</button>
+  </view>
+</view>

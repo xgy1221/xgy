@@ -10,9 +10,29 @@
     <view class="row">
       <view>
         <view class="item-title">Excel 导入学员</view>
-        <view class="muted">按家长手机号关联多个孩子，支持一户多孩</view>
+        <view class="muted">完整字段导入，支持一号多孩</view>
       </view>
       <text class="link">去导入</text>
+    </view>
+  </view>
+
+  <view class="section card" bindtap="goPhones">
+    <view class="row">
+      <view>
+        <view class="item-title">仅录家长手机号</view>
+        <view class="muted">先建白名单，学员信息由家长自助补全</view>
+      </view>
+      <text class="link">去录入</text>
+    </view>
+  </view>
+
+  <view class="section card" bindtap="goPackages">
+    <view class="row">
+      <view>
+        <view class="item-title">教案 / 课程包管理</view>
+        <view class="muted">维护课次数、大纲，供家长勾选报读</view>
+      </view>
+      <text class="link">去管理</text>
     </view>
   </view>
 
