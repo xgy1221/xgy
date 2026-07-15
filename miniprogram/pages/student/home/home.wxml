@@ -1,6 +1,31 @@
 <view class="container">
   <view class="page-title">你好，{{parentName}}</view>
-  <view class="page-sub">正在陪读：{{studentName}} · {{grade}}</view>
+  <view class="page-sub">账号 {{phone}} · 可管理 {{children.length}} 名学员</view>
+
+  <view class="section" wx:if="{{children.length > 1}}">
+    <view class="section-title">切换孩子</view>
+    <scroll-view scroll-x class="child-scroll">
+      <view
+        class="child-chip {{item.id === currentStudentId ? 'active' : ''}}"
+        wx:for="{{children}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="onSwitchChild"
+      >
+        {{item.studentName}}
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="section card current-child">
+    <view class="row">
+      <view>
+        <view class="item-title">当前学员：{{studentName}}</view>
+        <view class="muted">{{grade}} · {{campus}}</view>
+      </view>
+      <view class="tag warn" wx:if="{{children.length > 1}}">一号多孩</view>
+    </view>
+  </view>
 
   <view class="grid-2 section">
     <stat-card label="在读课程" value="{{courseCount}}" hint="本学期" />

@@ -1,4 +1,5 @@
 const auth = require('./utils/auth')
+const studentsService = require('./services/students')
 
 App({
   globalData: {
@@ -7,6 +8,7 @@ App({
   },
 
   onLaunch() {
+    studentsService.getAllStudents()
     this.globalData.session = auth.getSession()
   }
 })

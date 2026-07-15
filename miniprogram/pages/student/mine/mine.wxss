@@ -1,6 +1,49 @@
-.profile{display:flex;gap:24rpx;align-items:center;}
-.avatar{width:96rpx;height:96rpx;border-radius:50%;background:#0f3d3e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:40rpx;font-weight:700;}
-.name{font-size:34rpx;font-weight:700;margin-bottom:6rpx;}
-.tag{margin-top:10rpx;}
-.link{color:#0f3d3e;font-weight:600;}
-.danger{color:#b91c1c;font-weight:600;}
+.profile {
+  display: flex;
+  gap: 24rpx;
+  align-items: center;
+}
+
+.avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: #0f3d3e;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  font-weight: 700;
+}
+
+.name {
+  font-size: 34rpx;
+  font-weight: 700;
+  margin-bottom: 6rpx;
+}
+
+.tag {
+  margin-top: 10rpx;
+}
+
+.link {
+  color: #0f3d3e;
+  font-weight: 600;
+}
+
+.danger {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.child-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 4rpx;
+}
+
+.tip {
+  margin-top: 12rpx;
+  line-height: 1.5;
+}

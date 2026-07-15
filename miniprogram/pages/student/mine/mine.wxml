@@ -8,6 +8,20 @@
     </view>
   </view>
 
+  <view class="section card" wx:if="{{children.length}}">
+    <view class="section-title">绑定学员</view>
+    <view class="list-item" wx:for="{{children}}" wx:key="id" data-id="{{item.id}}" bindtap="onSwitchChild">
+      <view>
+        <view class="child-name">{{item.studentName}}</view>
+        <view class="muted">{{item.grade || '未填年级'}}</view>
+      </view>
+      <view class="tag {{item.id === currentStudentId ? 'ok' : ''}}">
+        {{item.id === currentStudentId ? '当前' : '切换'}}
+      </view>
+    </view>
+    <view class="muted tip">同一家长手机号可关联多个孩子，数据课表会随切换变化。</view>
+  </view>
+
   <view class="section card">
     <view class="list-item" bindtap="onSwitchRole" wx:if="{{multiRole}}">
       <text>切换身份</text>

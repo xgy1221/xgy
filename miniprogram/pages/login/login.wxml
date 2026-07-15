@@ -16,7 +16,7 @@
       bindinput="onPhoneInput"
     />
     <button class="btn-primary login-btn" bindtap="onLogin">进入系统</button>
-    <view class="tip">当前为本地 Mock，无需真实微信授权，方便直接体验角色流程。</view>
+    <view class="tip">当前为本地 Mock，无需真实微信授权。家长手机号可绑定多个孩子，演示请用 13800000001（王一诺 / 王一然）。</view>
   </view>
 
   <view class="quick">

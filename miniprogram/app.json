@@ -14,6 +14,7 @@
     "pages/academic/courses/courses",
     "pages/academic/schedule/schedule",
     "pages/academic/enroll/enroll",
+    "pages/academic/import/import",
     "pages/academic/mine/mine",
     "pages/partner/home/home",
     "pages/partner/performance/performance",

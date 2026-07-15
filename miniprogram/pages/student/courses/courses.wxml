@@ -1,6 +1,6 @@
 <view class="container">
   <view class="page-title">我的课程</view>
-  <view class="page-sub">查看进度与剩余课时</view>
+  <view class="page-sub">当前学员：{{studentName}}</view>
   <view class="section">
     <view class="card" wx:for="{{courses}}" wx:key="id">
       <view class="row">

@@ -39,6 +39,18 @@ function setCurrentRole(role) {
   setSession(session)
 }
 
+function getCurrentStudentId() {
+  const session = getSession()
+  return session ? session.currentStudentId : null
+}
+
+function setCurrentStudentId(studentId) {
+  const session = getSession()
+  if (!session) return
+  session.currentStudentId = studentId
+  setSession(session)
+}
+
 function getRoleHome(role) {
   return (ROLE_META[role] && ROLE_META[role].home) || '/pages/login/login'
 }
@@ -63,6 +75,8 @@ module.exports = {
   isLoggedIn,
   getCurrentRole,
   setCurrentRole,
+  getCurrentStudentId,
+  setCurrentStudentId,
   getRoleHome,
   requireAuth,
   switchToRoleHome
