@@ -1,7 +1,7 @@
 <view class="container">
   <view class="page-title">我的课表</view>
   <view class="page-sub">
-    {{studentName}} · 点日期查看当天课程（有课日期会打点）
+    {{studentName}} · 绿色已上 / 橙色未上，点日期看当天课程
   </view>
 
   <view class="section" wx:if="{{children.length > 1}}">

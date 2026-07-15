@@ -49,7 +49,7 @@ Page({
   },
 
   refresh(studentId, date) {
-    const markedDates = lessonsService.getLessonDatesForStudent(studentId)
+    const markedDates = lessonsService.getLessonDateMarksForStudent(studentId)
     const lessons = lessonsService.getStudentLessonsByDate(studentId, date).map((l) => {
       const me = l.attendees.find((a) => a.studentId === studentId)
       return {

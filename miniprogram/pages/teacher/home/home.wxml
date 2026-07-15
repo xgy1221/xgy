@@ -1,6 +1,6 @@
 <view class="container">
   <view class="page-title">班级课表</view>
-  <view class="page-sub">按班级看当天课次与学员；可临时插班补课</view>
+  <view class="page-sub">绿色已上 / 橙色未上；点日期按班级看课，可临补</view>
 
   <view class="section">
     <month-calendar

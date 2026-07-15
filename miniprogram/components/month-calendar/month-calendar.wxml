@@ -13,13 +13,21 @@
         wx:for="{{week}}"
         wx:for-item="cell"
         wx:key="key"
-        class="day {{cell.inMonth ? '' : 'empty'}} {{cell.key === selected ? 'selected' : ''}} {{markedMap[cell.key] ? 'marked' : ''}} {{cell.key === today ? 'today' : ''}}"
+        class="day {{cell.inMonth ? '' : 'empty'}} {{cell.key === selected ? 'selected' : ''}} {{cell.key === today ? 'today' : ''}} {{markedMap[cell.key] ? 'mark-' + markedMap[cell.key] : ''}}"
         data-key="{{cell.key}}"
         bindtap="onSelect"
       >
         <text wx:if="{{cell.inMonth}}">{{cell.day}}</text>
-        <view class="dot" wx:if="{{markedMap[cell.key]}}"></view>
+        <view class="dots" wx:if="{{markedMap[cell.key]}}">
+          <view class="dot finished" wx:if="{{markedMap[cell.key] === 'finished' || markedMap[cell.key] === 'mixed'}}"></view>
+          <view class="dot upcoming" wx:if="{{markedMap[cell.key] === 'upcoming' || markedMap[cell.key] === 'mixed'}}"></view>
+        </view>
       </view>
     </view>
+  </view>
+  <view class="legend">
+    <view class="legend-item"><view class="dot finished"></view><text>已上课</text></view>
+    <view class="legend-item"><view class="dot upcoming"></view><text>未上课</text></view>
+    <view class="legend-item"><view class="dot finished"></view><view class="dot upcoming"></view><text>当天都有</text></view>
   </view>
 </view>

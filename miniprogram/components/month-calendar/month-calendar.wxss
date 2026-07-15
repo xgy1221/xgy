@@ -45,7 +45,7 @@
 }
 
 .day {
-  height: 72rpx;
+  height: 78rpx;
   position: relative;
   display: flex;
   align-items: center;
@@ -61,7 +61,27 @@
 
 .day.today {
   font-weight: 700;
+}
+
+/* 未上课：琥珀底 */
+.day.mark-upcoming:not(.selected) {
+  background: rgba(217, 119, 6, 0.16);
+  color: #92400e;
+  font-weight: 600;
+}
+
+/* 已上课：青绿底 */
+.day.mark-finished:not(.selected) {
+  background: rgba(21, 128, 61, 0.14);
+  color: #166534;
+  font-weight: 600;
+}
+
+/* 当天既有已上又有未上 */
+.day.mark-mixed:not(.selected) {
+  background: linear-gradient(135deg, rgba(21, 128, 61, 0.16), rgba(217, 119, 6, 0.18));
   color: #0f3d3e;
+  font-weight: 700;
 }
 
 .day.selected {
@@ -69,15 +89,56 @@
   color: #fff;
 }
 
-.day.marked .dot {
+.dots {
   position: absolute;
-  bottom: 8rpx;
+  bottom: 6rpx;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 6rpx;
+}
+
+.dot {
   width: 10rpx;
   height: 10rpx;
   border-radius: 50%;
+}
+
+.dot.finished {
+  background: #15803d;
+}
+
+.dot.upcoming {
   background: #d97706;
 }
 
-.day.selected .dot {
-  background: #fef3c7;
+.day.selected .dot.finished {
+  background: #86efac;
+}
+
+.day.selected .dot.upcoming {
+  background: #fde68a;
+}
+
+.legend {
+  display: flex;
+  justify-content: center;
+  gap: 28rpx;
+  padding: 18rpx 8rpx 8rpx;
+  border-top: 1rpx solid #e8f0ee;
+  margin-top: 8rpx;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 22rpx;
+  color: #5b6b69;
+}
+
+.legend-item .dot {
+  width: 12rpx;
+  height: 12rpx;
 }

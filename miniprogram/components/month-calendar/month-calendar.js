@@ -6,6 +6,7 @@ Component({
       type: String,
       value: ''
     },
+    /** [{ date, state: 'finished'|'upcoming'|'mixed' }] 或旧版字符串数组 */
     markedDates: {
       type: Array,
       value: []
@@ -24,8 +25,14 @@ Component({
   observers: {
     markedDates(list) {
       const markedMap = {}
-      ;(list || []).forEach((d) => {
-        markedMap[d] = true
+      ;(list || []).forEach((item) => {
+        if (typeof item === 'string') {
+          markedMap[item] = 'upcoming'
+          return
+        }
+        if (item && item.date) {
+          markedMap[item.date] = item.state || 'upcoming'
+        }
       })
       this.setData({ markedMap })
     },

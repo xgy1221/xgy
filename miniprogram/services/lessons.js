@@ -198,22 +198,43 @@ function getLessonsByDate(date) {
 }
 
 function getLessonDatesForStudent(studentId) {
-  const set = {}
-  getAllLessons().forEach((l) => {
-    if (l.attendees.some((a) => a.studentId === studentId && !a.absent)) {
-      set[l.date] = true
-    }
-  })
-  return Object.keys(set)
+  return getLessonDateMarksForStudent(studentId).map((m) => m.date)
 }
 
 function getLessonDatesForTeacher() {
-  // 演示账号共用老师课表；真实环境按 teacherId 过滤
-  const set = {}
+  return getLessonDateMarksForTeacher().map((m) => m.date)
+}
+
+/**
+ * 日历色标：finished 已上 / upcoming 未上 / mixed 当天既有已上又有未上
+ */
+function collectDateMarks(matchLesson) {
+  const map = {}
   getAllLessons().forEach((l) => {
-    set[l.date] = true
+    if (!matchLesson(l)) return
+    if (!map[l.date]) map[l.date] = { hasFinished: false, hasOpen: false }
+    if (l.status === 'finished') map[l.date].hasFinished = true
+    else map[l.date].hasOpen = true
   })
-  return Object.keys(set)
+  return Object.keys(map)
+    .sort()
+    .map((date) => {
+      const row = map[date]
+      let state = 'upcoming'
+      if (row.hasFinished && row.hasOpen) state = 'mixed'
+      else if (row.hasFinished) state = 'finished'
+      return { date, state }
+    })
+}
+
+function getLessonDateMarksForStudent(studentId) {
+  return collectDateMarks((l) =>
+    l.attendees.some((a) => a.studentId === studentId && !a.absent)
+  )
+}
+
+function getLessonDateMarksForTeacher() {
+  return collectDateMarks(() => true)
 }
 
 function getStudentLessonsByDate(studentId, date) {
@@ -357,6 +378,8 @@ module.exports = {
   getLessonsByDate,
   getLessonDatesForStudent,
   getLessonDatesForTeacher,
+  getLessonDateMarksForStudent,
+  getLessonDateMarksForTeacher,
   getStudentLessonsByDate,
   getTeacherLessonsByDate,
   addTempMakeupStudent,
