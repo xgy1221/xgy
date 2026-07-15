@@ -1,3 +1,53 @@
-.item-title{font-size:30rpx;font-weight:600;margin-bottom:8rpx;}
-.link{color:#0f3d3e;font-weight:600;}
-.muted{margin-top:6rpx;}
+.item-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  margin-bottom: 8rpx;
+}
+
+.lesson + .lesson {
+  margin-top: 18rpx;
+}
+
+.students {
+  margin-top: 18rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid #dce5e3;
+}
+
+.stu {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0;
+}
+
+.stu-name {
+  font-weight: 600;
+}
+
+.stu-tag {
+  font-size: 22rpx;
+  color: #5b6b69;
+}
+
+.stu-tag.makeup {
+  color: #b45309;
+}
+
+.stu-tag.absent {
+  color: #b91c1c;
+}
+
+.ops {
+  margin-top: 16rpx;
+  display: flex;
+  gap: 16rpx;
+}
+
+.mini {
+  margin: 0;
+  padding: 0 22rpx;
+  line-height: 56rpx;
+  font-size: 24rpx;
+  height: 56rpx;
+}

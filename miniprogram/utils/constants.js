@@ -13,7 +13,7 @@ const ROLE_META = {
     key: ROLES.STUDENT,
     name: '学生 / 家长',
     shortName: '家长端',
-    desc: '课表、课程进度、作业与缴费提醒',
+    desc: '日历课表、报读进度、课后评价消课',
     color: '#0F3D3E',
     home: '/pages/student/home/home'
   },
@@ -21,7 +21,7 @@ const ROLE_META = {
     key: ROLES.TEACHER,
     name: '授课老师',
     shortName: '老师端',
-    desc: '班级、学员、考勤与课堂安排',
+    desc: '班级日历、临补插班、下课互评消课',
     color: '#1A5C5E',
     home: '/pages/teacher/home/home'
   },
@@ -53,15 +53,15 @@ const ROLE_META = {
 
 const ROLE_TABS = {
   [ROLES.STUDENT]: [
-    { pagePath: '/pages/student/home/home', text: '首页', icon: '⌂' },
+    { pagePath: '/pages/student/home/home', text: '课表', icon: '▦' },
     { pagePath: '/pages/student/courses/courses', text: '课程', icon: '▣' },
-    { pagePath: '/pages/student/schedule/schedule', text: '课表', icon: '▦' },
+    { pagePath: '/pages/student/schedule/schedule', text: '全部', icon: '☰' },
     { pagePath: '/pages/student/mine/mine', text: '我的', icon: '☺' }
   ],
   [ROLES.TEACHER]: [
-    { pagePath: '/pages/teacher/home/home', text: '首页', icon: '⌂' },
+    { pagePath: '/pages/teacher/home/home', text: '课表', icon: '▦' },
     { pagePath: '/pages/teacher/classes/classes', text: '班级', icon: '▣' },
-    { pagePath: '/pages/teacher/students/students', text: '学员', icon: '▦' },
+    { pagePath: '/pages/teacher/students/students', text: '学员', icon: '☰' },
     { pagePath: '/pages/teacher/mine/mine', text: '我的', icon: '☺' }
   ],
   [ROLES.ACADEMIC]: [

@@ -1,9 +1,3 @@
-.item-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  margin-bottom: 8rpx;
-}
-
 .child-scroll {
   white-space: nowrap;
   width: 100%;
@@ -11,7 +5,6 @@
 
 .child-chip {
   display: inline-flex;
-  align-items: center;
   margin-right: 16rpx;
   padding: 14rpx 28rpx;
   border-radius: 999rpx;
@@ -28,6 +21,17 @@
   font-weight: 600;
 }
 
-.current-child {
-  margin-top: 20rpx;
+.item-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  margin-bottom: 8rpx;
+}
+
+.lesson + .lesson {
+  margin-top: 16rpx;
+}
+
+.tip {
+  margin-top: 12rpx;
+  color: #b45309;
 }

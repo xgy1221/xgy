@@ -1,0 +1,45 @@
+<view class="page">
+  <view class="card">
+    <view class="title">{{lesson.packageName}}</view>
+    <view class="muted">{{lesson.date}} {{lesson.startTime}}-{{lesson.endTime}}</view>
+    <view class="muted">{{lesson.className}} · {{lesson.room}} · {{lesson.teacherName}}</view>
+    <view class="tag {{lesson.status === 'finished' ? 'ok' : 'warn'}}">{{statusText}}</view>
+    <view class="muted tip" wx:if="{{me.type === 'makeup'}}">
+      本次为临时补课。你的固定班仍是「{{me.homeClassName}}」，不影响后续排课。
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">本课状态</view>
+    <view class="list-item"><text>出勤</text><text>{{me.absent ? '旷课' : '正常'}}</text></view>
+    <view class="list-item"><text>评价老师</text><text>{{me.studentRated ? '已评' : '未评'}}</text></view>
+    <view class="list-item"><text>老师评价</text><text>{{me.teacherRated ? '已评' : '未评'}}</text></view>
+    <view class="list-item"><text>消课</text><text>{{me.consumed ? '已消 1 节' : '未消课'}}</text></view>
+  </view>
+
+  <view class="card" wx:if="{{canRate}}">
+    <view class="section-title">评价老师</view>
+    <view class="muted tip">双方评价完成后，自动消掉 1 节课。</view>
+    <view class="stars">
+      <text
+        wx:for="{{starList}}"
+        wx:key="*this"
+        class="star {{item <= score ? 'on' : ''}}"
+        data-score="{{item}}"
+        bindtap="onStar"
+      >★</text>
+    </view>
+    <input class="input" placeholder="简短评语（选填）" value="{{comment}}" bindinput="onComment" />
+    <button class="btn-primary" bindtap="onSubmit">提交评价</button>
+  </view>
+
+  <view class="card" wx:if="{{me.studentRated}}">
+    <view class="section-title">我的评价</view>
+    <view class="muted">{{me.studentRating.score}} 星 · {{me.studentRating.comment || '无评语'}}</view>
+  </view>
+
+  <view class="card" wx:if="{{me.teacherRated}}">
+    <view class="section-title">老师对我的评价</view>
+    <view class="muted">{{me.teacherRating.score}} 星 · {{me.teacherRating.comment || '无评语'}}</view>
+  </view>
+</view>

@@ -1,0 +1,83 @@
+.cal {
+  background: #fff;
+  border-radius: 18rpx;
+  padding: 24rpx 16rpx 12rpx;
+  box-shadow: 0 8rpx 28rpx rgba(15, 61, 62, 0.08);
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12rpx 16rpx;
+}
+
+.title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #0f3d3e;
+}
+
+.nav {
+  width: 64rpx;
+  height: 64rpx;
+  text-align: center;
+  line-height: 64rpx;
+  font-size: 40rpx;
+  color: #0f3d3e;
+}
+
+.week-row,
+.week-line {
+  display: flex;
+}
+
+.week,
+.day {
+  width: 14.285%;
+  text-align: center;
+}
+
+.week {
+  font-size: 22rpx;
+  color: #8a9a97;
+  padding: 8rpx 0 12rpx;
+}
+
+.day {
+  height: 72rpx;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: #14201f;
+  border-radius: 14rpx;
+}
+
+.day.empty {
+  pointer-events: none;
+}
+
+.day.today {
+  font-weight: 700;
+  color: #0f3d3e;
+}
+
+.day.selected {
+  background: #0f3d3e;
+  color: #fff;
+}
+
+.day.marked .dot {
+  position: absolute;
+  bottom: 8rpx;
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #d97706;
+}
+
+.day.selected .dot {
+  background: #fef3c7;
+}

@@ -1,21 +1,23 @@
 const auth = require('../../../utils/auth')
-const mock = require('../../../services/mock')
 const studentsService = require('../../../services/students')
-const enrollmentsService = require('../../../services/enrollments')
+const lessonsService = require('../../../services/lessons')
+const { todayKey, formatDisplay } = require('../../../utils/date')
+
+const STATUS_TEXT = {
+  upcoming: '未开始',
+  ongoing: '进行中',
+  finished: '已结束'
+}
 
 Page({
   data: {
-    parentName: '',
-    phone: '',
     studentName: '',
-    grade: '',
-    campus: '',
     children: [],
     currentStudentId: '',
-    courseCount: 0,
-    weekLessons: 0,
-    today: [],
-    todos: []
+    selectedDate: '',
+    displayDate: '',
+    markedDates: [],
+    lessons: []
   },
 
   onShow() {
@@ -25,53 +27,67 @@ Page({
       wx.reLaunch({ url: '/pages/onboarding/onboarding' })
       return
     }
-    this.refresh()
-  },
-
-  refresh() {
-    const session = auth.getSession()
-    const u = session.user
-    const children = studentsService.getStudentsByPhone(u.phone)
-    let currentStudentId = session.currentStudentId
-
-    if (children.length) {
-      const exists = children.some((c) => c.id === currentStudentId)
-      if (!exists) {
-        currentStudentId = children[0].id
-        auth.setCurrentStudentId(currentStudentId)
-      }
-    } else {
+    lessonsService.ensureLessons()
+    const children = studentsService.getStudentsByPhone(session.user.phone)
+    if (!children.length) {
       wx.reLaunch({ url: '/pages/onboarding/onboarding' })
       return
     }
-
-    const current = children.find((c) => c.id === currentStudentId) || children[0]
-    const enrolls = enrollmentsService.getEnrollmentsByStudent(currentStudentId)
-    const schedule = mock.getScheduleForStudent(currentStudentId)
-
+    let currentStudentId = session.currentStudentId
+    if (!children.some((c) => c.id === currentStudentId)) {
+      currentStudentId = children[0].id
+      auth.setCurrentStudentId(currentStudentId)
+    }
+    const selectedDate = this.data.selectedDate || todayKey()
     this.setData({
-      parentName: u.name,
-      phone: u.phone,
       children,
       currentStudentId,
-      studentName: current.studentName,
-      grade: current.grade || '',
-      campus: current.campus || '',
-      courseCount: enrolls.length,
-      weekLessons: schedule.filter((s) => s.date !== '待排课').length,
-      today: schedule.filter((s) => s.date === '今天'),
-      todos: [
-        `${current.studentName}：可在「课程」查看教案剩余课次`,
-        children.length > 1 ? `本账号共 ${children.length} 名孩子，可上方切换` : '可在「我的」继续添加孩子',
-        enrolls.length ? '课时不足时将提醒家长' : '尚未选择教案，可去课程页补选'
-      ]
+      studentName: (children.find((c) => c.id === currentStudentId) || {}).studentName || '',
+      selectedDate
     })
+    this.refresh(currentStudentId, selectedDate)
+  },
+
+  refresh(studentId, date) {
+    const markedDates = lessonsService.getLessonDatesForStudent(studentId)
+    const lessons = lessonsService.getStudentLessonsByDate(studentId, date).map((l) => {
+      const me = l.attendees.find((a) => a.studentId === studentId)
+      return {
+        ...l,
+        statusText: STATUS_TEXT[l.status] || l.status,
+        myType: me ? me.type : 'regular',
+        homeClassName: me ? me.homeClassName : '',
+        needRate: l.status === 'finished' && me && !me.studentRated && !me.absent
+      }
+    })
+    this.setData({
+      markedDates,
+      lessons,
+      displayDate: formatDisplay(date)
+    })
+  },
+
+  onSelectDate(e) {
+    const date = e.detail.date
+    this.setData({ selectedDate: date })
+    this.refresh(this.data.currentStudentId, date)
   },
 
   onSwitchChild(e) {
     const id = e.currentTarget.dataset.id
-    if (!id || id === this.data.currentStudentId) return
+    if (!id) return
     auth.setCurrentStudentId(id)
-    this.refresh()
+    const student = this.data.children.find((c) => c.id === id)
+    this.setData({
+      currentStudentId: id,
+      studentName: student ? student.studentName : ''
+    })
+    this.refresh(id, this.data.selectedDate)
+  },
+
+  goDetail(e) {
+    wx.navigateTo({
+      url: `/pages/student/lesson-detail/lesson-detail?id=${e.currentTarget.dataset.id}`
+    })
   }
 })

@@ -1,31 +1,52 @@
 <view class="container">
-  <view class="page-title">{{name}}，辛苦了</view>
-  <view class="page-sub">{{title}} · 今日课堂概览</view>
-  <view class="grid-2 section">
-    <stat-card label="带班数量" value="{{classCount}}" />
-    <stat-card label="学员人数" value="{{studentCount}}" />
-  </view>
-  <view class="section card" bindtap="goSetup">
-    <view class="row">
-      <view>
-        <view class="item-title">代录在读学员</view>
-        <view class="muted">给已在上课的孩子绑定教案与剩余课次</view>
-      </view>
-      <text class="link">去处理</text>
-    </view>
+  <view class="page-title">班级课表</view>
+  <view class="page-sub">按班级看当天课次与学员；可临时插班补课</view>
+
+  <view class="section">
+    <month-calendar
+      selected="{{selectedDate}}"
+      markedDates="{{markedDates}}"
+      bind:select="onSelectDate"
+    />
   </view>
 
   <view class="section">
-    <view class="section-title">今日课次</view>
-    <view class="card" wx:for="{{today}}" wx:key="id">
-      <view class="row">
+    <view class="section-title">{{displayDate}}</view>
+    <view class="card" wx:if="{{!lessons.length}}">
+      <view class="muted">这天没有排课</view>
+    </view>
+
+    <view class="card lesson" wx:for="{{lessons}}" wx:key="id">
+      <view class="row" data-id="{{item.id}}" bindtap="goDetail">
         <view>
-          <view class="item-title">{{item.name}}</view>
-          <view class="muted">{{item.nextLesson}} · {{item.room}}</view>
+          <view class="item-title">{{item.className}}</view>
+          <view class="muted">{{item.startTime}}-{{item.endTime}} · {{item.room}}</view>
+          <view class="muted">{{item.packageName}}</view>
         </view>
-        <view class="tag warn">待上课</view>
+        <view class="tag {{item.status === 'finished' ? 'ok' : 'warn'}}">{{item.statusText}}</view>
+      </view>
+
+      <view class="students">
+        <view class="stu" wx:for="{{item.attendees}}" wx:for-item="stu" wx:key="studentId">
+          <text class="stu-name">{{stu.studentName}}</text>
+          <text class="stu-tag makeup" wx:if="{{stu.type === 'makeup'}}">临补·原班{{stu.homeClassName}}</text>
+          <text class="stu-tag absent" wx:elif="{{stu.absent}}">旷课</text>
+          <text class="stu-tag" wx:else>本班</text>
+        </view>
+      </view>
+
+      <view class="ops">
+        <button class="btn-ghost mini" size="mini" data-id="{{item.id}}" bindtap="goDetail">课堂详情</button>
+        <button
+          class="btn-primary mini"
+          size="mini"
+          wx:if="{{item.status !== 'finished'}}"
+          data-id="{{item.id}}"
+          bindtap="goDetail"
+        >临时加学员</button>
       </view>
     </view>
   </view>
+
   <role-nav current="/pages/teacher/home/home" />
 </view>

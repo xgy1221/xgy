@@ -3,6 +3,7 @@ const studentsService = require('./services/students')
 const packagesService = require('./services/packages')
 const enrollmentsService = require('./services/enrollments')
 const parentsService = require('./services/parents')
+const lessonsService = require('./services/lessons')
 
 App({
   globalData: {
@@ -15,6 +16,8 @@ App({
     packagesService.getAllPackages()
     enrollmentsService.getAllEnrollments()
     parentsService.getWhitelist()
+    lessonsService.ensureClasses()
+    lessonsService.ensureLessons()
     this.globalData.session = auth.getSession()
   }
 })

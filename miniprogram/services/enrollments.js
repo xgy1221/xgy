@@ -151,6 +151,28 @@ function updateRemainLessons(enrollmentId, remainLessons) {
   return item
 }
 
+/** 消掉一节课 */
+function consumeOneLesson(enrollmentId) {
+  const list = getAllEnrollments()
+  const item = list.find((e) => e.id === enrollmentId)
+  if (!item) return { ok: false, message: '报读不存在' }
+  if (item.remainLessons <= 0) return { ok: false, message: '剩余课次不足' }
+  item.remainLessons -= 1
+  item.updatedAt = Date.now()
+  saveAll(list)
+  return { ok: true, enrollment: item }
+}
+
+function pickEnrollmentForPackage(studentId, packageId) {
+  const list = getEnrollmentsByStudent(studentId)
+  return (
+    list.find((e) => e.packageId === packageId && e.remainLessons > 0) ||
+    list.find((e) => e.remainLessons > 0) ||
+    list[0] ||
+    null
+  )
+}
+
 module.exports = {
   getAllEnrollments,
   getAllDetailedEnrollments,
@@ -158,5 +180,7 @@ module.exports = {
   getEnrollmentsDetailedByStudent,
   enrollPackagesForStudent,
   upsertEnrollment,
-  updateRemainLessons
+  updateRemainLessons,
+  consumeOneLesson,
+  pickEnrollmentForPackage
 }

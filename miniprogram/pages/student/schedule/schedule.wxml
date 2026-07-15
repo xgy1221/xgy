@@ -1,13 +1,13 @@
 <view class="container">
-  <view class="page-title">课表</view>
-  <view class="page-sub">当前学员：{{studentName}} · 本周安排</view>
+  <view class="page-title">全部课次</view>
+  <view class="page-sub">当前学员：{{studentName}}</view>
   <view class="section card">
-    <view class="list-item" wx:for="{{list}}" wx:key="id">
+    <view class="list-item" wx:for="{{list}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
       <view>
-        <view class="item-title">{{item.course}}</view>
-        <view class="muted">{{item.date}} {{item.time}} · {{item.room}}</view>
+        <view class="item-title">{{item.packageName}}</view>
+        <view class="muted">{{item.date}} {{item.startTime}}-{{item.endTime}} · {{item.className}}</view>
       </view>
-      <view class="tag">{{item.teacher}}</view>
+      <view class="tag">{{item.statusText}}</view>
     </view>
   </view>
   <role-nav current="/pages/student/schedule/schedule" />

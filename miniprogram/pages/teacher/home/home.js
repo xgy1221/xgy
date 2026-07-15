@@ -1,21 +1,51 @@
 const auth = require('../../../utils/auth')
-const mock = require('../../../services/mock')
-const studentsService = require('../../../services/students')
+const lessonsService = require('../../../services/lessons')
+const { todayKey, formatDisplay } = require('../../../utils/date')
+
+const STATUS_TEXT = {
+  upcoming: '未开始',
+  ongoing: '进行中',
+  finished: '已结束'
+}
 
 Page({
-  data: { name: '', title: '', classCount: 0, studentCount: 0, today: [] },
+  data: {
+    selectedDate: '',
+    displayDate: '',
+    markedDates: [],
+    lessons: []
+  },
+
   onShow() {
     if (!auth.requireAuth()) return
-    const u = auth.getSession().user
+    lessonsService.ensureLessons()
+    const selectedDate = this.data.selectedDate || todayKey()
+    this.setData({ selectedDate })
+    this.refresh(selectedDate)
+  },
+
+  refresh(date) {
+    const markedDates = lessonsService.getLessonDatesForTeacher()
+    const lessons = lessonsService.getTeacherLessonsByDate(date).map((l) => ({
+      ...l,
+      statusText: STATUS_TEXT[l.status] || l.status
+    }))
     this.setData({
-      name: u.name,
-      title: u.title || '授课老师',
-      classCount: mock.TEACHER_CLASSES.length,
-      studentCount: studentsService.getAllStudents().length,
-      today: mock.TEACHER_CLASSES.filter((c) => c.nextLesson.includes('今天'))
+      markedDates,
+      lessons,
+      displayDate: formatDisplay(date)
     })
   },
-  goSetup() {
-    wx.navigateTo({ url: '/pages/academic/setup/setup' })
+
+  onSelectDate(e) {
+    const date = e.detail.date
+    this.setData({ selectedDate: date })
+    this.refresh(date)
+  },
+
+  goDetail(e) {
+    wx.navigateTo({
+      url: `/pages/teacher/lesson-detail/lesson-detail?id=${e.currentTarget.dataset.id}`
+    })
   }
 })
