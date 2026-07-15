@@ -46,6 +46,16 @@
     </view>
   </view>
 
+  <view class="section card" bindtap="goSchedule">
+    <view class="row">
+      <view>
+        <view class="item-title">课表总览</view>
+        <view class="muted">按日期看老师有哪些课，并查看师生评价</view>
+      </view>
+      <text class="link">去查看</text>
+    </view>
+  </view>
+
   <view class="section">
     <view class="section-title">报名动态</view>
     <view class="card">

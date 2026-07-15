@@ -67,7 +67,7 @@ const ROLE_TABS = {
   [ROLES.ACADEMIC]: [
     { pagePath: '/pages/academic/home/home', text: '首页', icon: '⌂' },
     { pagePath: '/pages/academic/courses/courses', text: '课程', icon: '▣' },
-    { pagePath: '/pages/academic/schedule/schedule', text: '排课', icon: '▦' },
+    { pagePath: '/pages/academic/schedule/schedule', text: '课表', icon: '▦' },
     { pagePath: '/pages/academic/enroll/enroll', text: '报名', icon: '✎' },
     { pagePath: '/pages/academic/mine/mine', text: '我的', icon: '☺' }
   ],

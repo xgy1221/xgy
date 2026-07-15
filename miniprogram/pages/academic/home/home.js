@@ -25,6 +25,9 @@ Page({
   },
   goSetup() {
     wx.navigateTo({ url: '/pages/academic/setup/setup' })
+  },
+  goSchedule() {
+    wx.redirectTo({ url: '/pages/academic/schedule/schedule' })
   }
 })
 

@@ -17,6 +17,7 @@
     "pages/academic/home/home",
     "pages/academic/courses/courses",
     "pages/academic/schedule/schedule",
+    "pages/academic/lesson-view/lesson-view",
     "pages/academic/enroll/enroll",
     "pages/academic/setup/setup",
     "pages/academic/import/import",
