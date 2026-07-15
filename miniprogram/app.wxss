@@ -146,3 +146,46 @@ textarea {
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* 合伙/管理端：引导去 Web 做深度操作 */
+.web-hint {
+  margin-top: 28rpx;
+  padding: 24rpx 28rpx;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #e8f2f1 0%, #fef3c7 100%);
+  border: 1rpx solid var(--border);
+}
+
+.web-hint-title {
+  font-weight: 700;
+  color: var(--brand);
+  font-size: 28rpx;
+  margin-bottom: 8rpx;
+}
+
+.web-hint-text {
+  color: var(--text-secondary);
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.amount {
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.strong {
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.item-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 6rpx;
+}
+
+.link {
+  color: var(--brand);
+  font-weight: 600;
+}

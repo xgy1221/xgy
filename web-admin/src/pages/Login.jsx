@@ -1,27 +1,45 @@
 import { useNavigate } from 'react-router-dom'
+import { DEMO_ACCOUNTS, ROLE_LABEL, setUser } from '../auth/roles'
 
 export default function Login() {
   const navigate = useNavigate()
 
-  function enter() {
-    localStorage.setItem(
-      'xgy_web_user',
-      JSON.stringify({ name: '赵教务', role: 'academic', phone: '13800000003' })
-    )
+  function enter(account) {
+    setUser(account)
     navigate('/')
   }
 
   return (
     <div className="login-page">
-      <div className="login-card">
-        <h1>学管云管理端</h1>
-        <p>教务也兼销售：维护教案（几节课）、创建班级加学员、在日历上订课并指定老师。上课互评在小程序完成。</p>
-        <button className="btn" type="button" onClick={enter} style={{ width: '100%' }}>
-          教务身份进入
-        </button>
-        <p className="muted" style={{ marginTop: 14 }}>
-          演示免密登录。正式环境可接账号权限与后端 API。
-        </p>
+      <div className="login-card" style={{ width: 'min(560px, 100%)' }}>
+        <h1>学管云 Web 管理端</h1>
+        <p>教务、合伙人、管理员共用后台；菜单与财务按角色授权。小程序侧重学生/老师/教务上课现场。</p>
+
+        <div style={{ display: 'grid', gap: 12 }}>
+          {DEMO_ACCOUNTS.map((acc) => (
+            <button
+              key={acc.phone}
+              type="button"
+              className="btn ghost"
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                borderRadius: 14,
+                padding: '14px 16px',
+                display: 'block'
+              }}
+              onClick={() => enter(acc)}
+            >
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>
+                {acc.name} · {ROLE_LABEL[acc.role]}
+              </div>
+              <div className="muted">{acc.phone} · {acc.campus}</div>
+              <div className="muted" style={{ marginTop: 4 }}>
+                {acc.desc}
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )

@@ -92,9 +92,18 @@ const ACADEMIC_ENROLLS = [
 
 const PARTNER_STATS = {
   monthSales: '128,600',
+  monthReceived: '112,400',
   monthNewStudents: 26,
   monthRefund: '3,200',
-  shareAmount: '19,290'
+  shareAmount: '19,290',
+  shareRatio: '15%',
+  campus: '城南校区',
+  pendingOrders: 3,
+  topPackages: [
+    { name: '小学数学思维提升', count: 12, amount: '44,160' },
+    { name: '英语阅读加油站', count: 8, amount: '26,240' },
+    { name: '硬笔书写课', count: 6, amount: '10,080' }
+  ]
 }
 
 const PARTNER_TEAM = [
@@ -102,6 +111,19 @@ const PARTNER_TEAM = [
   { id: 'p2', name: '何顾问', role: '顾问', students: 19, sales: '31,400' },
   { id: 'p3', name: '林顾问', role: '顾问', students: 15, sales: '29,000' }
 ]
+
+/** 管理员小程序：运营 + 财务轻量快览（重操作在 Web） */
+const ADMIN_STATS = {
+  monthSales: '286,400',
+  monthReceived: '251,200',
+  monthRefund: '8,600',
+  receivable: '35,200',
+  studentCount: 186,
+  teacherCount: 28,
+  classCount: 42,
+  todayLessons: 16,
+  openCampuses: 2
+}
 
 function getAdminUserList() {
   return DEMO_USERS.map((u) => ({
@@ -212,6 +234,7 @@ module.exports = {
   ACADEMIC_ENROLLS,
   PARTNER_STATS,
   PARTNER_TEAM,
+  ADMIN_STATS,
   getAdminUserList,
   ORG_NODES,
   findUserByPhone,

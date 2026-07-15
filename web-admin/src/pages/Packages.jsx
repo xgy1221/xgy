@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { canEdit } from '../auth/roles'
 import { listPackages, upsertPackage } from '../data/store'
 
 const empty = {
@@ -12,15 +13,11 @@ const empty = {
 }
 
 export default function Packages() {
+  const editable = canEdit('packages')
   const [tick, setTick] = useState(0)
   const packages = useMemo(() => listPackages(), [tick])
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(empty)
-
-  function edit(pkg) {
-    setForm({ ...pkg })
-    setOpen(true)
-  }
 
   function save() {
     if (!(form.name || '').trim()) return alert('请填写教案名称')
@@ -39,19 +36,21 @@ export default function Packages() {
     <div className="panel">
       <div className="toolbar">
         <div>
-          <strong>教案 / 课程产品</strong>
-          <div className="muted">教务/销售创建：包含多少节课、售价、适用年级</div>
+          <strong>教案管理</strong>
+          <div className="muted">销售产品：包含多少节课、售价、适用年级（教务也可当产品经理维护）</div>
         </div>
-        <button
-          className="btn"
-          type="button"
-          onClick={() => {
-            setForm(empty)
-            setOpen(true)
-          }}
-        >
-          新建教案
-        </button>
+        {editable && (
+          <button
+            className="btn"
+            type="button"
+            onClick={() => {
+              setForm(empty)
+              setOpen(true)
+            }}
+          >
+            新建教案
+          </button>
+        )}
       </div>
 
       <table className="table">
@@ -62,7 +61,7 @@ export default function Packages() {
             <th>课次数</th>
             <th>售价</th>
             <th>状态</th>
-            <th />
+            {editable && <th />}
           </tr>
         </thead>
         <tbody>
@@ -74,16 +73,27 @@ export default function Packages() {
                 <div className="muted">{p.outline}</div>
               </td>
               <td>{p.subject}</td>
-              <td>{p.lessonCount} 节</td>
+              <td>
+                <strong>{p.lessonCount}</strong> 节
+              </td>
               <td>¥{p.price}</td>
               <td>
                 <span className={`tag ${p.status === '上架' ? 'ok' : 'warn'}`}>{p.status}</span>
               </td>
-              <td>
-                <button className="btn ghost" type="button" onClick={() => edit(p)}>
-                  编辑
-                </button>
-              </td>
+              {editable && (
+                <td>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    onClick={() => {
+                      setForm({ ...p })
+                      setOpen(true)
+                    }}
+                  >
+                    编辑
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

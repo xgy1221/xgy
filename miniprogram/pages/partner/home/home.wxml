@@ -1,15 +1,32 @@
 <view class="container">
   <view class="page-title">合伙人看板</view>
-  <view class="page-sub">{{name}} · 分成比例 {{shareRatio}}</view>
+  <view class="page-sub">{{name}} · {{campus}} · 分成 {{shareRatio}}</view>
+
   <view class="grid-2 section">
-    <stat-card label="本月业绩" value="¥{{stats.monthSales}}" />
+    <stat-card label="本月实收" value="¥{{stats.monthReceived}}" />
     <stat-card label="本月分成" value="¥{{stats.shareAmount}}" />
     <stat-card label="新增学员" value="{{stats.monthNewStudents}}" />
-    <stat-card label="退费金额" value="¥{{stats.monthRefund}}" />
+    <stat-card label="退费" value="¥{{stats.monthRefund}}" />
   </view>
+
   <view class="section card">
-    <view class="section-title">说明</view>
-    <view class="muted">支持单人合伙人，也可绑定多人合伙团队。业绩按校区/顾问维度汇总。</view>
+    <view class="section-title">本月待跟进</view>
+    <view class="list-item">
+      <text>待缴费订单</text>
+      <text class="strong">{{stats.pendingOrders}} 单</text>
+    </view>
+    <view class="list-item">
+      <text>签约额（含欠费）</text>
+      <text class="strong">¥{{stats.monthSales}}</text>
+    </view>
   </view>
+
+  <view class="web-hint">
+    <view class="web-hint-title">深度财务请用电脑 Web</view>
+    <view class="web-hint-text">
+      小程序只做巡店快览：实收、分成、退费。校区对比、教案销售结构、订单流水在「学管云 Web 管理端 · 财务中心」查看；排课改档由教务处理。
+    </view>
+  </view>
+
   <role-nav current="/pages/partner/home/home" />
 </view>

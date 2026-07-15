@@ -1,18 +1,22 @@
 <view class="container">
-  <view class="page-title">账号管理</view>
-  <view class="page-sub">一人可授权多角色；登录默认上次身份，可在「我的」切换</view>
+  <view class="page-title">账号与角色</view>
+  <view class="page-sub">手机端只读 · 授权请在 Web 操作</view>
   <view class="section">
     <view class="card" wx:for="{{list}}" wx:key="id">
       <view class="row">
         <view>
           <view class="item-title">{{item.name}}</view>
           <view class="muted">{{item.phone}}</view>
+          <view class="muted" style="margin-top:8rpx">{{item.rolesText}}</view>
         </view>
         <view class="tag ok">{{item.status}}</view>
       </view>
-      <view class="roles">
-        <text class="tag" wx:for="{{item.roles}}" wx:for-item="r" wx:key="*this">{{r}}</text>
-      </view>
+    </view>
+  </view>
+  <view class="web-hint">
+    <view class="web-hint-title">分配角色在 Web「账号权限」</view>
+    <view class="web-hint-text">
+      一人可多角色（如合伙人兼教务）。小程序端主要服务学生、老师、教务现场；合伙/管理登录此处只看名单是否正确。
     </view>
   </view>
   <role-nav current="/pages/admin/users/users" />

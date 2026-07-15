@@ -1,13 +1,11 @@
 const auth = require('../../../utils/auth')
 const mock = require('../../../services/mock')
+
 Page({
-  data: { userCount: 0, orgCount: 0 },
+  data: { stats: {} },
   onShow() {
     if (!auth.requireAuth()) return
-    this.setData({
-      userCount: mock.getAdminUserList().length,
-      orgCount: mock.ORG_NODES.length
-    })
+    this.setData({ stats: mock.ADMIN_STATS })
   },
   go(e) {
     wx.redirectTo({ url: e.currentTarget.dataset.url })

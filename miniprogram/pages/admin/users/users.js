@@ -5,6 +5,10 @@ Page({
   data: { list: [] },
   onShow() {
     if (!auth.requireAuth()) return
-    this.setData({ list: mock.getAdminUserList() })
+    const list = mock.getAdminUserList().map((u) => ({
+      ...u,
+      rolesText: (u.roles || []).join(' / ')
+    }))
+    this.setData({ list })
   }
 })

@@ -1,4 +1,4 @@
-const KEY = 'xgy_web_admin_v1'
+const KEY = 'xgy_web_admin_v2'
 
 function pad(n) {
   return n < 10 ? `0${n}` : `${n}`
@@ -13,11 +13,44 @@ function uid(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
 }
 
+function money(n) {
+  return Math.round(Number(n) || 0)
+}
+
 const SEED = {
+  campuses: [
+    { id: 'camp_south', name: '城南校区' },
+    { id: 'camp_hi', name: '高新校区' },
+    { id: 'camp_hq', name: '总部' }
+  ],
   teachers: [
-    { id: 't_li', name: '李老师', phone: '13800000002', title: '数学主讲' },
-    { id: 't_zhou', name: '周老师', phone: '13800000006', title: '英语主讲' },
-    { id: 't_shen', name: '沈老师', phone: '13800000007', title: '书法主讲' }
+    {
+      id: 't_li',
+      name: '李老师',
+      phone: '13800000002',
+      title: '数学主讲',
+      campus: '城南校区',
+      status: '在职',
+      subjects: '数学'
+    },
+    {
+      id: 't_zhou',
+      name: '周老师',
+      phone: '13800000006',
+      title: '英语主讲',
+      campus: '城南校区',
+      status: '在职',
+      subjects: '英语'
+    },
+    {
+      id: 't_shen',
+      name: '沈老师',
+      phone: '13800000007',
+      title: '书法主讲',
+      campus: '高新校区',
+      status: '在职',
+      subjects: '书法'
+    }
   ],
   packages: [
     {
@@ -49,6 +82,16 @@ const SEED = {
       price: 1680,
       status: '上架',
       outline: '握笔姿势 / 基本笔画 / 独体字'
+    },
+    {
+      id: 'pkg_code_32',
+      name: '编程启蒙 L1',
+      subject: '编程',
+      grade: '小学3-6年级',
+      lessonCount: 32,
+      price: 4200,
+      status: '上架',
+      outline: 'Scratch 入门 / 动画故事 / 简单游戏'
     }
   ],
   students: [
@@ -59,7 +102,8 @@ const SEED = {
       parentName: '王女士',
       grade: '小学四年级',
       campus: '城南校区',
-      remark: ''
+      remark: '',
+      status: '在读'
     },
     {
       id: 'stu_yr',
@@ -68,7 +112,8 @@ const SEED = {
       parentName: '王女士',
       grade: '小学一年级',
       campus: '城南校区',
-      remark: '同家庭二孩'
+      remark: '同家庭二孩',
+      status: '在读'
     },
     {
       id: 'stu_lz',
@@ -77,7 +122,8 @@ const SEED = {
       parentName: '刘先生',
       grade: '小学四年级',
       campus: '城南校区',
-      remark: ''
+      remark: '',
+      status: '在读'
     },
     {
       id: 'stu_cs',
@@ -86,7 +132,8 @@ const SEED = {
       parentName: '陈女士',
       grade: '小学五年级',
       campus: '高新校区',
-      remark: ''
+      remark: '',
+      status: '在读'
     }
   ],
   classes: [
@@ -95,6 +142,7 @@ const SEED = {
       name: '四年级数学 A 班',
       packageId: 'pkg_math_48',
       teacherId: 't_li',
+      campus: '城南校区',
       room: 'A203',
       studentIds: ['stu_yn', 'stu_lz'],
       status: '开班中'
@@ -104,8 +152,19 @@ const SEED = {
       name: '一年级书写 B 班',
       packageId: 'pkg_write_16',
       teacherId: 't_shen',
+      campus: '高新校区',
       room: 'C102',
       studentIds: ['stu_yr', 'stu_cs'],
+      status: '开班中'
+    },
+    {
+      id: 'class_en_c',
+      name: '英语阅读 C 班',
+      packageId: 'pkg_en_24',
+      teacherId: 't_zhou',
+      campus: '城南校区',
+      room: 'B105',
+      studentIds: ['stu_yn'],
       status: '开班中'
     }
   ],
@@ -120,6 +179,93 @@ const SEED = {
       room: 'A203',
       status: 'upcoming'
     }
+  ],
+  /** 报名订单 / 财务流水（教培常见：实收、欠费、退费、渠道） */
+  orders: [
+    {
+      id: 'ord_1',
+      studentId: 'stu_yn',
+      packageId: 'pkg_math_48',
+      campus: '城南校区',
+      amount: 3680,
+      paidAmount: 3680,
+      refundAmount: 0,
+      status: '已缴费',
+      channel: '地推',
+      partnerId: 'p_chen',
+      createdAt: '2026-06-08'
+    },
+    {
+      id: 'ord_2',
+      studentId: 'stu_yn',
+      packageId: 'pkg_en_24',
+      campus: '城南校区',
+      amount: 3280,
+      paidAmount: 2000,
+      refundAmount: 0,
+      status: '部分缴费',
+      channel: '老带新',
+      partnerId: 'p_chen',
+      createdAt: '2026-06-20'
+    },
+    {
+      id: 'ord_3',
+      studentId: 'stu_lz',
+      packageId: 'pkg_math_48',
+      campus: '城南校区',
+      amount: 3680,
+      paidAmount: 3680,
+      refundAmount: 500,
+      status: '部分退费',
+      channel: '自然到访',
+      partnerId: 'p_chen',
+      createdAt: '2026-05-12'
+    },
+    {
+      id: 'ord_4',
+      studentId: 'stu_cs',
+      packageId: 'pkg_write_16',
+      campus: '高新校区',
+      amount: 1680,
+      paidAmount: 1680,
+      refundAmount: 0,
+      status: '已缴费',
+      channel: '地推',
+      partnerId: 'p_other',
+      createdAt: '2026-07-01'
+    },
+    {
+      id: 'ord_5',
+      studentId: 'stu_yr',
+      packageId: 'pkg_write_16',
+      campus: '城南校区',
+      amount: 1680,
+      paidAmount: 1680,
+      refundAmount: 0,
+      status: '已缴费',
+      channel: '老带新',
+      partnerId: 'p_chen',
+      createdAt: '2026-07-03'
+    },
+    {
+      id: 'ord_6',
+      studentId: 'stu_lz',
+      packageId: 'pkg_code_32',
+      campus: '城南校区',
+      amount: 4200,
+      paidAmount: 0,
+      refundAmount: 0,
+      status: '待缴费',
+      channel: '销售跟进',
+      partnerId: 'p_chen',
+      createdAt: '2026-07-10'
+    }
+  ],
+  staffAccounts: [
+    { id: 'u_aca', name: '赵教务', phone: '13800000003', roles: ['教务'], campus: '城南校区', status: '正常' },
+    { id: 'u_partner', name: '陈合伙人', phone: '13800000004', roles: ['合伙人', '教务', '老师'], campus: '城南校区', status: '正常' },
+    { id: 'u_admin', name: '周总', phone: '13800000000', roles: ['管理员', '合伙人'], campus: '总部', status: '正常' },
+    { id: 'u_tea', name: '李老师', phone: '13800000002', roles: ['老师'], campus: '城南校区', status: '正常' }
   ]
 }
 
@@ -150,8 +296,34 @@ export function resetDb() {
   return structuredClone(SEED)
 }
 
-export function listTeachers() {
-  return getDb().teachers
+function scopeByCampus(list, user, field = 'campus') {
+  if (!user || user.role === 'admin' || user.role === 'academic') return list
+  if (user.role === 'partner') return list.filter((i) => i[field] === user.campus)
+  return list
+}
+
+export function listCampuses() {
+  return getDb().campuses
+}
+
+export function listTeachers(user) {
+  return scopeByCampus(getDb().teachers, user)
+}
+
+export function upsertTeacher(teacher) {
+  const db = getDb()
+  if (teacher.id) {
+    const idx = db.teachers.findIndex((t) => t.id === teacher.id)
+    if (idx >= 0) db.teachers[idx] = { ...db.teachers[idx], ...teacher }
+  } else {
+    db.teachers.unshift({
+      ...teacher,
+      id: uid('t'),
+      status: teacher.status || '在职'
+    })
+  }
+  save(db)
+  return db.teachers
 }
 
 export function listPackages() {
@@ -175,8 +347,8 @@ export function upsertPackage(pkg) {
   return db.packages
 }
 
-export function listStudents() {
-  return getDb().students
+export function listStudents(user) {
+  return scopeByCampus(getDb().students, user)
 }
 
 export function upsertStudent(stu) {
@@ -185,15 +357,15 @@ export function upsertStudent(stu) {
     const idx = db.students.findIndex((s) => s.id === stu.id)
     if (idx >= 0) db.students[idx] = { ...db.students[idx], ...stu }
   } else {
-    db.students.unshift({ ...stu, id: uid('stu') })
+    db.students.unshift({ ...stu, id: uid('stu'), status: stu.status || '在读' })
   }
   save(db)
   return db.students
 }
 
-export function listClasses() {
+export function listClasses(user) {
   const db = getDb()
-  return db.classes.map((c) => enrichClass(c, db))
+  return scopeByCampus(db.classes, user).map((c) => enrichClass(c, db))
 }
 
 function enrichClass(c, db) {
@@ -206,6 +378,7 @@ function enrichClass(c, db) {
     ...c,
     packageName: pkg?.name || '未绑教案',
     lessonCount: pkg?.lessonCount || 0,
+    packagePrice: pkg?.price || 0,
     teacherName: teacher?.name || '未分配',
     students,
     studentCount: students.length
@@ -219,6 +392,7 @@ export function createClass(payload) {
     name: payload.name,
     packageId: payload.packageId,
     teacherId: payload.teacherId,
+    campus: payload.campus || '城南校区',
     room: payload.room || '',
     studentIds: payload.studentIds || [],
     status: '开班中'
@@ -226,15 +400,6 @@ export function createClass(payload) {
   db.classes.unshift(item)
   save(db)
   return enrichClass(item, db)
-}
-
-export function updateClass(id, patch) {
-  const db = getDb()
-  const idx = db.classes.findIndex((c) => c.id === id)
-  if (idx < 0) return null
-  db.classes[idx] = { ...db.classes[idx], ...patch, id }
-  save(db)
-  return enrichClass(db.classes[idx], db)
 }
 
 export function addStudentToClass(classId, studentId) {
@@ -258,34 +423,38 @@ export function removeStudentFromClass(classId, studentId) {
   return { ok: true, class: enrichClass(cls, db) }
 }
 
-export function listLessons() {
+export function listLessons(user) {
   const db = getDb()
-  return db.lessons.map((l) => enrichLesson(l, db))
+  let list = db.lessons.map((l) => enrichLesson(l, db))
+  if (user?.role === 'partner') list = list.filter((l) => l.campus === user.campus)
+  return list
 }
 
 function enrichLesson(l, db) {
   const cls = db.classes.find((c) => c.id === l.classId)
-  const teacher = db.teachers.find((t) => t.id === l.teacherId) ||
+  const teacher =
+    db.teachers.find((t) => t.id === l.teacherId) ||
     (cls ? db.teachers.find((t) => t.id === cls.teacherId) : null)
   const pkg = cls ? db.packages.find((p) => p.id === cls.packageId) : null
   return {
     ...l,
     className: cls?.name || '未知班级',
+    campus: cls?.campus || '-',
     teacherName: teacher?.name || '未分配',
     packageName: pkg?.name || '-',
     studentCount: cls?.studentIds?.length || 0
   }
 }
 
-export function getLessonsByDate(date) {
-  return listLessons()
+export function getLessonsByDate(date, user) {
+  return listLessons(user)
     .filter((l) => l.date === date)
     .sort((a, b) => a.startTime.localeCompare(b.startTime))
 }
 
-export function getLessonDateMarks() {
+export function getLessonDateMarks(user) {
   const map = {}
-  listLessons().forEach((l) => {
+  listLessons(user).forEach((l) => {
     if (!map[l.date]) map[l.date] = { hasFinished: false, hasOpen: false }
     if (l.status === 'finished') map[l.date].hasFinished = true
     else map[l.date].hasOpen = true
@@ -318,13 +487,94 @@ export function createLesson(payload) {
   return { ok: true, lesson: enrichLesson(item, db) }
 }
 
-export function getDashboardStats() {
-  const db = getDb()
-  const today = todayKey()
+function enrichOrder(o, db) {
+  const stu = db.students.find((s) => s.id === o.studentId)
+  const pkg = db.packages.find((p) => p.id === o.packageId)
+  const receivable = money(o.amount - o.paidAmount)
+  const net = money(o.paidAmount - o.refundAmount)
   return {
-    packageCount: db.packages.length,
-    studentCount: db.students.length,
-    classCount: db.classes.length,
-    todayLessonCount: db.lessons.filter((l) => l.date === today).length
+    ...o,
+    studentName: stu?.studentName || '未知学员',
+    parentPhone: stu?.parentPhone || '-',
+    packageName: pkg?.name || '未知教案',
+    lessonCount: pkg?.lessonCount || 0,
+    receivable,
+    net
   }
+}
+
+export function listOrders(user) {
+  const db = getDb()
+  let orders = db.orders.map((o) => enrichOrder(o, db))
+  if (user?.role === 'partner') {
+    orders = orders.filter((o) => o.campus === user.campus && o.partnerId === 'p_chen')
+  }
+  return orders.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+}
+
+export function getFinanceSummary(user) {
+  const orders = listOrders(user)
+  const sales = orders.reduce((s, o) => s + money(o.amount), 0)
+  const received = orders.reduce((s, o) => s + money(o.paidAmount), 0)
+  const refund = orders.reduce((s, o) => s + money(o.refundAmount), 0)
+  const receivable = orders.reduce((s, o) => s + money(o.receivable), 0)
+  const net = received - refund
+  const ratio = user?.shareRatio != null ? Number(user.shareRatio) : user?.role === 'partner' ? 0.15 : 0
+  const share = money(net * ratio)
+
+  const byCampus = {}
+  orders.forEach((o) => {
+    if (!byCampus[o.campus]) byCampus[o.campus] = { campus: o.campus, received: 0, refund: 0, net: 0 }
+    byCampus[o.campus].received += money(o.paidAmount)
+    byCampus[o.campus].refund += money(o.refundAmount)
+    byCampus[o.campus].net += money(o.net)
+  })
+
+  const byPackage = {}
+  orders.forEach((o) => {
+    if (!byPackage[o.packageName]) {
+      byPackage[o.packageName] = { name: o.packageName, count: 0, received: 0 }
+    }
+    byPackage[o.packageName].count += 1
+    byPackage[o.packageName].received += money(o.paidAmount)
+  })
+
+  return {
+    sales,
+    received,
+    refund,
+    receivable,
+    net,
+    share,
+    shareRatio: ratio,
+    orderCount: orders.length,
+    byCampus: Object.values(byCampus),
+    byPackage: Object.values(byPackage),
+    orders
+  }
+}
+
+export function listStaffAccounts() {
+  return getDb().staffAccounts
+}
+
+export function getDashboardStats(user) {
+  const students = listStudents(user)
+  const teachers = listTeachers(user)
+  const classes = listClasses(user)
+  const packages = listPackages()
+  const todayLessons = getLessonsByDate(todayKey(), user)
+  const finance = user && (user.role === 'partner' || user.role === 'admin') ? getFinanceSummary(user) : null
+  return {
+    studentCount: students.length,
+    teacherCount: teachers.length,
+    classCount: classes.length,
+    packageCount: packages.length,
+    todayLessonCount: todayLessons.length,
+    finance
+  }
+}
+
+export function formatMoney(n) {
+  return `¥${money(n).toLocaleString('zh-CN')}`
 }

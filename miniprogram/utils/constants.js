@@ -37,7 +37,7 @@ const ROLE_META = {
     key: ROLES.PARTNER,
     name: '合伙人',
     shortName: '合伙端',
-    desc: '业绩看板、分润与团队概况',
+    desc: '手机看业绩/分成快览；明细与财务在 Web',
     color: '#0E7490',
     home: '/pages/partner/home/home'
   },
@@ -45,7 +45,7 @@ const ROLE_META = {
     key: ROLES.ADMIN,
     name: '管理员',
     shortName: '管理端',
-    desc: '账号权限、组织架构与系统设置',
+    desc: '手机看全校概况；配置与财务在 Web',
     color: '#334155',
     home: '/pages/admin/home/home'
   }

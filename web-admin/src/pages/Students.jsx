@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { listStudents, upsertStudent } from '../data/store'
+import { canEdit, getUser } from '../auth/roles'
+import { listCampuses, listStudents, upsertStudent } from '../data/store'
 
 const empty = {
   studentName: '',
@@ -7,13 +8,17 @@ const empty = {
   parentName: '',
   grade: '',
   campus: '城南校区',
-  remark: ''
+  remark: '',
+  status: '在读'
 }
 
 export default function Students() {
+  const user = getUser()
+  const editable = canEdit('students')
   const [tick, setTick] = useState(0)
   const [keyword, setKeyword] = useState('')
-  const students = useMemo(() => listStudents(), [tick])
+  const students = useMemo(() => listStudents(user), [tick, user])
+  const campuses = listCampuses()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(empty)
 
@@ -40,8 +45,10 @@ export default function Students() {
     <div className="panel">
       <div className="toolbar">
         <div>
-          <strong>学员档案</strong>
-          <div className="muted">支持同一家长手机号挂多个孩子</div>
+          <strong>学员管理</strong>
+          <div className="muted">
+            {editable ? '维护档案；同一家长手机号可挂多个孩子' : '只读查看学员（合伙人为本校区）'}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <input
@@ -50,16 +57,18 @@ export default function Students() {
             onChange={(e) => setKeyword(e.target.value)}
             style={{ border: '1px solid var(--border)', borderRadius: 999, padding: '8px 14px' }}
           />
-          <button
-            className="btn"
-            type="button"
-            onClick={() => {
-              setForm(empty)
-              setOpen(true)
-            }}
-          >
-            新增学员
-          </button>
+          {editable && (
+            <button
+              className="btn"
+              type="button"
+              onClick={() => {
+                setForm({ ...empty, campus: user?.campus || '城南校区' })
+                setOpen(true)
+              }}
+            >
+              新增学员
+            </button>
+          )}
         </div>
       </div>
 
@@ -69,8 +78,9 @@ export default function Students() {
             <th>学生</th>
             <th>家长</th>
             <th>年级 / 校区</th>
+            <th>状态</th>
             <th>备注</th>
-            <th />
+            {editable && <th />}
           </tr>
         </thead>
         <tbody>
@@ -87,19 +97,24 @@ export default function Students() {
                 {s.grade}
                 <div className="muted">{s.campus}</div>
               </td>
-              <td className="muted">{s.remark || '-'}</td>
               <td>
-                <button
-                  className="btn ghost"
-                  type="button"
-                  onClick={() => {
-                    setForm(s)
-                    setOpen(true)
-                  }}
-                >
-                  编辑
-                </button>
+                <span className="tag ok">{s.status || '在读'}</span>
               </td>
+              <td className="muted">{s.remark || '-'}</td>
+              {editable && (
+                <td>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    onClick={() => {
+                      setForm(s)
+                      setOpen(true)
+                    }}
+                  >
+                    编辑
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -137,9 +152,23 @@ export default function Students() {
               </div>
               <div className="field">
                 <label>校区</label>
-                <input value={form.campus} onChange={(e) => setForm({ ...form, campus: e.target.value })} />
+                <select value={form.campus} onChange={(e) => setForm({ ...form, campus: e.target.value })}>
+                  {campuses.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="field">
+                <label>状态</label>
+                <select value={form.status || '在读'} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                  <option value="在读">在读</option>
+                  <option value="停课">停课</option>
+                  <option value="结业">结业</option>
+                </select>
+              </div>
+              <div className="field full">
                 <label>备注</label>
                 <input value={form.remark} onChange={(e) => setForm({ ...form, remark: e.target.value })} />
               </div>

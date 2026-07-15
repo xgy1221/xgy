@@ -1,5 +1,6 @@
 const auth = require('../../../utils/auth')
 const mock = require('../../../services/mock')
+
 Page({
   data: { stats: {} },
   onShow() {
