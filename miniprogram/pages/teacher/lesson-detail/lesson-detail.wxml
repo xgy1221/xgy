@@ -15,8 +15,8 @@
         <view class="muted" wx:elif="{{item.absent}}">标记旷课（不计消课）</view>
         <view class="muted" wx:else>本班学员</view>
         <view class="muted" wx:if="{{item.consumed}}">已消 1 课次</view>
-        <view class="muted" wx:elif="{{item.teacherRated && item.studentRated}}">互评完成，待消课</view>
-        <view class="muted" wx:elif="{{item.teacherRated}}">已评学生，等待学生评老师</view>
+        <view class="muted" wx:elif="{{item.teacherRated && item.consumed}}">已评价并消课</view>
+        <view class="muted" wx:elif="{{item.teacherRated}}">已评价学生</view>
       </view>
       <view class="right">
         <button
@@ -54,8 +54,8 @@
   </view>
 
   <view class="card" wx:if="{{lesson.status !== 'finished'}}">
-    <button class="btn-primary" bindtap="onFinish">下课并开启互评</button>
-    <view class="muted tip">下课后师生互相评价完成，自动为该学员消 1 节课。</view>
+    <button class="btn-primary" bindtap="onFinish">下课并评价学生</button>
+    <view class="muted tip">下课后老师评价学生即可消 1 节课；学生评价老师可选，不评价也能消课。</view>
   </view>
 
   <view class="card" wx:if="{{rateVisible}}">

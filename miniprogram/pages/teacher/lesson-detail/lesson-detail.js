@@ -56,7 +56,7 @@ Page({
   onFinish() {
     wx.showModal({
       title: '确认下课？',
-      content: '下课后进入互评；双方评完自动消 1 节课。临时插班不改变原班归属。',
+      content: '下课后请评价学生以消课。学生评价老师可选。临时插班不改变原班归属。',
       success: (res) => {
         if (!res.confirm) return
         const result = lessonsService.finishLesson(this.data.id)

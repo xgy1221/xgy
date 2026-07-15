@@ -12,14 +12,14 @@
   <view class="card">
     <view class="section-title">本课状态</view>
     <view class="list-item"><text>出勤</text><text>{{me.absent ? '旷课' : '正常'}}</text></view>
-    <view class="list-item"><text>评价老师</text><text>{{me.studentRated ? '已评' : '未评'}}</text></view>
+    <view class="list-item"><text>评价老师</text><text>{{me.studentRated ? '已评' : '可不评'}}</text></view>
     <view class="list-item"><text>老师评价</text><text>{{me.teacherRated ? '已评' : '未评'}}</text></view>
-    <view class="list-item"><text>消课</text><text>{{me.consumed ? '已消 1 节' : '未消课'}}</text></view>
+    <view class="list-item"><text>消课</text><text>{{me.consumed ? '已消 1 节' : '老师评价后消课'}}</text></view>
   </view>
 
   <view class="card" wx:if="{{canRate}}">
-    <view class="section-title">评价老师</view>
-    <view class="muted tip">双方评价完成后，自动消掉 1 节课。</view>
+    <view class="section-title">评价老师（可选）</view>
+    <view class="muted tip">可以不评。消课由老师评价学生后完成，不影响课时扣除。</view>
     <view class="stars">
       <text
         wx:for="{{starList}}"
@@ -31,6 +31,7 @@
     </view>
     <input class="input" placeholder="简短评语（选填）" value="{{comment}}" bindinput="onComment" />
     <button class="btn-primary" bindtap="onSubmit">提交评价</button>
+    <button class="btn-ghost" bindtap="onSkip">暂不评价</button>
   </view>
 
   <view class="card" wx:if="{{me.studentRated}}">

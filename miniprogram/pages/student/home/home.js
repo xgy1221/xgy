@@ -57,7 +57,7 @@ Page({
         statusText: STATUS_TEXT[l.status] || l.status,
         myType: me ? me.type : 'regular',
         homeClassName: me ? me.homeClassName : '',
-        needRate: l.status === 'finished' && me && !me.studentRated && !me.absent
+        needRate: l.status === 'finished' && me && !me.absent && !me.studentRated
       }
     })
     this.setData({

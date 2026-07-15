@@ -63,5 +63,10 @@ Page({
     )
     wx.showToast({ title: result.message || (result.ok ? '已评价' : '失败'), icon: 'none' })
     this.refresh()
+  },
+
+  onSkip() {
+    wx.navigateBack({ fail: () => wx.reLaunch({ url: '/pages/student/home/home' }) })
   }
 })
+

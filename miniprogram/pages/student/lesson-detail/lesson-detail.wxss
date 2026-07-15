@@ -80,3 +80,7 @@
   margin-bottom: 16rpx;
   background: #f8fbfa;
 }
+
+.btn-ghost {
+  margin-top: 12rpx;
+}

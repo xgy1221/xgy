@@ -47,7 +47,7 @@
         </view>
       </view>
       <view class="muted tip" wx:if="{{item.myType === 'makeup'}}">临时补课（原班：{{item.homeClassName}}）</view>
-      <view class="muted tip" wx:if="{{item.needRate}}">待评价老师，完成后消 1 课次</view>
+      <view class="muted tip" wx:if="{{item.needRate}}">可评价老师（可选，不评也能消课）</view>
     </view>
   </view>
 

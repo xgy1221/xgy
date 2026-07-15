@@ -304,9 +304,9 @@ function rateByStudent(lessonId, studentId, score, comment) {
   if (!attendee || attendee.absent) return { ok: false, message: '不在本课名单' }
   attendee.studentRated = true
   attendee.studentRating = { score: Number(score) || 5, comment: comment || '' }
-  const consumeResult = tryConsumeAttendee(attendee)
+  // 学生评老师可选，不影响消课
   saveLessons(list)
-  return { ok: true, lesson, consumed: consumeResult.consumed, message: consumeResult.message }
+  return { ok: true, lesson, consumed: !!attendee.consumed, message: '感谢评价' }
 }
 
 function rateByTeacher(lessonId, studentId, score, comment) {
@@ -324,8 +324,9 @@ function rateByTeacher(lessonId, studentId, score, comment) {
 
 function tryConsumeAttendee(attendee) {
   if (attendee.consumed) return { consumed: true, message: '已消课' }
-  if (!(attendee.studentRated && attendee.teacherRated)) {
-    return { consumed: false, message: '双方评价完成后自动消一节课' }
+  // 消课只依赖老师评学生；学生评老师可选
+  if (!attendee.teacherRated) {
+    return { consumed: false, message: '老师评价学生后消 1 节课' }
   }
   if (!attendee.enrollmentId) {
     return { consumed: false, message: '未关联报读，无法消课' }
@@ -333,7 +334,7 @@ function tryConsumeAttendee(attendee) {
   const result = enrollmentsService.consumeOneLesson(attendee.enrollmentId)
   if (!result.ok) return { consumed: false, message: result.message }
   attendee.consumed = true
-  return { consumed: true, message: '互评完成，已消 1 节课' }
+  return { consumed: true, message: '已消 1 节课' }
 }
 
 function markAbsent(lessonId, studentId, absent) {
