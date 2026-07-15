@@ -1,6 +1,6 @@
 <view class="container">
   <view class="page-title">账号管理</view>
-  <view class="page-sub">一人可绑定多个角色</view>
+  <view class="page-sub">一人可授权多角色；登录默认上次身份，可在「我的」切换</view>
   <view class="section">
     <view class="card" wx:for="{{list}}" wx:key="id">
       <view class="row">

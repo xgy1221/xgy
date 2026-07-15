@@ -1,17 +1,20 @@
 <view class="container">
   <view class="page-title">选择要进入的身份</view>
-  <view class="page-sub">账号「{{userName}}」拥有多个角色，可随时在「我的」里切换。</view>
+  <view class="page-sub">账号「{{userName}}」有多个角色。选过后会记住，下次登录默认进入上次身份；也可在「我的」里切换。</view>
 
   <view class="role-list">
     <view
-      class="role-card"
+      class="role-card {{item.key === lastRole ? 'last' : ''}}"
       wx:for="{{roles}}"
       wx:key="key"
       style="border-left-color: {{item.color}};"
       data-role="{{item.key}}"
       bindtap="onSelect"
     >
-      <view class="role-name">{{item.name}}</view>
+      <view class="row">
+        <view class="role-name">{{item.name}}</view>
+        <view class="tag ok" wx:if="{{item.key === lastRole}}">上次使用</view>
+      </view>
       <view class="role-desc">{{item.desc}}</view>
     </view>
   </view>

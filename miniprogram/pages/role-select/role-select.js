@@ -4,7 +4,8 @@ const auth = require('../../utils/auth')
 Page({
   data: {
     userName: '',
-    roles: []
+    roles: [],
+    lastRole: ''
   },
 
   onShow() {
@@ -14,10 +15,12 @@ Page({
       return
     }
 
-    const roles = (session.user.roles || []).map((key) => ROLE_META[key])
+    const roles = (session.user.roles || []).map((key) => ROLE_META[key]).filter(Boolean)
+    const lastRole = auth.getLastRole(session.user.phone) || ''
     this.setData({
       userName: session.user.name,
-      roles
+      roles,
+      lastRole
     })
   },
 

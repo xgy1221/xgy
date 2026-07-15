@@ -9,6 +9,8 @@ Page({
     avatarText: '',
     roleName: '',
     multiRole: false,
+    roleOptions: [],
+    currentRoleKey: '',
     children: [],
     currentStudentId: ''
   },
@@ -24,16 +26,25 @@ Page({
       currentStudentId = children[0].id
       auth.setCurrentStudentId(currentStudentId)
     }
+    const roleOptions = (u.roles || []).map((key) => ROLE_META[key]).filter(Boolean)
 
     this.setData({
       name: u.name,
       phone: u.phone,
       avatarText: u.avatarText || u.name.slice(0, 1),
       roleName: (ROLE_META[role] && ROLE_META[role].name) || role,
-      multiRole: (u.roles || []).length > 1,
+      multiRole: roleOptions.length > 1,
+      roleOptions,
+      currentRoleKey: role,
       children,
       currentStudentId
     })
+  },
+
+  onPickRole(e) {
+    const role = e.currentTarget.dataset.role
+    if (!role || role === this.data.currentRoleKey) return
+    auth.switchToRoleHome(role)
   },
 
   onSwitchChild(e) {
@@ -46,10 +57,6 @@ Page({
 
   onAddChild() {
     wx.navigateTo({ url: '/pages/onboarding/onboarding' })
-  },
-
-  onSwitchRole() {
-    wx.navigateTo({ url: '/pages/role-select/role-select' })
   },
 
   onLogout() {

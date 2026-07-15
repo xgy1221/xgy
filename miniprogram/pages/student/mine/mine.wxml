@@ -8,11 +8,31 @@
     </view>
   </view>
 
+  <view class="section card" wx:if="{{multiRole}}">
+    <view class="section-title">切换身份</view>
+    <view class="muted tip">默认进入上次选择的角色，可随时切换。</view>
+    <view
+      class="role-item {{item.key === currentRoleKey ? 'on' : ''}}"
+      wx:for="{{roleOptions}}"
+      wx:key="key"
+      data-role="{{item.key}}"
+      bindtap="onPickRole"
+    >
+      <view>
+        <view class="role-name">{{item.name}}</view>
+        <view class="muted">{{item.desc}}</view>
+      </view>
+      <view class="tag {{item.key === currentRoleKey ? 'ok' : ''}}">
+        {{item.key === currentRoleKey ? '当前' : '进入'}}
+      </view>
+    </view>
+  </view>
+
   <view class="section card">
     <view class="section-title">绑定学员</view>
     <view class="list-item" wx:for="{{children}}" wx:key="id" data-id="{{item.id}}" bindtap="onSwitchChild">
       <view>
-        <view class="child-name">{{item.studentName}}</view>
+        <view class="role-name">{{item.studentName}}</view>
         <view class="muted">{{item.grade || '未填年级'}}</view>
       </view>
       <view class="tag {{item.id === currentStudentId ? 'ok' : ''}}">
@@ -25,10 +45,6 @@
   </view>
 
   <view class="section card">
-    <view class="list-item" bindtap="onSwitchRole" wx:if="{{multiRole}}">
-      <text>切换身份</text>
-      <text class="link">选择</text>
-    </view>
     <view class="list-item">
       <text>当前角色</text>
       <text>{{roleName}}</text>

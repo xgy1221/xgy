@@ -5,7 +5,7 @@ Page({
   onShow() {
     if (!auth.requireAuth()) return
     this.setData({
-      userCount: mock.ADMIN_USERS.length,
+      userCount: mock.getAdminUserList().length,
       orgCount: mock.ORG_NODES.length
     })
   },

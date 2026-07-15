@@ -16,7 +16,7 @@
       bindinput="onPhoneInput"
     />
     <button class="btn-primary login-btn" bindtap="onLogin">进入系统</button>
-    <view class="tip">任意 11 位手机号都可体验家长入驻：未建档会自动新建并引导添加孩子、选择教案。完整家庭演示：13800000001；仅录手机号：13800000031。</view>
+    <view class="tip">任意 11 位手机号可体验家长入驻。多角色演示：13800000004（合伙/教务/老师），默认进入上次身份，可在「我的」切换。</view>
   </view>
 
   <view class="quick">

@@ -11,6 +11,17 @@
   box-shadow: 0 8rpx 28rpx rgba(15, 61, 62, 0.08);
 }
 
+.role-card.last {
+  background: #f3faf9;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
+}
+
 .role-name {
   font-size: 34rpx;
   font-weight: 700;
@@ -22,3 +33,4 @@
   font-size: 26rpx;
   color: #5b6b69;
 }
+

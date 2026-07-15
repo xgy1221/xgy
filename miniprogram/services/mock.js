@@ -1,4 +1,4 @@
-const { ROLES } = require('../utils/constants')
+const { ROLES, ROLE_META } = require('../utils/constants')
 const studentsService = require('./students')
 const parentsService = require('./parents')
 
@@ -33,8 +33,10 @@ const DEMO_USERS = [
     name: '陈合伙人',
     phone: '13800000004',
     avatarText: '陈',
-    roles: [ROLES.PARTNER],
-    shareRatio: '15%'
+    roles: [ROLES.PARTNER, ROLES.ACADEMIC, ROLES.TEACHER],
+    shareRatio: '15%',
+    campus: '城南校区',
+    title: '兼职主讲'
   },
   {
     id: 'u_admin',
@@ -48,9 +50,10 @@ const DEMO_USERS = [
     name: '周总',
     phone: '13800000000',
     avatarText: '周',
-    roles: [ROLES.PARTNER, ROLES.ADMIN, ROLES.ACADEMIC],
+    roles: [ROLES.PARTNER, ROLES.ADMIN, ROLES.ACADEMIC, ROLES.TEACHER],
     shareRatio: '30%',
-    campus: '总部'
+    campus: '总部',
+    title: '教研统筹'
   }
 ]
 
@@ -100,12 +103,15 @@ const PARTNER_TEAM = [
   { id: 'p3', name: '林顾问', role: '顾问', students: 15, sales: '29,000' }
 ]
 
-const ADMIN_USERS = [
-  { id: 'au1', name: '周总', phone: '13800000000', roles: ['合伙人', '管理员', '教务'], status: '正常' },
-  { id: 'au2', name: '李老师', phone: '13800000002', roles: ['授课老师'], status: '正常' },
-  { id: 'au3', name: '赵教务', phone: '13800000003', roles: ['教务'], status: '正常' },
-  { id: 'au4', name: '王女士', phone: '13800000001', roles: ['学生/家长'], status: '正常' }
-]
+function getAdminUserList() {
+  return DEMO_USERS.map((u) => ({
+    id: u.id,
+    name: u.name,
+    phone: u.phone,
+    roles: (u.roles || []).map((r) => (ROLE_META[r] && ROLE_META[r].name) || r),
+    status: '正常'
+  }))
+}
 
 const ORG_NODES = [
   { id: 'o1', name: '学管云总校', type: '总部', children: 2 },
@@ -133,7 +139,7 @@ function buildParentUser(phone, linkedStudents, profile) {
 
 /**
  * 登录规则：
- * 1) 员工演示账号按角色登录
+ * 1) 员工演示账号按角色登录；多角色默认恢复上次选择
  * 2) 任意 11 位手机号均可作为家长登录；未录过则自动建档
  * 3) 家长若尚无学员，标记 needsOnboarding
  */
@@ -142,17 +148,20 @@ function loginByPhone(phone) {
     return { ok: false, message: '请输入正确的 11 位手机号' }
   }
 
+  const auth = require('../utils/auth')
   studentsService.getAllStudents()
   const staff = findUserByPhone(phone)
   const linkedStudents = studentsService.getStudentsByPhone(phone)
 
   if (staff && !staff.roles.includes(ROLES.STUDENT)) {
+    const currentRole = auth.resolvePreferredRole(staff)
+    if (currentRole) auth.setLastRole(phone, currentRole)
     return {
       ok: true,
       session: {
         token: `demo_${staff.id}_${Date.now()}`,
         user: staff,
-        currentRole: staff.roles.length === 1 ? staff.roles[0] : null,
+        currentRole,
         currentStudentId: null,
         needsOnboarding: false,
         loggedAt: Date.now()
@@ -174,13 +183,15 @@ function loginByPhone(phone) {
 
   const needsOnboarding = linkedStudents.length === 0
   const currentStudentId = linkedStudents.length ? linkedStudents[0].id : null
+  const currentRole = auth.resolvePreferredRole(user)
+  if (currentRole) auth.setLastRole(phone, currentRole)
 
   return {
     ok: true,
     session: {
       token: `demo_${user.id}_${Date.now()}`,
       user,
-      currentRole: user.roles.length === 1 ? user.roles[0] : null,
+      currentRole,
       currentStudentId,
       needsOnboarding,
       isNewParent: !knownBefore,
@@ -201,7 +212,7 @@ module.exports = {
   ACADEMIC_ENROLLS,
   PARTNER_STATS,
   PARTNER_TEAM,
-  ADMIN_USERS,
+  getAdminUserList,
   ORG_NODES,
   findUserByPhone,
   loginByPhone,
