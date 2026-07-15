@@ -1,11 +1,12 @@
 # 学管云
 
-培训机构运营体系原型，分两块：
+培训机构运营体系，三块：
 
-1. **微信小程序**（`miniprogram/`）：家长 / 老师 / 教务现场为主；合伙、管理员可登但只看轻量看板  
-2. **Web 管理端**（`web-admin/`）：教务 / 合伙人 / 管理员——教案、学员、教师、课程、财务（按角色）  
+1. **后端 API**（`backend/`）：Java 21 + Spring Boot + MySQL + Redis，多机构 `orgId` 隔离  
+2. **微信小程序**（`miniprogram/`）：家长 / 老师 / 教务现场为主；合伙、管理员轻量看板  
+3. **Web 管理端**（`web-admin/`）：教务 / 合伙人 / 管理员——教案、学员、教师、课程、财务  
 
-产品说明与角色分权见 [`docs/PRODUCT.md`](docs/PRODUCT.md)。
+产品说明见 [`docs/PRODUCT.md`](docs/PRODUCT.md)。后端启动见 [`backend/README.md`](backend/README.md)。
 
 ## 分工
 
@@ -40,7 +41,8 @@ npm run dev
 |--------|------|----------|
 | `13800000003` | 教务 | 学员/教师/课程/教案可维护，**无财务** |
 | `13800000004` | 合伙人 | 业务只读 + **本校区财务/分成** |
-| `13800000000` | 管理员 | 全量配置 + **全校财务** + 账号权限 |
+| `13800000000` | 管理员 | 学趣全量配置 + 财务 + 账号 |
+| `13800000040` | 启航教务 | **仅启航英语**机构数据 |
 
 详见 [`web-admin/README.md`](web-admin/README.md)。
 
@@ -63,13 +65,28 @@ npm run dev
 | `13800000002` | 老师 |
 | `13800000003` | 教务 |
 | `13800000004` | 合伙+教务+老师，记住上次角色 |
-| `13800000000` | 周总多角色（含管理） |
+| `13800000000` | 周总多角色（含管理）· 学趣 |
+| `13800000040` | 启航教务（本机构隔离） |
+| `13800000041` | 启航韩老师 |
 | `13800000031` | 仅录手机号，走引导 |
+
+## 后端（Java）
+
+```bash
+cd backend
+docker compose up -d          # MySQL 3306 + Redis 6379
+mvn spring-boot:run           # http://localhost:8080
+```
+
+登录：`POST /api/auth/login`，短信码演示固定 `123456`。详见 [`backend/README.md`](backend/README.md)。
+
+> 说明：小程序 / Web 目前仍可用本地演示数据独立跑；接真实接口时指向该后端即可。
 
 ## 目录
 
 ```
 docs/PRODUCT.md
+backend/              # Spring Boot + MySQL + Redis
 miniprogram/          # 微信小程序
 web-admin/            # Web 多角色后台
 project.config.json

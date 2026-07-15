@@ -41,20 +41,29 @@ public class AuthService {
     private final SessionRedisService sessionRedisService;
     private final AppConfig.SmsProperties smsProperties;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Map<String, Object> login(LoginRequest request) {
         if (!smsProperties.getDemoCode().equals(request.getSmsCode())) {
             throw new BizException("验证码错误");
         }
+        if (request.getPhone() == null || !request.getPhone().matches("1\\d{10}")) {
+            throw new BizException("请输入正确的 11 位手机号");
+        }
+        // 员工按库内账号；任意新手机号自动建家长账号（对齐小程序）
         UserAccount user = userAccountRepository.findByPhone(request.getPhone())
-                .orElseThrow(() -> new BizException("账号不存在，请联系机构开通"));
+                .orElseGet(() -> createParentAccount(request.getPhone()));
         if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
             throw new BizException("账号已停用");
         }
 
         List<UserRole> userRoles = userRoleRepository.findByUserId(user.getId());
         if (userRoles.isEmpty()) {
-            throw new BizException("账号未分配角色");
+            UserRole parentRole = new UserRole();
+            parentRole.setUserId(user.getId());
+            parentRole.setRole(RoleType.PARENT.name());
+            parentRole.setOrgId(null);
+            userRoleRepository.save(parentRole);
+            userRoles = List.of(parentRole);
         }
 
         List<Map<String, Object>> roleViews = buildRoleViews(userRoles);
@@ -327,5 +336,21 @@ public class AuthService {
             data.put("students", kids);
         }
         return data;
+    }
+
+    private UserAccount createParentAccount(String phone) {
+        UserAccount user = new UserAccount();
+        user.setPhone(phone);
+        user.setName("家长");
+        user.setAvatarText("家");
+        user.setStatus("ACTIVE");
+        user = userAccountRepository.save(user);
+
+        UserRole parentRole = new UserRole();
+        parentRole.setUserId(user.getId());
+        parentRole.setRole(RoleType.PARENT.name());
+        parentRole.setOrgId(null);
+        userRoleRepository.save(parentRole);
+        return user;
     }
 }
