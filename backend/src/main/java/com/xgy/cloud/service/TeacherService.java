@@ -48,6 +48,39 @@ public class TeacherService {
         return toView(t);
     }
 
+    @Transactional
+    public Map<String, Object> update(UserPrincipal principal, Long id, TeacherCreateRequest req) {
+        if (SecurityUtils.isParent()) {
+            throw new BizException(403, "家长无权操作");
+        }
+        Long orgId = SecurityUtils.requireOrgId();
+        Teacher t = teacherRepository.findByIdAndOrgId(id, orgId)
+                .orElseThrow(() -> new BizException("教师不存在"));
+        if (req.getUserId() != null) {
+            t.setUserId(req.getUserId());
+        }
+        if (StringUtils.hasText(req.getName())) {
+            t.setName(req.getName());
+        }
+        if (req.getPhone() != null) {
+            t.setPhone(req.getPhone());
+        }
+        if (req.getTitle() != null) {
+            t.setTitle(req.getTitle());
+        }
+        if (req.getCampus() != null) {
+            t.setCampus(req.getCampus());
+        }
+        if (req.getSubjects() != null) {
+            t.setSubjects(req.getSubjects());
+        }
+        if (StringUtils.hasText(req.getStatus())) {
+            t.setStatus(req.getStatus());
+        }
+        teacherRepository.save(t);
+        return toView(t);
+    }
+
     private Map<String, Object> toView(Teacher t) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", t.getId());

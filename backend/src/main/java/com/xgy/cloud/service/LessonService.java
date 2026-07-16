@@ -27,6 +27,7 @@ public class LessonService {
     private final EnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
+    private final CoursePackageRepository coursePackageRepository;
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> listByDate(UserPrincipal principal, LocalDate date) {
@@ -60,8 +61,11 @@ public class LessonService {
                     .map(LessonAttendee::getLessonId)
                     .collect(Collectors.toSet());
             lessons = lessons.stream().filter(l -> lessonIds.contains(l.getId())).collect(Collectors.toList());
+            // 家长列表带本人名单即可
+            return lessons.stream().map(l -> toView(l, principal, true)).collect(Collectors.toList());
         }
-        return lessons.stream().map(l -> toView(l, principal, false)).collect(Collectors.toList());
+        // 员工（老师/教务）列表带完整名单，方便课堂与临补
+        return lessons.stream().map(l -> toView(l, principal, true)).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -97,6 +101,14 @@ public class LessonService {
             m.put("startTime", lesson.getStartTime());
             m.put("endTime", lesson.getEndTime());
             m.put("status", lesson.getStatus());
+            m.put("room", lesson.getRoom());
+            m.put("packageId", lesson.getPackageId());
+            m.put("classId", lesson.getClassId());
+            clazzRepository.findById(lesson.getClassId()).ifPresent(c -> m.put("className", c.getName()));
+            if (lesson.getPackageId() != null) {
+                coursePackageRepository.findById(lesson.getPackageId())
+                        .ifPresent(p -> m.put("packageName", p.getName()));
+            }
             if (lesson.getTeacherId() != null) {
                 teacherRepository.findById(lesson.getTeacherId())
                         .ifPresent(t -> m.put("teacherName", t.getName()));
@@ -107,9 +119,49 @@ public class LessonService {
             m.put("teacherComment", att.getTeacherComment());
             m.put("hasTeacherEval", att.getTeacherRating() != null);
             m.put("consumed", Boolean.TRUE.equals(att.getConsumed()));
+            m.put("type", att.getType());
             result.add(m);
         }
         return result;
+    }
+
+    @Transactional
+    public Map<String, Object> finish(UserPrincipal principal, Long lessonId) {
+        if (SecurityUtils.isParent()) {
+            throw new BizException(403, "家长无权下课");
+        }
+        Long orgId = SecurityUtils.requireOrgId();
+        Lesson lesson = lessonRepository.findByIdAndOrgId(lessonId, orgId)
+                .orElseThrow(() -> new BizException("课次不存在"));
+        if ("FINISHED".equalsIgnoreCase(lesson.getStatus())) {
+            return toView(lesson, principal, true);
+        }
+        lesson.setStatus("FINISHED");
+        lessonRepository.save(lesson);
+        return toView(lesson, principal, true);
+    }
+
+    @Transactional
+    public Map<String, Object> markAbsent(UserPrincipal principal, Long lessonId, AbsentRequest req) {
+        if (SecurityUtils.isParent()) {
+            throw new BizException(403, "家长无权记旷课");
+        }
+        if (req.getStudentId() == null) {
+            throw new BizException("请指定学员");
+        }
+        Long orgId = SecurityUtils.requireOrgId();
+        lessonRepository.findByIdAndOrgId(lessonId, orgId)
+                .orElseThrow(() -> new BizException("课次不存在"));
+        LessonAttendee att = lessonAttendeeRepository.findByLessonIdAndStudentId(lessonId, req.getStudentId())
+                .orElseThrow(() -> new BizException("考勤记录不存在"));
+        if (Boolean.TRUE.equals(att.getConsumed()) && Boolean.TRUE.equals(req.getAbsent())) {
+            throw new BizException("已消课，无法记旷课");
+        }
+        att.setAbsent(Boolean.TRUE.equals(req.getAbsent()));
+        lessonAttendeeRepository.save(att);
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new BizException("课次不存在"));
+        return toView(lesson, principal, true);
     }
 
     @Transactional
@@ -300,6 +352,12 @@ public class LessonService {
         m.put("room", lesson.getRoom());
         m.put("status", lesson.getStatus());
         clazzRepository.findById(lesson.getClassId()).ifPresent(c -> m.put("className", c.getName()));
+        if (lesson.getPackageId() != null) {
+            coursePackageRepository.findById(lesson.getPackageId()).ifPresent(p -> {
+                m.put("packageName", p.getName());
+                m.put("subject", p.getSubject());
+            });
+        }
         if (lesson.getTeacherId() != null) {
             teacherRepository.findById(lesson.getTeacherId()).ifPresent(t -> m.put("teacherName", t.getName()));
         }
@@ -352,6 +410,12 @@ public class LessonService {
         private Long studentId;
         private Long homeClassId;
         private Long enrollmentId;
+    }
+
+    @Data
+    public static class AbsentRequest {
+        private Long studentId;
+        private Boolean absent;
     }
 
     @Data

@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,15 +31,15 @@ public class StudentService {
     public List<Map<String, Object>> list(UserPrincipal principal, String phone) {
         if (SecurityUtils.isParent()) {
             return studentRepository.findByParentPhoneOrderByOrgIdAscIdAsc(principal.getPhone())
-                    .stream().map(this::toView).collect(Collectors.toList());
+                    .stream().filter(this::alive).map(this::toView).collect(Collectors.toList());
         }
         Long orgId = SecurityUtils.requireOrgId();
         if (StringUtils.hasText(phone)) {
             return studentRepository.findByOrgIdAndParentPhone(orgId, phone)
-                    .stream().map(this::toView).collect(Collectors.toList());
+                    .stream().filter(this::alive).map(this::toView).collect(Collectors.toList());
         }
         return studentRepository.findByOrgIdOrderByIdDesc(orgId)
-                .stream().map(this::toView).collect(Collectors.toList());
+                .stream().filter(this::alive).map(this::toView).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -51,11 +52,11 @@ public class StudentService {
                 throw new BizException("家长只能查询自己的学员");
             }
             return studentRepository.findByParentPhoneOrderByOrgIdAscIdAsc(phone)
-                    .stream().map(this::toView).collect(Collectors.toList());
+                    .stream().filter(this::alive).map(this::toView).collect(Collectors.toList());
         }
         Long orgId = SecurityUtils.requireOrgId();
         return studentRepository.findByOrgIdAndParentPhone(orgId, phone)
-                .stream().map(this::toView).collect(Collectors.toList());
+                .stream().filter(this::alive).map(this::toView).collect(Collectors.toList());
     }
 
     @Transactional
@@ -92,9 +93,28 @@ public class StudentService {
         return toView(s);
     }
 
+    @Transactional
+    public Map<String, Object> archive(UserPrincipal principal, Long id) {
+        requireStaff();
+        Long orgId = SecurityUtils.requireOrgId();
+        Student s = studentRepository.findByIdAndOrgId(id, orgId)
+                .orElseThrow(() -> new BizException("学员不存在"));
+        s.setDeletedAt(LocalDateTime.now());
+        s.setStatus("ARCHIVED");
+        studentRepository.save(s);
+        return toView(s);
+    }
+
+    private boolean alive(Student s) {
+        return s.getDeletedAt() == null;
+    }
+
     private void apply(Student s, StudentSaveRequest req) {
         if (StringUtils.hasText(req.getParentPhone())) {
             s.setParentPhone(req.getParentPhone());
+        }
+        if (req.getParentName() != null) {
+            s.setParentName(req.getParentName());
         }
         if (StringUtils.hasText(req.getStudentName())) {
             s.setStudentName(req.getStudentName());
@@ -131,6 +151,7 @@ public class StudentService {
         m.put("id", s.getId());
         m.put("orgId", s.getOrgId());
         m.put("parentPhone", s.getParentPhone());
+        m.put("parentName", s.getParentName());
         m.put("studentName", s.getStudentName());
         m.put("gender", s.getGender());
         m.put("grade", s.getGrade());
@@ -138,6 +159,7 @@ public class StudentService {
         m.put("campus", s.getCampus());
         m.put("remark", s.getRemark());
         m.put("status", s.getStatus());
+        m.put("deletedAt", s.getDeletedAt());
         orgRepository.findById(s.getOrgId()).ifPresent(org -> {
             m.put("orgCode", org.getCode());
             m.put("orgName", org.getName());
@@ -148,6 +170,7 @@ public class StudentService {
     @Data
     public static class StudentSaveRequest {
         private String parentPhone;
+        private String parentName;
         private String studentName;
         private String gender;
         private String grade;

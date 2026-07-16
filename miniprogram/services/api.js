@@ -278,6 +278,22 @@ function makeupStudent(lessonId, payload) {
   })
 }
 
+function finishLesson(lessonId) {
+  return request({
+    path: `/api/lessons/${lessonId}/finish`,
+    method: 'POST',
+    data: {}
+  })
+}
+
+function markAbsent(lessonId, payload) {
+  return request({
+    path: `/api/lessons/${lessonId}/absent`,
+    method: 'POST',
+    data: payload
+  })
+}
+
 /**
  * 后端登录载荷 → 小程序 session
  * orgId 在 session / user 上使用机构 code，便于本地服务过滤；numericOrgId 留给写接口。
@@ -568,6 +584,8 @@ module.exports = {
   rateByTeacher,
   rateByStudent,
   makeupStudent,
+  finishLesson,
+  markAbsent,
   mapAuthToSession,
   normalizeStudent,
   normalizePackage,

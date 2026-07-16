@@ -53,6 +53,20 @@ public class WhitelistService {
         return toView(w);
     }
 
+    @Transactional
+    public void remove(UserPrincipal principal, Long id) {
+        if (SecurityUtils.isParent()) {
+            throw new BizException(403, "家长无权操作");
+        }
+        Long orgId = SecurityUtils.requireOrgId();
+        PhoneWhitelist w = phoneWhitelistRepository.findById(id)
+                .orElseThrow(() -> new BizException("白名单不存在"));
+        if (!orgId.equals(w.getOrgId())) {
+            throw new BizException(403, "无权删除");
+        }
+        phoneWhitelistRepository.delete(w);
+    }
+
     private Map<String, Object> toView(PhoneWhitelist w) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", w.getId());

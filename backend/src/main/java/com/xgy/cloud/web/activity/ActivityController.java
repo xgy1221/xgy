@@ -3,6 +3,7 @@ package com.xgy.cloud.web.activity;
 import com.xgy.cloud.common.ApiResponse;
 import com.xgy.cloud.security.UserPrincipal;
 import com.xgy.cloud.service.ActivityService;
+import com.xgy.cloud.service.ActivityService.ActivitySaveRequest;
 import com.xgy.cloud.service.ActivityService.SignupRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,6 +31,19 @@ public class ActivityController {
     public ApiResponse<Map<String, Object>> detail(@AuthenticationPrincipal UserPrincipal principal,
                                                    @PathVariable Long id) {
         return ApiResponse.ok(activityService.detail(principal, id));
+    }
+
+    @PostMapping
+    public ApiResponse<Map<String, Object>> create(@AuthenticationPrincipal UserPrincipal principal,
+                                                   @RequestBody ActivitySaveRequest request) {
+        return ApiResponse.ok(activityService.create(principal, request));
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<Map<String, Object>> update(@AuthenticationPrincipal UserPrincipal principal,
+                                                   @PathVariable Long id,
+                                                   @RequestBody ActivitySaveRequest request) {
+        return ApiResponse.ok(activityService.update(principal, id, request));
     }
 
     @PostMapping("/{id}/signup")

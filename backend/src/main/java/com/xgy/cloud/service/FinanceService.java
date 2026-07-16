@@ -36,7 +36,7 @@ public class FinanceService {
         BigDecimal refund = BigDecimal.ZERO;
         BigDecimal pending = BigDecimal.ZERO;
 
-        Map<String, BigDecimal> byCampus = new LinkedHashMap<>();
+        Map<String, BigDecimal[]> byCampusAgg = new LinkedHashMap<>();
         Map<Long, BigDecimal> byPackage = new LinkedHashMap<>();
 
         for (Order o : orders) {
@@ -48,7 +48,10 @@ public class FinanceService {
                 pending = pending.add(due);
             }
             String campus = o.getCampus() != null ? o.getCampus() : "未分校区";
-            byCampus.merge(campus, nullSafe(o.getAmountPaid()).subtract(nullSafe(o.getAmountRefund())), BigDecimal::add);
+            BigDecimal[] agg = byCampusAgg.computeIfAbsent(campus,
+                    k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+            agg[0] = agg[0].add(nullSafe(o.getAmountPaid()));
+            agg[1] = agg[1].add(nullSafe(o.getAmountRefund()));
             byPackage.merge(o.getPackageId(), nullSafe(o.getAmountPaid()), BigDecimal::add);
         }
 
@@ -60,10 +63,15 @@ public class FinanceService {
         result.put("pendingAmount", pending);
         result.put("netAmount", paid.subtract(refund));
         result.put("orderCount", orders.size());
-        result.put("byCampus", byCampus.entrySet().stream().map(e -> {
+        result.put("byCampus", byCampusAgg.entrySet().stream().map(e -> {
             Map<String, Object> m = new LinkedHashMap<>();
+            BigDecimal received = e.getValue()[0];
+            BigDecimal refunded = e.getValue()[1];
             m.put("campus", e.getKey());
-            m.put("netPaid", e.getValue());
+            m.put("received", received);
+            m.put("refund", refunded);
+            m.put("net", received.subtract(refunded));
+            m.put("netPaid", received.subtract(refunded));
             return m;
         }).collect(Collectors.toList()));
         result.put("byPackage", byPackage.entrySet().stream().map(e -> {

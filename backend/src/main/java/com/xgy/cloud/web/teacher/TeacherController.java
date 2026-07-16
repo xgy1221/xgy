@@ -28,4 +28,11 @@ public class TeacherController {
                                                    @RequestBody TeacherCreateRequest request) {
         return ApiResponse.ok(teacherService.create(principal, request));
     }
+
+    @PutMapping("/{id}")
+    public ApiResponse<Map<String, Object>> update(@AuthenticationPrincipal UserPrincipal principal,
+                                                   @PathVariable Long id,
+                                                   @RequestBody TeacherCreateRequest request) {
+        return ApiResponse.ok(teacherService.update(principal, id, request));
+    }
 }

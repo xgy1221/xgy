@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +28,10 @@ public class CoursePackageService {
     public List<Map<String, Object>> list(UserPrincipal principal) {
         Long orgId = resolveOrgId(principal);
         return coursePackageRepository.findByOrgIdOrderByIdDesc(orgId)
-                .stream().map(this::toView).collect(Collectors.toList());
+                .stream()
+                .filter(p -> p.getDeletedAt() == null)
+                .map(this::toView)
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -56,6 +60,20 @@ public class CoursePackageService {
         return toView(pkg);
     }
 
+    @Transactional
+    public Map<String, Object> archive(UserPrincipal principal, Long id) {
+        if (SecurityUtils.isParent()) {
+            throw new BizException(403, "家长无权操作");
+        }
+        Long orgId = SecurityUtils.requireOrgId();
+        CoursePackage pkg = coursePackageRepository.findByIdAndOrgId(id, orgId)
+                .orElseThrow(() -> new BizException("教案不存在"));
+        pkg.setDeletedAt(LocalDateTime.now());
+        pkg.setStatus("OFF_SHELF");
+        coursePackageRepository.save(pkg);
+        return toView(pkg);
+    }
+
     private Long resolveOrgId(UserPrincipal principal) {
         if (principal.getOrgId() != null) {
             return principal.getOrgId();
@@ -80,7 +98,14 @@ public class CoursePackageService {
             pkg.setPrice(req.getPrice());
         }
         if (StringUtils.hasText(req.getStatus())) {
-            pkg.setStatus(req.getStatus());
+            String st = req.getStatus().trim();
+            if ("上架".equals(st) || "on_shelf".equalsIgnoreCase(st)) {
+                pkg.setStatus("ON_SHELF");
+            } else if ("下架".equals(st) || "off_shelf".equalsIgnoreCase(st)) {
+                pkg.setStatus("OFF_SHELF");
+            } else {
+                pkg.setStatus(st.toUpperCase());
+            }
         }
         if (req.getOutline() != null) {
             pkg.setOutline(req.getOutline());
@@ -98,6 +123,7 @@ public class CoursePackageService {
         m.put("price", pkg.getPrice());
         m.put("status", pkg.getStatus());
         m.put("outline", pkg.getOutline());
+        m.put("deletedAt", pkg.getDeletedAt());
         return m;
     }
 

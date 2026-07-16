@@ -28,4 +28,11 @@ public class WhitelistController {
                                                 @RequestBody WhitelistAddRequest request) {
         return ApiResponse.ok(whitelistService.add(principal, request));
     }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> remove(@AuthenticationPrincipal UserPrincipal principal,
+                                    @PathVariable Long id) {
+        whitelistService.remove(principal, id);
+        return ApiResponse.ok();
+    }
 }

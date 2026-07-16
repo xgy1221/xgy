@@ -52,6 +52,19 @@ public class LessonController {
         return ApiResponse.ok(lessonService.create(principal, request));
     }
 
+    @PostMapping("/{id}/finish")
+    public ApiResponse<Map<String, Object>> finish(@AuthenticationPrincipal UserPrincipal principal,
+                                                   @PathVariable Long id) {
+        return ApiResponse.ok(lessonService.finish(principal, id));
+    }
+
+    @PostMapping("/{id}/absent")
+    public ApiResponse<Map<String, Object>> markAbsent(@AuthenticationPrincipal UserPrincipal principal,
+                                                       @PathVariable Long id,
+                                                       @RequestBody AbsentRequest request) {
+        return ApiResponse.ok(lessonService.markAbsent(principal, id, request));
+    }
+
     @PostMapping("/{id}/makeup")
     public ApiResponse<Map<String, Object>> makeup(@AuthenticationPrincipal UserPrincipal principal,
                                                    @PathVariable Long id,

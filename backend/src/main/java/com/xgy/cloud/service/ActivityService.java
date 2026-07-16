@@ -1,6 +1,7 @@
 package com.xgy.cloud.service;
 
 import com.xgy.cloud.common.BizException;
+import com.xgy.cloud.common.TextListUtils;
 import com.xgy.cloud.domain.Activity;
 import com.xgy.cloud.domain.ActivitySignup;
 import com.xgy.cloud.domain.Student;
@@ -15,7 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -99,7 +102,108 @@ public class ActivityService {
         long confirmed = activitySignupRepository.countByActivityIdAndStatus(activity.getId(), "CONFIRMED");
         m.put("signupCount", confirmed);
         m.put("remainSlots", Math.max(0, activity.getCapacity() - (int) confirmed));
+        if (SecurityUtils.isParent() && principal.getCurrentStudentId() != null) {
+            activitySignupRepository
+                    .findByActivityIdAndStudentIdAndStatus(activity.getId(), principal.getCurrentStudentId(), "CONFIRMED")
+                    .ifPresent(s -> {
+                        m.put("signupId", s.getId());
+                        m.put("signupStatus", s.getStatus());
+                        m.put("studentId", s.getStudentId());
+                        m.put("studentName", s.getStudentName());
+                        m.put("enrolled", true);
+                        m.put("signed", true);
+                    });
+        }
         return m;
+    }
+
+    @Transactional
+    public Map<String, Object> create(UserPrincipal principal, ActivitySaveRequest req) {
+        if (SecurityUtils.isParent()) {
+            throw new BizException(403, "家长无权发布活动");
+        }
+        Long orgId = SecurityUtils.requireOrgId();
+        Activity a = new Activity();
+        a.setOrgId(orgId);
+        apply(a, req);
+        if (a.getStatus() == null) {
+            a.setStatus("ACTIVE");
+        }
+        if (a.getPublished() == null) {
+            a.setPublished(true);
+        }
+        activityRepository.save(a);
+        return toDetailView(a, principal);
+    }
+
+    @Transactional
+    public Map<String, Object> update(UserPrincipal principal, Long id, ActivitySaveRequest req) {
+        if (SecurityUtils.isParent()) {
+            throw new BizException(403, "家长无权编辑活动");
+        }
+        Long orgId = SecurityUtils.requireOrgId();
+        Activity a = activityRepository.findByIdAndOrgId(id, orgId)
+                .orElseThrow(() -> new BizException("活动不存在"));
+        apply(a, req);
+        activityRepository.save(a);
+        return toDetailView(a, principal);
+    }
+
+    private void apply(Activity a, ActivitySaveRequest req) {
+        if (StringUtils.hasText(req.getTitle())) {
+            a.setTitle(req.getTitle());
+        }
+        if (req.getCategory() != null) {
+            a.setCategory(req.getCategory());
+        }
+        if (req.getCoverTone() != null) {
+            a.setCoverTone(req.getCoverTone());
+        }
+        if (req.getCampus() != null) {
+            a.setCampus(req.getCampus());
+        }
+        if (req.getAddress() != null) {
+            a.setAddress(req.getAddress());
+        }
+        if (req.getStartDate() != null) {
+            a.setStartDate(req.getStartDate());
+        }
+        if (req.getStartTime() != null) {
+            a.setStartTime(req.getStartTime());
+        }
+        if (req.getEndTime() != null) {
+            a.setEndTime(req.getEndTime());
+        }
+        if (req.getEnrollDeadline() != null) {
+            a.setEnrollDeadline(req.getEnrollDeadline());
+        }
+        if (req.getCapacity() != null) {
+            a.setCapacity(req.getCapacity());
+        }
+        if (req.getFee() != null) {
+            a.setFee(req.getFee());
+        }
+        if (req.getTargetGrade() != null) {
+            a.setTargetGrade(req.getTargetGrade());
+        }
+        if (req.getSummary() != null) {
+            a.setSummary(req.getSummary());
+        }
+        if (req.getHighlights() != null) {
+            a.setHighlights(TextListUtils.join(req.getHighlights()));
+        }
+        if (req.getGallery() != null) {
+            a.setGallery(TextListUtils.join(req.getGallery()));
+        }
+        if (req.getRecap() != null) {
+            a.setRecap(req.getRecap());
+        }
+        if (req.getPublished() != null) {
+            a.setPublished(req.getPublished());
+        }
+        if (StringUtils.hasText(req.getStatus())) {
+            a.setStatus(req.getStatus());
+        }
     }
 
     @Transactional
@@ -224,11 +328,12 @@ public class ActivityService {
     private Map<String, Object> toDetailView(Activity a, UserPrincipal principal) {
         Map<String, Object> m = baseView(a);
         m.put("summary", a.getSummary());
-        m.put("highlights", a.getHighlights());
-        m.put("gallery", a.getGallery());
+        m.put("highlights", TextListUtils.parse(a.getHighlights()));
+        m.put("gallery", TextListUtils.parse(a.getGallery()));
         m.put("recap", a.getRecap());
         m.put("address", a.getAddress());
         m.put("enrolled", isEnrolled(a, principal));
+        m.put("signed", isEnrolled(a, principal));
         return m;
     }
 
@@ -270,5 +375,27 @@ public class ActivityService {
     @Data
     public static class SignupRequest {
         private Long studentId;
+    }
+
+    @Data
+    public static class ActivitySaveRequest {
+        private String title;
+        private String category;
+        private String coverTone;
+        private String campus;
+        private String address;
+        private LocalDate startDate;
+        private LocalTime startTime;
+        private LocalTime endTime;
+        private LocalDate enrollDeadline;
+        private Integer capacity;
+        private BigDecimal fee;
+        private String targetGrade;
+        private String summary;
+        private List<String> highlights;
+        private List<String> gallery;
+        private String recap;
+        private Boolean published;
+        private String status;
     }
 }

@@ -35,4 +35,10 @@ public class CoursePackageController {
                                                    @RequestBody PackageSaveRequest request) {
         return ApiResponse.ok(coursePackageService.update(principal, id, request));
     }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Map<String, Object>> archive(@AuthenticationPrincipal UserPrincipal principal,
+                                                    @PathVariable Long id) {
+        return ApiResponse.ok(coursePackageService.archive(principal, id));
+    }
 }

@@ -99,7 +99,13 @@ curl -s -X POST http://localhost:8080/api/auth/login \
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/orgs` | 机构列表（家长用于切换孩子所属机构） |
+| GET | `/api/orgs` | 机构列表（含 `campuses[]`；家长用于切换孩子所属机构） |
+
+### 校区 `/api/campuses`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/campuses` | 当前机构校区列表 |
 
 ### 学员 `/api/students`
 
@@ -107,51 +113,59 @@ curl -s -X POST http://localhost:8080/api/auth/login \
 |------|------|------|
 | GET | `/api/students` | 列表（员工按 org；家长跨机构看自己的孩子） |
 | GET | `/api/students/by-phone?phone=` | 按手机号查学员 |
-| POST | `/api/students` | 创建 |
+| POST | `/api/students` | 创建（含 `parentName`） |
 | PUT | `/api/students/{id}` | 更新 |
+| DELETE | `/api/students/{id}` | 软删除（`deleted_at`） |
 
 ### 教案 `/api/packages`
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/packages` | 列表 |
+| GET | `/api/packages` | 列表（过滤已软删；状态兼容上架/下架） |
 | POST | `/api/packages` | 创建 |
 | PUT | `/api/packages/{id}` | 更新 |
+| DELETE | `/api/packages/{id}` | 归档（软删除） |
 
 ### 报读 `/api/enrollments`
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/enrollments?studentId=` | 学员报读列表 |
-| POST | `/api/enrollments` | 代录/更新报读 |
+| POST | `/api/enrollments` | 代录/更新报读（状态兼容：学习中→`ACTIVE` 等） |
 
 ### 班级 `/api/classes`
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/classes` | 列表 |
+| GET | `/api/classes?mine=` | 列表（`mine=true` 时老师只看自己的班；含 `packageName`） |
 | POST | `/api/classes` | 建班 |
+| PUT | `/api/classes/{id}` | 更新班级 |
 | POST | `/api/classes/{id}/students` | 加学员 `{studentId}` |
+| DELETE | `/api/classes/{id}/students/{studentId}` | 移出学员 |
 
 ### 课次 `/api/lessons`
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/lessons?date=yyyy-MM-dd` | 按日期列表 |
+| GET | `/api/lessons?date=yyyy-MM-dd` | 按日期列表（含 `packageName`/`subject`/名单） |
 | GET | `/api/lessons?from=&to=` | 日历区间列表 |
 | GET | `/api/lessons/{id}` | 课次详情（员工看全部考勤；家长仅自己的学员行） |
-| GET | `/api/lessons/student-package?studentId=&packageId=` | 学员某教案下的课次（含评价/消课） |
+| GET | `/api/lessons/student-package?studentId=&packageId=` | 学员某教案下的课次（含评价/消课/`room`/`className`） |
 | POST | `/api/lessons` | 排课（自动带上班级 packageId） |
+| POST | `/api/lessons/{id}/finish` | 下课（状态→`FINISHED`） |
+| POST | `/api/lessons/{id}/absent` | 记旷课 `{studentId, absent}` |
 | POST | `/api/lessons/{id}/makeup` | 临补 |
-| POST | `/api/lessons/{id}/rate-by-teacher` | 老师评价并消课 |
+| POST | `/api/lessons/{id}/rate-by-teacher` | 老师评价并消课（可带 `absent`） |
 | POST | `/api/lessons/{id}/rate-by-student` | 学生评价老师 |
 
 ### 活动 `/api/activities`
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/activities?tab=open\|past\|mine` | 活动列表（机构隔离；家长可用 studentId） |
-| GET | `/api/activities/{id}` | 活动详情 |
+| GET | `/api/activities?tab=open\|past\|mine` | 活动列表（`highlights`/`gallery` 为数组） |
+| GET | `/api/activities/{id}` | 活动详情（已报名时带 `signupId`） |
+| POST | `/api/activities` | 教务创建活动 |
+| PUT | `/api/activities/{id}` | 教务更新活动 |
 | POST | `/api/activities/{id}/signup` | 报名 `{studentId}` |
 | POST | `/api/activities/signups/{signupId}/cancel` | 取消报名 |
 
@@ -159,7 +173,7 @@ curl -s -X POST http://localhost:8080/api/auth/login \
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/finance/summary` | 财务汇总 |
+| GET | `/api/finance/summary` | 财务汇总（含校区 `received`/`refund`/`net`/`netPaid`） |
 | GET | `/api/finance/orders` | 订单流水 |
 
 ### 教师 `/api/teachers`
@@ -168,6 +182,7 @@ curl -s -X POST http://localhost:8080/api/auth/login \
 |------|------|------|
 | GET | `/api/teachers` | 列表 |
 | POST | `/api/teachers` | 创建 |
+| PUT | `/api/teachers/{id}` | 更新 |
 
 ### 白名单 `/api/whitelist`
 
@@ -175,6 +190,15 @@ curl -s -X POST http://localhost:8080/api/auth/login \
 |------|------|------|
 | GET | `/api/whitelist` | 列表 |
 | POST | `/api/whitelist` | 添加 |
+| DELETE | `/api/whitelist/{id}` | 删除 |
+
+### 用户权限 `/api/users`（管理员）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/users` | 本机构员工账号与角色 |
+| POST | `/api/users/grant-role` | 授权 `{phone, name?, role}`（不可授 PARENT） |
+| POST | `/api/users/{userId}/revoke-role` | 撤权 `{role}` |
 
 ## 租户隔离说明
 

@@ -50,11 +50,25 @@ Page({
     })
   },
 
-  onToggleAbsent(e) {
+  async onToggleAbsent(e) {
     const { id, absent } = e.currentTarget.dataset
+    const api = require('../../../services/api')
     motion.tap('light')
-    lessonsService.markAbsent(this.data.id, id, !!absent)
-    this.refresh()
+    wx.showLoading({ title: '更新中', mask: true })
+    try {
+      if (api.isRemoteSession()) {
+        await api.markAbsent(this.data.id, {
+          studentId: Number(id),
+          absent: !!absent
+        })
+      }
+      lessonsService.markAbsent(this.data.id, id, !!absent)
+      this.refresh()
+    } catch (err) {
+      wx.showToast({ title: (err && err.message) || '操作失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
   },
 
   onFinish() {
@@ -63,12 +77,23 @@ Page({
       title: '确认下课？',
       content: '下课后请评价学生以消课。学生评价老师可选。临时插班不改变原班归属。',
       confirmText: '确认下课',
-      success: (res) => {
+      success: async (res) => {
         if (!res.confirm) return
+        const api = require('../../../services/api')
         motion.tap('medium')
-        const result = lessonsService.finishLesson(this.data.id)
-        wx.showToast({ title: result.ok ? '已下课，请评价学生' : result.message, icon: 'none' })
-        this.refresh()
+        wx.showLoading({ title: '下课中', mask: true })
+        try {
+          if (api.isRemoteSession()) {
+            await api.finishLesson(this.data.id)
+          }
+          const result = lessonsService.finishLesson(this.data.id)
+          wx.showToast({ title: result.ok ? '已下课，请评价学生' : result.message, icon: 'none' })
+          this.refresh()
+        } catch (err) {
+          wx.showToast({ title: (err && err.message) || '下课失败', icon: 'none' })
+        } finally {
+          wx.hideLoading()
+        }
       }
     })
   },

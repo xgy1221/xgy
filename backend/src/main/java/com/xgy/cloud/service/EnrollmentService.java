@@ -59,7 +59,7 @@ public class EnrollmentService {
             int total = req.getTotalLessons() != null ? req.getTotalLessons() : pkg.getLessonCount();
             enrollment.setTotalLessons(total);
             enrollment.setRemainLessons(req.getRemainLessons() != null ? req.getRemainLessons() : total);
-            enrollment.setStatus(StringUtils.hasText(req.getStatus()) ? req.getStatus() : "ACTIVE");
+            enrollment.setStatus(normalizeStatus(req.getStatus(), "ACTIVE"));
             enrollment.setSource(StringUtils.hasText(req.getSource()) ? req.getSource() : "教务代录");
         } else {
             if (req.getTotalLessons() != null) {
@@ -69,7 +69,7 @@ public class EnrollmentService {
                 enrollment.setRemainLessons(req.getRemainLessons());
             }
             if (StringUtils.hasText(req.getStatus())) {
-                enrollment.setStatus(req.getStatus());
+                enrollment.setStatus(normalizeStatus(req.getStatus(), enrollment.getStatus()));
             }
             if (StringUtils.hasText(req.getSource())) {
                 enrollment.setSource(req.getSource());
@@ -77,6 +77,25 @@ public class EnrollmentService {
         }
         enrollmentRepository.save(enrollment);
         return toView(enrollment);
+    }
+
+    /** 兼容前端中文状态：学习中/已结业 → ACTIVE/FINISHED */
+    private String normalizeStatus(String status, String fallback) {
+        if (!StringUtils.hasText(status)) {
+            return fallback;
+        }
+        String s = status.trim();
+        if ("学习中".equals(s) || "在读".equals(s) || "active".equalsIgnoreCase(s)) {
+            return "ACTIVE";
+        }
+        if ("已结业".equals(s) || "已完成".equals(s) || "finished".equalsIgnoreCase(s)
+                || "completed".equalsIgnoreCase(s)) {
+            return "FINISHED";
+        }
+        if ("暂停".equals(s) || "suspended".equalsIgnoreCase(s)) {
+            return "SUSPENDED";
+        }
+        return s.toUpperCase();
     }
 
     private void assertStudentAccess(UserPrincipal principal, Student student) {

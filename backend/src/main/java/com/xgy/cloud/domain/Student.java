@@ -21,6 +21,9 @@ public class Student extends BaseEntity {
     @Column(name = "parent_phone", nullable = false, length = 20)
     private String parentPhone;
 
+    @Column(name = "parent_name", length = 64)
+    private String parentName;
+
     @Column(name = "student_name", nullable = false, length = 64)
     private String studentName;
 

@@ -1,7 +1,9 @@
 package com.xgy.cloud.service;
 
+import com.xgy.cloud.domain.Campus;
 import com.xgy.cloud.domain.Org;
 import com.xgy.cloud.domain.Student;
+import com.xgy.cloud.repository.CampusRepository;
 import com.xgy.cloud.repository.OrgRepository;
 import com.xgy.cloud.repository.StudentRepository;
 import com.xgy.cloud.security.SecurityUtils;
@@ -22,6 +24,7 @@ public class OrgService {
 
     private final OrgRepository orgRepository;
     private final StudentRepository studentRepository;
+    private final CampusRepository campusRepository;
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> list(UserPrincipal principal) {
@@ -47,6 +50,10 @@ public class OrgService {
         m.put("code", org.getCode());
         m.put("name", org.getName());
         m.put("status", org.getStatus());
+        List<String> campuses = campusRepository.findByOrgId(org.getId()).stream()
+                .map(Campus::getName)
+                .collect(Collectors.toList());
+        m.put("campuses", campuses);
         return m;
     }
 }

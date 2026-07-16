@@ -20,8 +20,9 @@ public class ClassController {
     private final ClassService classService;
 
     @GetMapping
-    public ApiResponse<List<Map<String, Object>>> list(@AuthenticationPrincipal UserPrincipal principal) {
-        return ApiResponse.ok(classService.list(principal));
+    public ApiResponse<List<Map<String, Object>>> list(@AuthenticationPrincipal UserPrincipal principal,
+                                                       @RequestParam(required = false) Boolean mine) {
+        return ApiResponse.ok(classService.list(principal, mine));
     }
 
     @PostMapping
@@ -30,11 +31,25 @@ public class ClassController {
         return ApiResponse.ok(classService.create(principal, request));
     }
 
+    @PutMapping("/{id}")
+    public ApiResponse<Map<String, Object>> update(@AuthenticationPrincipal UserPrincipal principal,
+                                                   @PathVariable Long id,
+                                                   @RequestBody ClassCreateRequest request) {
+        return ApiResponse.ok(classService.update(principal, id, request));
+    }
+
     @PostMapping("/{id}/students")
     public ApiResponse<Map<String, Object>> addStudent(@AuthenticationPrincipal UserPrincipal principal,
                                                        @PathVariable Long id,
                                                        @RequestBody AddStudentRequest request) {
         return ApiResponse.ok(classService.addStudent(principal, id, request.getStudentId()));
+    }
+
+    @DeleteMapping("/{id}/students/{studentId}")
+    public ApiResponse<Map<String, Object>> removeStudent(@AuthenticationPrincipal UserPrincipal principal,
+                                                          @PathVariable Long id,
+                                                          @PathVariable Long studentId) {
+        return ApiResponse.ok(classService.removeStudent(principal, id, studentId));
     }
 
     @Data

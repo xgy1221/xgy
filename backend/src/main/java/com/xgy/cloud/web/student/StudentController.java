@@ -42,4 +42,10 @@ public class StudentController {
                                                    @RequestBody StudentSaveRequest request) {
         return ApiResponse.ok(studentService.update(principal, id, request));
     }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Map<String, Object>> archive(@AuthenticationPrincipal UserPrincipal principal,
+                                                    @PathVariable Long id) {
+        return ApiResponse.ok(studentService.archive(principal, id));
+    }
 }
