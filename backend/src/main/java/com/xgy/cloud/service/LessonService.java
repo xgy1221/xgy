@@ -33,7 +33,24 @@ public class LessonService {
         Long orgId = resolveOrgId(principal);
         LocalDate d = date != null ? date : LocalDate.now();
         List<Lesson> lessons = lessonRepository.findByOrgIdAndLessonDateOrderByStartTimeAsc(orgId, d);
+        return filterAndMap(principal, lessons);
+    }
 
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> listByRange(UserPrincipal principal, LocalDate from, LocalDate to) {
+        if (from == null || to == null) {
+            throw new BizException("请指定 from 与 to");
+        }
+        if (to.isBefore(from)) {
+            throw new BizException("to 不能早于 from");
+        }
+        Long orgId = resolveOrgId(principal);
+        List<Lesson> lessons = lessonRepository
+                .findByOrgIdAndLessonDateBetweenOrderByLessonDateAscStartTimeAsc(orgId, from, to);
+        return filterAndMap(principal, lessons);
+    }
+
+    private List<Map<String, Object>> filterAndMap(UserPrincipal principal, List<Lesson> lessons) {
         if (SecurityUtils.isParent()) {
             Long studentId = principal.getCurrentStudentId();
             if (studentId == null) {
@@ -44,8 +61,55 @@ public class LessonService {
                     .collect(Collectors.toSet());
             lessons = lessons.stream().filter(l -> lessonIds.contains(l.getId())).collect(Collectors.toList());
         }
+        return lessons.stream().map(l -> toView(l, principal, false)).collect(Collectors.toList());
+    }
 
-        return lessons.stream().map(this::toView).collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public Map<String, Object> detail(UserPrincipal principal, Long id) {
+        Lesson lesson = loadLessonForPrincipal(principal, id);
+        return toView(lesson, principal, true);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> listStudentPackage(UserPrincipal principal, Long studentId, Long packageId) {
+        if (studentId == null || packageId == null) {
+            throw new BizException("请指定 studentId 与 packageId");
+        }
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new BizException("学员不存在"));
+        assertStudentAccess(principal, student);
+
+        Long orgId = student.getOrgId();
+        List<Lesson> lessons = lessonRepository.findByOrgIdAndPackageIdOrderByLessonDateAscStartTimeAsc(orgId, packageId);
+
+        Map<Long, LessonAttendee> attendeeByLesson = lessonAttendeeRepository.findByStudentId(studentId).stream()
+                .collect(Collectors.toMap(LessonAttendee::getLessonId, a -> a, (a, b) -> a, LinkedHashMap::new));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Lesson lesson : lessons) {
+            LessonAttendee att = attendeeByLesson.get(lesson.getId());
+            if (att == null) {
+                continue;
+            }
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", lesson.getId());
+            m.put("date", lesson.getLessonDate());
+            m.put("startTime", lesson.getStartTime());
+            m.put("endTime", lesson.getEndTime());
+            m.put("status", lesson.getStatus());
+            if (lesson.getTeacherId() != null) {
+                teacherRepository.findById(lesson.getTeacherId())
+                        .ifPresent(t -> m.put("teacherName", t.getName()));
+            } else {
+                m.put("teacherName", null);
+            }
+            m.put("teacherScore", att.getTeacherRating());
+            m.put("teacherComment", att.getTeacherComment());
+            m.put("hasTeacherEval", att.getTeacherRating() != null);
+            m.put("consumed", Boolean.TRUE.equals(att.getConsumed()));
+            result.add(m);
+        }
+        return result;
     }
 
     @Transactional
@@ -60,6 +124,7 @@ public class LessonService {
         Lesson lesson = new Lesson();
         lesson.setOrgId(orgId);
         lesson.setClassId(clazz.getId());
+        lesson.setPackageId(clazz.getPackageId());
         lesson.setTeacherId(req.getTeacherId() != null ? req.getTeacherId() : clazz.getTeacherId());
         lesson.setLessonDate(req.getLessonDate());
         lesson.setStartTime(req.getStartTime());
@@ -83,7 +148,7 @@ public class LessonService {
             att.setAbsent(false);
             lessonAttendeeRepository.save(att);
         }
-        return toView(lesson);
+        return toView(lesson, principal, true);
     }
 
     @Transactional
@@ -116,7 +181,7 @@ public class LessonService {
         att.setConsumed(false);
         att.setAbsent(false);
         lessonAttendeeRepository.save(att);
-        return toView(lesson);
+        return toView(lesson, principal, true);
     }
 
     @Transactional
@@ -141,7 +206,7 @@ public class LessonService {
         lessonAttendeeRepository.save(att);
         lesson.setStatus("FINISHED");
         lessonRepository.save(lesson);
-        return toView(lesson);
+        return toView(lesson, principal, true);
     }
 
     @Transactional
@@ -165,7 +230,7 @@ public class LessonService {
 
         Lesson lesson = lessonRepository.findById(lessonId)
                 .orElseThrow(() -> new BizException("课次不存在"));
-        return toView(lesson);
+        return toView(lesson, principal, true);
     }
 
     private void consumeEnrollment(LessonAttendee att) {
@@ -182,6 +247,39 @@ public class LessonService {
         });
     }
 
+    private Lesson loadLessonForPrincipal(UserPrincipal principal, Long id) {
+        if (SecurityUtils.isParent()) {
+            Lesson lesson = lessonRepository.findById(id)
+                    .orElseThrow(() -> new BizException("课次不存在"));
+            Long studentId = principal.getCurrentStudentId();
+            if (studentId == null) {
+                throw new BizException("请先切换学员");
+            }
+            lessonAttendeeRepository.findByLessonIdAndStudentId(id, studentId)
+                    .orElseThrow(() -> new BizException(403, "无权查看该课次"));
+            if (principal.getOrgId() != null && !principal.getOrgId().equals(lesson.getOrgId())) {
+                throw new BizException(403, "课次不属于当前机构");
+            }
+            return lesson;
+        }
+        Long orgId = SecurityUtils.requireOrgId();
+        return lessonRepository.findByIdAndOrgId(id, orgId)
+                .orElseThrow(() -> new BizException("课次不存在"));
+    }
+
+    private void assertStudentAccess(UserPrincipal principal, Student student) {
+        if (SecurityUtils.isParent()) {
+            if (!principal.getPhone().equals(student.getParentPhone())) {
+                throw new BizException(403, "无权查看该学员课次");
+            }
+            return;
+        }
+        Long orgId = SecurityUtils.requireOrgId();
+        if (!orgId.equals(student.getOrgId())) {
+            throw new BizException(403, "学员不属于当前机构");
+        }
+    }
+
     private Long resolveOrgId(UserPrincipal principal) {
         if (principal.getOrgId() != null) {
             return principal.getOrgId();
@@ -189,11 +287,12 @@ public class LessonService {
         throw new BizException("缺少机构上下文");
     }
 
-    private Map<String, Object> toView(Lesson lesson) {
+    private Map<String, Object> toView(Lesson lesson, UserPrincipal principal, boolean includeAttendees) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", lesson.getId());
         m.put("orgId", lesson.getOrgId());
         m.put("classId", lesson.getClassId());
+        m.put("packageId", lesson.getPackageId());
         m.put("teacherId", lesson.getTeacherId());
         m.put("lessonDate", lesson.getLessonDate());
         m.put("startTime", lesson.getStartTime());
@@ -204,26 +303,38 @@ public class LessonService {
         if (lesson.getTeacherId() != null) {
             teacherRepository.findById(lesson.getTeacherId()).ifPresent(t -> m.put("teacherName", t.getName()));
         }
-        List<Map<String, Object>> attendees = lessonAttendeeRepository.findByLessonId(lesson.getId()).stream()
-                .map(a -> {
-                    Map<String, Object> am = new LinkedHashMap<>();
-                    am.put("id", a.getId());
-                    am.put("studentId", a.getStudentId());
-                    am.put("type", a.getType());
-                    am.put("homeClassId", a.getHomeClassId());
-                    am.put("enrollmentId", a.getEnrollmentId());
-                    am.put("teacherRating", a.getTeacherRating());
-                    am.put("teacherComment", a.getTeacherComment());
-                    am.put("studentRating", a.getStudentRating());
-                    am.put("studentComment", a.getStudentComment());
-                    am.put("consumed", a.getConsumed());
-                    am.put("absent", a.getAbsent());
-                    studentRepository.findById(a.getStudentId())
-                            .ifPresent(s -> am.put("studentName", s.getStudentName()));
-                    return am;
-                }).collect(Collectors.toList());
-        m.put("attendees", attendees);
+        if (includeAttendees) {
+            List<LessonAttendee> attendees = lessonAttendeeRepository.findByLessonId(lesson.getId());
+            if (SecurityUtils.isParent()) {
+                Long studentId = principal.getCurrentStudentId();
+                attendees = attendees.stream()
+                        .filter(a -> Objects.equals(a.getStudentId(), studentId))
+                        .collect(Collectors.toList());
+            }
+            List<Map<String, Object>> attViews = attendees.stream()
+                    .map(this::attendeeView)
+                    .collect(Collectors.toList());
+            m.put("attendees", attViews);
+        }
         return m;
+    }
+
+    private Map<String, Object> attendeeView(LessonAttendee a) {
+        Map<String, Object> am = new LinkedHashMap<>();
+        am.put("id", a.getId());
+        am.put("studentId", a.getStudentId());
+        am.put("type", a.getType());
+        am.put("homeClassId", a.getHomeClassId());
+        am.put("enrollmentId", a.getEnrollmentId());
+        am.put("teacherRating", a.getTeacherRating());
+        am.put("teacherComment", a.getTeacherComment());
+        am.put("studentRating", a.getStudentRating());
+        am.put("studentComment", a.getStudentComment());
+        am.put("consumed", a.getConsumed());
+        am.put("absent", a.getAbsent());
+        studentRepository.findById(a.getStudentId())
+                .ifPresent(s -> am.put("studentName", s.getStudentName()));
+        return am;
     }
 
     @Data

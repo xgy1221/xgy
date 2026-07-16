@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -39,4 +40,7 @@ public class Student extends BaseEntity {
 
     @Column(nullable = false, length = 32)
     private String status = "ACTIVE";
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }

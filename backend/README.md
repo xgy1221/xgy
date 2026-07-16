@@ -132,10 +132,22 @@ curl -s -X POST http://localhost:8080/api/auth/login \
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/lessons?date=yyyy-MM-dd` | 按日期列表 |
-| POST | `/api/lessons` | 排课 |
+| GET | `/api/lessons?from=&to=` | 日历区间列表 |
+| GET | `/api/lessons/{id}` | 课次详情（员工看全部考勤；家长仅自己的学员行） |
+| GET | `/api/lessons/student-package?studentId=&packageId=` | 学员某教案下的课次（含评价/消课） |
+| POST | `/api/lessons` | 排课（自动带上班级 packageId） |
 | POST | `/api/lessons/{id}/makeup` | 临补 |
 | POST | `/api/lessons/{id}/rate-by-teacher` | 老师评价并消课 |
 | POST | `/api/lessons/{id}/rate-by-student` | 学生评价老师 |
+
+### 活动 `/api/activities`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/activities?tab=open\|past\|mine` | 活动列表（机构隔离；家长可用 studentId） |
+| GET | `/api/activities/{id}` | 活动详情 |
+| POST | `/api/activities/{id}/signup` | 报名 `{studentId}` |
+| POST | `/api/activities/signups/{signupId}/cancel` | 取消报名 |
 
 ### 财务 `/api/finance`（合伙人 / 管理员）
 

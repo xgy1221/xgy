@@ -21,6 +21,9 @@ public class Lesson extends BaseEntity {
     @Column(name = "class_id", nullable = false)
     private Long classId;
 
+    @Column(name = "package_id")
+    private Long packageId;
+
     @Column(name = "teacher_id")
     private Long teacherId;
 

@@ -14,4 +14,9 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
             Long orgId, LocalDate from, LocalDate to);
 
     Optional<Lesson> findByIdAndOrgId(Long id, Long orgId);
+
+    List<Lesson> findByOrgIdAndPackageIdOrderByLessonDateAscStartTimeAsc(Long orgId, Long packageId);
+
+    List<Lesson> findByOrgIdAndPackageIdAndLessonDateBetweenOrderByLessonDateAscStartTimeAsc(
+            Long orgId, Long packageId, LocalDate from, LocalDate to);
 }

@@ -100,11 +100,18 @@ public class EnrollmentService {
         m.put("packageId", e.getPackageId());
         m.put("totalLessons", e.getTotalLessons());
         m.put("remainLessons", e.getRemainLessons());
+        int total = e.getTotalLessons() != null ? e.getTotalLessons() : 0;
+        int remain = e.getRemainLessons() != null ? e.getRemainLessons() : 0;
+        int used = Math.max(0, total - remain);
+        m.put("usedLessons", used);
+        m.put("progress", total > 0 ? Math.round(used * 1000.0 / total) / 10.0 : 0);
+        m.put("paidAmount", e.getPaidAmount());
         m.put("status", e.getStatus());
         m.put("source", e.getSource());
         coursePackageRepository.findById(e.getPackageId()).ifPresent(pkg -> {
             m.put("packageName", pkg.getName());
             m.put("subject", pkg.getSubject());
+            m.put("grade", pkg.getGrade());
             m.put("price", pkg.getPrice());
         });
         return m;

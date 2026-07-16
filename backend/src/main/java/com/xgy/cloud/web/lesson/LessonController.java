@@ -21,10 +21,29 @@ public class LessonController {
     private final LessonService lessonService;
 
     @GetMapping
-    public ApiResponse<List<Map<String, Object>>> listByDate(
+    public ApiResponse<List<Map<String, Object>>> list(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        if (from != null || to != null) {
+            return ApiResponse.ok(lessonService.listByRange(principal, from, to));
+        }
         return ApiResponse.ok(lessonService.listByDate(principal, date));
+    }
+
+    @GetMapping("/student-package")
+    public ApiResponse<List<Map<String, Object>>> studentPackage(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam Long studentId,
+            @RequestParam Long packageId) {
+        return ApiResponse.ok(lessonService.listStudentPackage(principal, studentId, packageId));
+    }
+
+    @GetMapping("/{id}")
+    public ApiResponse<Map<String, Object>> detail(@AuthenticationPrincipal UserPrincipal principal,
+                                                   @PathVariable Long id) {
+        return ApiResponse.ok(lessonService.detail(principal, id));
     }
 
     @PostMapping
