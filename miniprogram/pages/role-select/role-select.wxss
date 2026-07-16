@@ -1,0 +1,86 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  padding: 40rpx 32rpx 60rpx;
+  overflow: hidden;
+}
+
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 40% at 100% 0%, rgba(217, 119, 6, 0.12), transparent 50%),
+    linear-gradient(180deg, #e8f0ef 0%, var(--bg) 40%);
+}
+
+.page > view:not(.atmosphere) {
+  position: relative;
+  z-index: 1;
+}
+
+.kicker {
+  font-size: 22rpx;
+  letter-spacing: 3rpx;
+  color: var(--text-secondary);
+}
+
+.title {
+  margin-top: 10rpx;
+  font-size: 44rpx;
+  font-weight: 700;
+  color: var(--brand);
+  font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
+}
+
+.sub {
+  margin-top: 14rpx;
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.role-list {
+  margin-top: 40rpx;
+}
+
+.role-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 18rpx;
+  padding: 32rpx;
+  margin-bottom: 18rpx;
+  border-left: 10rpx solid #0f3d3e;
+  box-shadow: 0 10rpx 28rpx rgba(15, 61, 62, 0.08);
+}
+
+.role-card.last {
+  background: #f3faf9;
+  box-shadow: 0 12rpx 32rpx rgba(15, 61, 62, 0.12);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.role-name {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #14201f;
+}
+
+.enter {
+  font-size: 26rpx;
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.role-desc {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: #5b6b69;
+  line-height: 1.5;
+}

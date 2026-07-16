@@ -1,0 +1,33 @@
+<view class="container">
+  <view class="page-title">业绩明细</view>
+  <view class="page-sub">本月关键指标（手机快览）</view>
+
+  <view class="section card">
+    <view class="list-item"><text>签约额</text><text class="strong">¥{{stats.monthSales}}</text></view>
+    <view class="list-item"><text>实收</text><text class="strong">¥{{stats.monthReceived}}</text></view>
+    <view class="list-item"><text>新增学员</text><text class="strong">{{stats.monthNewStudents}}</text></view>
+    <view class="list-item"><text>退费</text><text class="strong">¥{{stats.monthRefund}}</text></view>
+    <view class="list-item"><text>分成比例</text><text class="strong">{{stats.shareRatio}}</text></view>
+    <view class="list-item"><text>应分成</text><text class="amount">¥{{stats.shareAmount}}</text></view>
+  </view>
+
+  <view class="section card">
+    <view class="section-title">热销教案（本校区）</view>
+    <view class="list-item" wx:for="{{stats.topPackages}}" wx:key="name">
+      <view>
+        <view>{{item.name}}</view>
+        <view class="muted">{{item.count}} 单</view>
+      </view>
+      <text class="strong">¥{{item.amount}}</text>
+    </view>
+  </view>
+
+  <view class="web-hint">
+    <view class="web-hint-title">导出与对账走 Web</view>
+    <view class="web-hint-text">
+      市面教培后台通常把完整财务报表放在电脑端：按日/月筛选、导出、退费审批。此处仅同步关键数字，方便外出查看。
+    </view>
+  </view>
+
+  <role-nav current="/pages/partner/performance/performance" />
+</view>

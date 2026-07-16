@@ -1,0 +1,147 @@
+<view class="page">
+  <view class="atmosphere"></view>
+
+  <view class="head">
+    <view>
+      <view class="head-kicker">学习进度</view>
+      <view class="head-title">{{orgName || '我的'}}</view>
+      <view class="head-sub">切孩子 → 切教案 → 看课次与老师评价</view>
+    </view>
+    <view class="account-entry" bindtap="toggleAccount">
+      <view class="mini-avatar">{{avatarText}}</view>
+    </view>
+  </view>
+
+  <!-- 账户抽屉：角色切换 / 退出，不抢首屏 -->
+  <view class="account-sheet" wx:if="{{showAccount}}">
+    <view class="account-row">
+      <view>
+        <view class="account-name">{{name}}</view>
+        <view class="muted">{{phone}} · {{roleName}}</view>
+      </view>
+      <text class="danger" bindtap="onLogout">退出</text>
+    </view>
+    <view class="role-switch" wx:if="{{multiRole}}">
+      <view
+        class="role-chip {{item.key === currentRoleKey ? 'on' : ''}}"
+        wx:for="{{roleOptions}}"
+        wx:key="key"
+        data-role="{{item.key}}"
+        bindtap="onPickRole"
+      >{{item.name}}</view>
+    </view>
+  </view>
+
+  <view class="swap {{contentReady ? 'in' : 'out'}}">
+  <view class="section">
+    <view class="section-label">孩子</view>
+    <view class="empty-block" wx:if="{{!children.length}}">
+      <view class="empty-title">还没有学员档案</view>
+      <view class="muted">在读学员一般由教务建好，家长打开就能看。也可自行添加。</view>
+      <button class="btn-primary add-btn" bindtap="onAddChild">添加学员</button>
+    </view>
+    <scroll-view scroll-x class="chip-scroll" wx:else>
+      <view
+        class="chip {{item.id === currentStudentId ? 'on' : ''}}"
+        wx:for="{{children}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="onSwitchChild"
+      >{{item.chipText}}</view>
+    </scroll-view>
+  </view>
+
+  <view class="section" wx:if="{{children.length}}">
+    <view class="section-label">教案</view>
+    <view class="empty-block" wx:if="{{!packages.length}}">
+      <view class="empty-title">还没有报读</view>
+      <view class="muted">教务绑定教案后，这里会显示已上进度与老师评价。</view>
+      <button class="btn-primary add-btn" bindtap="goAddPackages">去了解教案</button>
+    </view>
+    <scroll-view scroll-x class="chip-scroll" wx:else>
+      <view
+        class="chip pkg {{item.id === currentPackageId ? 'on' : ''}}"
+        wx:for="{{packages}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="onSwitchPackage"
+      >
+        <view>{{item.chipText}}</view>
+        <view class="chip-sub">{{item.usedLessons}}/{{item.totalLessons}}</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 首屏核心：进度 + 最新评价 -->
+  <view class="progress-hero" wx:if="{{currentPackage}}">
+    <view class="ph-top">
+      <view class="ph-name">{{currentPackage.name}}</view>
+      <view class="tag {{currentPackage.status === '学习中' ? 'ok' : 'warn'}}">{{currentPackage.status}}</view>
+    </view>
+    <view class="ph-nums">
+      <text class="ph-strong">已上 {{currentPackage.usedLessons}}</text>
+      <text class="ph-slash">/</text>
+      <text>共 {{currentPackage.totalLessons}} 课</text>
+      <text class="ph-remain">剩余 {{currentPackage.remainLessons}}</text>
+    </view>
+    <view class="progress-wrap">
+      <view class="progress" style="width: {{currentPackage.progress}}%;"></view>
+    </view>
+    <view class="latest-eval" wx:if="{{latestEval}}">
+      <view class="eval-kicker">最近一次老师评价 · {{latestEval.dateText}}</view>
+      <view class="stars">{{latestEval.teacherStars}}</view>
+      <view class="eval-text" wx:if="{{latestEval.teacherComment}}">{{latestEval.teacherComment}}</view>
+      <view class="muted" wx:else>老师给了评分</view>
+    </view>
+    <view class="latest-eval muted" wx:elif="{{evalCount === 0}}">
+      上课并由老师评价后，评语会出现在这里。
+    </view>
+  </view>
+
+  <view class="section" wx:if="{{currentPackage}}">
+    <view class="section-label row-label">
+      <text>课次与评价</text>
+      <text class="muted" wx:if="{{evalCount}}">{{evalCount}} 条评价</text>
+    </view>
+
+    <view class="empty-block" wx:if="{{!displayLessons.length}}">
+      <view class="empty-title">该教案下还没有课次</view>
+      <view class="muted">排课并上完课后，可在此查看老师评语。</view>
+      <button class="btn-ghost add-btn" bindtap="goScheduleTab">去课表看看</button>
+    </view>
+
+    <view
+      class="lesson-card"
+      wx:for="{{displayLessons}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="goLesson"
+    >
+      <view class="row">
+        <view>
+          <view class="item-title">{{item.dateText}}</view>
+          <view class="muted">{{item.startTime}}-{{item.endTime}} · {{item.teacherName}}</view>
+        </view>
+        <view class="tag {{item.status === 'finished' ? 'ok' : 'warn'}}">{{item.statusText}}</view>
+      </view>
+      <view class="eval" wx:if="{{item.hasTeacherEval}}">
+        <view class="stars">{{item.teacherStars}}</view>
+        <view class="eval-text" wx:if="{{item.teacherComment}}">{{item.teacherComment}}</view>
+      </view>
+      <view class="eval muted" wx:elif="{{item.status === 'finished'}}">老师暂未评价</view>
+    </view>
+
+    <button class="btn-ghost more-btn" wx:if="{{hasMore}}" bindtap="onLoadMore">
+      加载更多（还有 {{lessonRows.length - shownCount}} 节）
+    </button>
+  </view>
+
+  <view class="footer-links" wx:if="{{children.length}}">
+    <view class="link-item tapable" bindtap="goAddPackages">为孩子补选教案</view>
+    <view class="link-item tapable" bindtap="onAddChild">添加学员</view>
+    <view class="link-item tapable" bindtap="goSchedule">全部课次</view>
+  </view>
+  </view>
+
+  <role-nav current="/pages/student/mine/mine" />
+</view>

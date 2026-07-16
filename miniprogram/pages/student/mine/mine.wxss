@@ -1,0 +1,327 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  padding: 28rpx 32rpx calc(140rpx + env(safe-area-inset-bottom));
+  overflow: hidden;
+}
+
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 40% at 0% 0%, rgba(15, 61, 62, 0.1), transparent 55%),
+    linear-gradient(180deg, #e8f0ef 0%, var(--bg) 32%);
+}
+
+.page > view:not(.atmosphere) {
+  position: relative;
+  z-index: 1;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  animation: rise 0.45s ease both;
+}
+
+.head-kicker {
+  font-size: 22rpx;
+  letter-spacing: 3rpx;
+  color: var(--text-secondary);
+  margin-bottom: 8rpx;
+}
+
+.head-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: var(--brand);
+  font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
+}
+
+.head-sub {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.account-entry {
+  padding: 4rpx;
+}
+
+.mini-avatar {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 28rpx;
+}
+
+.account-sheet {
+  margin-top: 20rpx;
+  padding: 24rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1rpx solid var(--border);
+  animation: rise 0.3s ease both;
+}
+
+.account-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.account-name {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.danger {
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 26rpx;
+}
+
+.role-switch {
+  margin-top: 18rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.role-chip {
+  padding: 10rpx 20rpx;
+  border-radius: 10rpx;
+  background: #eef4f3;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.role-chip.on {
+  background: var(--brand);
+  color: #fff;
+  font-weight: 600;
+}
+
+.section {
+  margin-top: 32rpx;
+  animation: rise 0.5s ease 0.06s both;
+}
+
+.section-label {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 14rpx;
+  letter-spacing: 1rpx;
+}
+
+.row-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.chip-scroll {
+  white-space: nowrap;
+  width: 100%;
+}
+
+.chip {
+  display: inline-flex;
+  flex-direction: column;
+  margin-right: 12rpx;
+  padding: 14rpx 22rpx;
+  border-radius: 12rpx;
+  background: rgba(255, 255, 255, 0.85);
+  color: #5b6b69;
+  border: 2rpx solid transparent;
+  font-size: 26rpx;
+  vertical-align: top;
+}
+
+.chip.pkg {
+  min-width: 150rpx;
+}
+
+.chip.on {
+  background: var(--brand);
+  color: #fff;
+  font-weight: 600;
+}
+
+.chip-sub {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  opacity: 0.85;
+}
+
+.progress-hero {
+  margin-top: 28rpx;
+  padding: 32rpx 28rpx;
+  border-radius: 24rpx;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(232, 242, 241, 0.95));
+  border: 1rpx solid rgba(15, 61, 62, 0.08);
+  box-shadow: 0 12rpx 36rpx rgba(15, 61, 62, 0.08);
+  animation: rise 0.55s ease 0.1s both;
+}
+
+.ph-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+
+.ph-name {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: var(--brand);
+  font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
+  flex: 1;
+}
+
+.ph-nums {
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
+.ph-strong {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.ph-slash {
+  opacity: 0.4;
+}
+
+.ph-remain {
+  margin-left: auto;
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.progress-wrap {
+  margin-top: 18rpx;
+  height: 12rpx;
+  background: #e0ebea;
+  border-radius: 999rpx;
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  background: linear-gradient(90deg, #0f3d3e, #1a5c5e);
+  border-radius: 999rpx;
+  transition: width 0.4s ease;
+}
+
+.latest-eval {
+  margin-top: 24rpx;
+  padding-top: 22rpx;
+  border-top: 1rpx solid #e5eeec;
+}
+
+.eval-kicker {
+  font-size: 22rpx;
+  color: var(--text-secondary);
+  margin-bottom: 8rpx;
+}
+
+.stars {
+  color: #d97706;
+  font-size: 30rpx;
+  letter-spacing: 2rpx;
+  margin-bottom: 8rpx;
+}
+
+.eval-text {
+  font-size: 28rpx;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.lesson-card {
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid rgba(220, 229, 227, 0.9);
+}
+
+.lesson-card:last-child {
+  border-bottom: none;
+}
+
+.item-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  margin-bottom: 6rpx;
+}
+
+.eval {
+  margin-top: 14rpx;
+}
+
+.empty-block {
+  padding: 28rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1rpx solid var(--border);
+}
+
+.empty-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+
+.add-btn {
+  margin-top: 20rpx;
+  height: 76rpx;
+  line-height: 76rpx;
+}
+
+.more-btn {
+  margin-top: 12rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  font-size: 26rpx;
+}
+
+.footer-links {
+  margin-top: 40rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx 28rpx;
+}
+
+.link-item {
+  font-size: 24rpx;
+  color: var(--brand);
+  font-weight: 600;
+  padding: 8rpx 0;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

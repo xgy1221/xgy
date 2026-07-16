@@ -1,0 +1,22 @@
+<view class="container">
+  <view class="page-title">团队成员</view>
+  <view class="page-sub">多合伙人或单人 + 顾问结构</view>
+  <view class="section">
+    <view class="card" wx:for="{{list}}" wx:key="id">
+      <view class="row">
+        <view>
+          <view class="item-title">{{item.name}}</view>
+          <view class="muted">{{item.role}} · 学员 {{item.students}}</view>
+        </view>
+        <view class="amount">¥{{item.sales}}</view>
+      </view>
+    </view>
+  </view>
+  <view class="web-hint">
+    <view class="web-hint-title">分润规则在 Web 配置</view>
+    <view class="web-hint-text">
+      顾问归属、校区分成比例等请在 Web「财务中心 / 账号权限」维护；小程序只展示本月贡献概况。
+    </view>
+  </view>
+  <role-nav current="/pages/partner/team/team" />
+</view>

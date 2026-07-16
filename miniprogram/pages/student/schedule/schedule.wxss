@@ -1,0 +1,5 @@
+.item-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 6rpx;
+}

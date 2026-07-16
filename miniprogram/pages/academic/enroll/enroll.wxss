@@ -1,0 +1,36 @@
+.item-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 6rpx;
+}
+
+.right {
+  text-align: right;
+}
+
+.link {
+  color: #0f3d3e;
+  font-weight: 600;
+}
+
+.source {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #8a9a97;
+}
+
+.ops {
+  margin-top: 16rpx;
+}
+
+.mini {
+  display: inline-block;
+  margin: 0;
+  padding: 0 22rpx;
+  line-height: 56rpx;
+  font-size: 24rpx;
+}
+
+.entry .muted {
+  margin-top: 6rpx;
+}

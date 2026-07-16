@@ -1,0 +1,34 @@
+const auth = require('../../../utils/auth')
+const mock = require('../../../services/mock')
+
+Page({
+  data: { campus: '', pendingSchedule: 0, pendingPay: 0, enrolls: [] },
+  onShow() {
+    if (!auth.requireAuth()) return
+    const u = auth.getSession().user
+    const orgs = require('../../../services/orgs')
+    const enrolls = mock.ACADEMIC_ENROLLS
+    this.setData({
+      campus: `${orgs.getOrgShortName(u.orgId) || ''} · ${u.campus || '校区'}`,
+      pendingSchedule: enrolls.filter((e) => e.status === '待排课').length,
+      pendingPay: enrolls.filter((e) => e.status === '待缴费').length,
+      enrolls
+    })
+  },
+  goImport() {
+    wx.navigateTo({ url: '/pages/academic/import/import' })
+  },
+  goPhones() {
+    wx.navigateTo({ url: '/pages/academic/phones/phones' })
+  },
+  goPackages() {
+    wx.redirectTo({ url: '/pages/academic/courses/courses' })
+  },
+  goSetup() {
+    wx.navigateTo({ url: '/pages/academic/setup/setup' })
+  },
+  goSchedule() {
+    wx.redirectTo({ url: '/pages/academic/schedule/schedule' })
+  }
+})
+

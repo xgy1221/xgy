@@ -1,0 +1,73 @@
+<view class="container">
+  <view class="page-title">学员课次</view>
+  <view class="page-sub">搜索姓名/手机号，查看剩余课次与已上进度</view>
+
+  <view class="search card section">
+    <input
+      class="search-input"
+      placeholder="搜学员姓名 / 家长手机号"
+      value="{{keyword}}"
+      bindinput="onKeyword"
+      confirm-type="search"
+    />
+    <text class="clear" wx:if="{{keyword}}" bindtap="onClear">清除</text>
+  </view>
+
+  <view class="section card entry" bindtap="goSetup">
+    <view class="row">
+      <view>
+        <view class="item-title">代录 / 完善学员</view>
+        <view class="muted">按家长手机号建档并绑定教案、填剩余课次</view>
+      </view>
+      <text class="link">去处理</text>
+    </view>
+  </view>
+
+  <view class="section-head">
+    <text class="muted">本机构 {{filtered.length}} / {{total}} 人</text>
+  </view>
+
+  <view class="empty card" wx:if="{{!filtered.length}}">
+    <view class="item-title">没有匹配学员</view>
+    <view class="muted">试试姓名关键词，或完整手机号。</view>
+  </view>
+
+  <view class="stu-card" wx:for="{{filtered}}" wx:key="id">
+    <view class="stu-head" data-id="{{item.id}}" bindtap="onToggle">
+      <view class="avatar">{{item.avatarText}}</view>
+      <view class="stu-main">
+        <view class="row name-row">
+          <view class="item-title">{{item.studentName}}</view>
+          <view class="tag warn" wx:if="{{item.lowRemain}}">课次将尽</view>
+        </view>
+        <view class="muted">{{item.phoneMask}} · {{item.grade || '未填年级'}}</view>
+        <view class="summary">{{item.summaryText}}</view>
+      </view>
+      <view class="toggle">{{item.expanded ? '收起' : '明细'}}</view>
+    </view>
+
+    <view class="stu-body" wx:if="{{item.expanded}}">
+      <view class="enroll" wx:if="{{!item.enrollments.length}}">
+        <view class="muted">尚未绑定教案</view>
+      </view>
+      <view class="enroll" wx:for="{{item.enrollments}}" wx:for-item="en" wx:key="id">
+        <view class="row">
+          <view class="pkg-name">{{en.packageName}}</view>
+          <view class="tag {{en.remainLessons <= 4 ? 'warn' : 'ok'}}">剩 {{en.remainLessons}}</view>
+        </view>
+        <view class="progress-wrap">
+          <view class="progress" style="width: {{en.progress}}%;"></view>
+        </view>
+        <view class="muted">已上 {{en.usedLessons}} / 教案共 {{en.totalLessons}} 课 · {{en.source}}</view>
+      </view>
+      <view
+        class="link edit"
+        data-phone="{{item.parentPhone}}"
+        data-id="{{item.id}}"
+        catchtap="goEdit"
+      >调整报读 / 剩余课次</view>
+    </view>
+  </view>
+
+  <role-nav current="/pages/teacher/students/students" />
+</view>

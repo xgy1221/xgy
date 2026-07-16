@@ -1,0 +1,61 @@
+.profile {
+  display: flex;
+  gap: 24rpx;
+  align-items: center;
+}
+
+.avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: #0f3d3e;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  font-weight: 700;
+}
+
+.name {
+  font-size: 34rpx;
+  font-weight: 700;
+  margin-bottom: 6rpx;
+}
+
+.tag {
+  margin-top: 10rpx;
+}
+
+.danger {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.tip {
+  margin-top: 8rpx;
+  margin-bottom: 12rpx;
+  line-height: 1.5;
+}
+
+.role-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #dce5e3;
+}
+
+.role-item.on {
+  background: #f3faf9;
+  margin: 0 -12rpx;
+  padding-left: 12rpx;
+  padding-right: 12rpx;
+  border-radius: 12rpx;
+}
+
+.role-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 4rpx;
+}

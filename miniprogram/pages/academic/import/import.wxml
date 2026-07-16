@@ -1,0 +1,55 @@
+<view class="container">
+  <view class="page-title">Excel 导入学员</view>
+  <view class="page-sub">一个家长手机号可对应多个学生（一户多孩）</view>
+
+  <view class="grid-2 section">
+    <stat-card label="学员总数" value="{{totalStudents}}" />
+    <stat-card label="家庭账号" value="{{totalFamilies}}" hint="按手机号聚合" />
+  </view>
+
+  <view class="section card">
+    <view class="section-title">模板字段</view>
+    <view class="cols">
+      <text class="col-tag" wx:for="{{columns}}" wx:key="*this">{{item}}</text>
+    </view>
+    <view class="muted tip">{{note}}</view>
+    <view class="muted tip">请用 Excel 打开模板填写后「另存为 CSV」，再选择文件导入。小程序端当前直接解析 CSV；也可先点下方按钮加载演示数据。</view>
+  </view>
+
+  <view class="section actions">
+    <button class="btn-primary" bindtap="onDemoImport">加载演示 Excel 数据</button>
+    <button class="btn-ghost" bindtap="onChooseCsv">选择 CSV 文件导入</button>
+    <button class="btn-ghost danger-border" bindtap="onReset">恢复初始示例数据</button>
+  </view>
+
+  <view class="section card" wx:if="{{lastResult}}">
+    <view class="section-title">最近一次导入</view>
+    <view class="list-item"><text>新增</text><text class="strong">{{lastResult.created}}</text></view>
+    <view class="list-item"><text>更新</text><text class="strong">{{lastResult.updated}}</text></view>
+    <view class="list-item"><text>跳过</text><text class="strong">{{lastResult.skipped}}</text></view>
+    <view class="error" wx:for="{{lastResult.errors}}" wx:key="row">第 {{item.row}} 行：{{item.message}}</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">按家长手机号分组</view>
+    <view class="card family" wx:for="{{families}}" wx:key="phone">
+      <view class="row">
+        <view>
+          <view class="item-title">{{item.parentName}}</view>
+          <view class="muted">{{item.phone}} · {{item.campus || '未填校区'}}</view>
+        </view>
+        <view class="tag {{item.students.length > 1 ? 'warn' : ''}}">
+          {{item.students.length}} 名学员
+        </view>
+      </view>
+      <view class="kids">
+        <view class="kid" wx:for="{{item.students}}" wx:for-item="stu" wx:key="id">
+          <text class="kid-name">{{stu.studentName}}</text>
+          <text class="muted">{{stu.grade || '未填年级'}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <role-nav current="/pages/academic/home/home" />
+</view>

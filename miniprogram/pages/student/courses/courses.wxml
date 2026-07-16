@@ -1,0 +1,28 @@
+<view class="container">
+  <view class="page-title">我的教案</view>
+  <view class="page-sub">{{studentName}} · {{summaryText}}</view>
+
+  <view class="section" wx:if="{{list.length}}">
+    <view class="card" wx:for="{{list}}" wx:key="id">
+      <view class="row">
+        <view class="item-title">{{item.packageName}}</view>
+        <view class="tag {{item.status === '学习中' ? 'ok' : 'warn'}}">{{item.status}}</view>
+      </view>
+      <view class="muted">{{item.subject}} · {{item.grade}}</view>
+      <view class="progress-wrap">
+        <view class="progress" style="width: {{item.progress}}%;"></view>
+      </view>
+      <view class="muted">已上 {{item.usedLessons}} / 教案共 {{item.totalLessons}} 课 · 剩余 {{item.remainLessons}}</view>
+    </view>
+  </view>
+
+  <view class="section card" wx:else>
+    <view class="item-title">还没有报读教案</view>
+    <view class="muted">可以补选已购教案，或联系教务代录入。</view>
+    <button class="btn-primary add" bindtap="onAddPackages">选择教案</button>
+  </view>
+
+  <view class="section" wx:if="{{list.length}}">
+    <button class="btn-ghost" bindtap="onAddPackages">继续添加教案</button>
+  </view>
+</view>

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "我的课表",
+  "usingComponents": {
+    "role-nav": "/components/role-nav/role-nav",
+    "month-calendar": "/components/month-calendar/month-calendar"
+  }
+}

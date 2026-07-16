@@ -1,0 +1,12 @@
+.idea/
+*.iml
+.target/
+backend/target/
+web-admin/node_modules/
+web-admin/dist/
+miniprogram/node_modules/
+.DS_Store
+*.log
+.env
+.env.local
+project.private.config.json

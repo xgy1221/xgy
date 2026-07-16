@@ -1,0 +1,86 @@
+<view class="page">
+  <view class="card">
+    <view class="title">{{lesson.className}}</view>
+    <view class="muted">{{lesson.date}} {{lesson.startTime}}-{{lesson.endTime}} · {{lesson.room}}</view>
+    <view class="muted">{{lesson.packageName}} · {{lesson.teacherName}}</view>
+    <view class="tag {{lesson.status === 'finished' ? 'ok' : 'warn'}}">{{statusText}}</view>
+  </view>
+
+  <view class="card">
+    <view class="section-head">
+      <view class="section-title">本课名单 · {{lesson.attendees.length}} 人</view>
+      <button
+        wx:if="{{lesson.status !== 'finished'}}"
+        class="btn-primary mini"
+        size="mini"
+        bindtap="goAddTemp"
+      >+ 临时加学员</button>
+    </view>
+
+    <view class="stu" wx:for="{{lesson.attendees}}" wx:key="studentId">
+      <view>
+        <view class="name-line">
+          <text class="name">{{item.studentName}}</text>
+          <text class="pill makeup" wx:if="{{item.type === 'makeup'}}">临补</text>
+          <text class="pill absent" wx:elif="{{item.absent}}">旷课</text>
+        </view>
+        <view class="muted" wx:if="{{item.type === 'makeup'}}">原班仍是「{{item.homeClassName}}」</view>
+        <view class="muted" wx:elif="{{item.absent}}">不计消课</view>
+        <view class="muted" wx:else>本班学员</view>
+        <view class="muted" wx:if="{{item.consumed}}">已消 1 课次</view>
+        <view class="muted" wx:elif="{{item.teacherRated}}">已评价学生</view>
+      </view>
+      <view class="right">
+        <button
+          wx:if="{{lesson.status !== 'finished' && item.type !== 'makeup'}}"
+          class="btn-ghost mini"
+          size="mini"
+          data-id="{{item.studentId}}"
+          data-absent="{{!item.absent}}"
+          bindtap="onToggleAbsent"
+        >{{item.absent ? '取消旷课' : '记旷课'}}</button>
+        <button
+          wx:if="{{lesson.status === 'finished' && !item.absent && !item.teacherRated}}"
+          class="btn-primary mini"
+          size="mini"
+          data-id="{{item.studentId}}"
+          data-name="{{item.studentName}}"
+          bindtap="openRate"
+        >评价学生</button>
+        <view class="tag ok" wx:if="{{item.teacherRated}}">已评价</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card entry" wx:if="{{lesson.status !== 'finished'}}" bindtap="goAddTemp">
+    <view class="entry-left">
+      <view class="entry-icon">⌕</view>
+      <view>
+        <view class="entry-title">搜索姓名 / 手机号临时加入</view>
+        <view class="muted">模糊查询 · 只进本节 · 不改原班</view>
+      </view>
+    </view>
+    <text class="entry-arrow">›</text>
+  </view>
+
+  <view class="card" wx:if="{{lesson.status !== 'finished'}}">
+    <button class="btn-primary" bindtap="onFinish">下课并评价学生</button>
+    <view class="muted tip">老师评价学生后消 1 节课；学生评价老师可选。</view>
+  </view>
+
+  <view class="card" wx:if="{{rateVisible}}">
+    <view class="section-title">评价 {{rateName}}</view>
+    <view class="stars">
+      <text
+        wx:for="{{starList}}"
+        wx:key="*this"
+        class="star {{item <= rateScore ? 'on' : ''}}"
+        data-score="{{item}}"
+        bindtap="onStar"
+      >★</text>
+    </view>
+    <input class="input" placeholder="简短评语（选填）" value="{{rateComment}}" bindinput="onComment" />
+    <button class="btn-primary" bindtap="onSubmitRate">提交评价</button>
+    <button class="btn-ghost" bindtap="closeRate">取消</button>
+  </view>
+</view>
