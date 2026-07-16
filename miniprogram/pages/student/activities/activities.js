@@ -1,6 +1,8 @@
 const auth = require('../../../utils/auth')
 const studentsService = require('../../../services/students')
 const activitiesService = require('../../../services/activities')
+const bridge = require('../../../services/bridge')
+const api = require('../../../services/api')
 
 Page({
   data: {
@@ -27,7 +29,7 @@ Page({
     this.refresh()
   },
 
-  refresh() {
+  async refresh() {
     const session = auth.getSession()
     const children = studentsService.getStudentsByPhone(session.user.phone).map((c) => ({
       ...c,
@@ -38,6 +40,15 @@ Page({
       currentStudentId = children[0].id
       auth.setCurrentStudentId(currentStudentId)
     }
+
+    if (api.isRemoteSession() && currentStudentId) {
+      try {
+        await bridge.refreshActivitiesForCurrentStudent()
+      } catch (e) {
+        // 本地缓存仍可用
+      }
+    }
+
     const student = studentsService.getStudentById(currentStudentId)
     const orgId = (student && student.orgId) || auth.getCurrentOrgId()
     const phone = session.user.phone
@@ -60,11 +71,18 @@ Page({
     })
   },
 
-  onSwitchChild(e) {
+  async onSwitchChild(e) {
     const id = e.currentTarget.dataset.id
     if (!id || id === this.data.currentStudentId) return
-    auth.setCurrentStudentId(id)
-    this.refresh()
+    wx.showLoading({ title: '切换中', mask: true })
+    try {
+      await bridge.remoteSwitchStudent(id)
+      await this.refresh()
+    } catch (err) {
+      wx.showToast({ title: (err && err.message) || '切换失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
   },
 
   onTab(e) {

@@ -3,7 +3,7 @@
  * 升版本会清空业务缓存并重种子，避免无 orgId 的旧数据串机构。
  */
 const SCHEMA_KEY = 'xgy_data_schema'
-const SCHEMA_VERSION = 5
+const SCHEMA_VERSION = 6
 
 const TENANT_KEYS = [
   'xgy_orgs',

@@ -29,8 +29,18 @@ function listOrgs() {
 }
 
 function getOrgById(id) {
-  if (!id) return null
-  return listOrgs().find((o) => o.id === id) || null
+  if (!id && id !== 0) return null
+  const list = listOrgs()
+  const hit = list.find((o) => o.id === id || String(o.id) === String(id))
+  if (hit) return hit
+  // 远程 numericId → code
+  return list.find((o) => o.numericId != null && String(o.numericId) === String(id)) || null
+}
+
+/** 统一成机构 code（本地种子 id），供过滤使用 */
+function resolveOrgCode(id) {
+  const org = getOrgById(id)
+  return org ? org.id : id == null ? null : String(id)
 }
 
 function getOrgName(id) {
@@ -57,6 +67,7 @@ module.exports = {
   ensureOrgs,
   listOrgs,
   getOrgById,
+  resolveOrgCode,
   getOrgName,
   getOrgShortName,
   decorateWithOrg

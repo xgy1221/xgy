@@ -1,5 +1,6 @@
 const auth = require('../../../utils/auth')
 const { ROLE_META } = require('../../../utils/constants')
+const bridge = require('../../../services/bridge')
 
 Page({
   data: {
@@ -27,13 +28,21 @@ Page({
       currentRoleKey: role
     })
   },
-  onPickRole(e) {
+  async onPickRole(e) {
     const role = e.currentTarget.dataset.role
     if (!role || role === this.data.currentRoleKey) return
-    auth.switchToRoleHome(role)
+    wx.showLoading({ title: '切换中', mask: true })
+    try {
+      await bridge.remoteSwitchRole(role)
+      wx.reLaunch({ url: auth.getRoleHome(role) })
+    } catch (err) {
+      wx.showToast({ title: (err && err.message) || '切换失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
   },
-  onLogout() {
-    auth.clearSession()
+  async onLogout() {
+    await bridge.remoteLogout()
     wx.reLaunch({ url: '/pages/login/login' })
   }
 })

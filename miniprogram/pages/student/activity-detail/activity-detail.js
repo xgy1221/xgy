@@ -1,6 +1,8 @@
 const auth = require('../../../utils/auth')
 const studentsService = require('../../../services/students')
 const activitiesService = require('../../../services/activities')
+const bridge = require('../../../services/bridge')
+const api = require('../../../services/api')
 
 Page({
   data: {
@@ -20,9 +22,26 @@ Page({
     this.refresh()
   },
 
-  refresh() {
+  async refresh() {
     const studentId = auth.getCurrentStudentId()
     const student = studentsService.getStudentById(studentId)
+
+    if (api.isRemoteSession() && this.data.id) {
+      try {
+        const raw = await api.fetchActivityDetail(this.data.id)
+        const orgCode = (student && student.orgId) || auth.getCurrentOrgId()
+        const normalized = api.normalizeActivity(raw, orgCode, studentId)
+        // 写回本地，供 decorate 一致
+        const list = wx.getStorageSync('xgy_activities') || []
+        const idx = list.findIndex((a) => String(a.id) === String(normalized.id))
+        if (idx >= 0) list[idx] = { ...list[idx], ...normalized }
+        else list.push(normalized)
+        wx.setStorageSync('xgy_activities', list)
+      } catch (e) {
+        // fallback local
+      }
+    }
+
     const activity = activitiesService.getById(this.data.id, studentId)
     if (!activity) {
       wx.showToast({ title: '活动不存在', icon: 'none' })
@@ -65,21 +84,37 @@ Page({
     wx.showModal({
       title: '确认报名参赛',
       content: `为「${student.studentName}」报名「${this.data.activity.title}」？`,
-      success: (res) => {
+      success: async (res) => {
         if (!res.confirm) return
-        const result = activitiesService.signup({
-          activityId: this.data.id,
-          studentId: student.id,
-          studentName: student.studentName,
-          parentPhone: session.user.phone,
-          orgId: student.orgId
-        })
-        if (!result.ok) {
-          wx.showToast({ title: result.message, icon: 'none' })
-          return
+        wx.showLoading({ title: '提交中', mask: true })
+        try {
+          let result = null
+          if (api.isRemoteSession()) {
+            result = await bridge.signupActivityRemote({
+              activityId: this.data.id,
+              studentId: student.id
+            })
+          }
+          if (!result) {
+            result = activitiesService.signup({
+              activityId: this.data.id,
+              studentId: student.id,
+              studentName: student.studentName,
+              parentPhone: session.user.phone,
+              orgId: student.orgId
+            })
+          }
+          if (!result.ok) {
+            wx.showToast({ title: result.message || '报名失败', icon: 'none' })
+            return
+          }
+          wx.showToast({ title: '报名成功，准时参赛', icon: 'success' })
+          this.refresh()
+        } catch (err) {
+          wx.showToast({ title: (err && err.message) || '报名失败', icon: 'none' })
+        } finally {
+          wx.hideLoading()
         }
-        wx.showToast({ title: '报名成功，准时参赛', icon: 'success' })
-        this.refresh()
       }
     })
   },
@@ -90,18 +125,28 @@ Page({
     wx.showModal({
       title: '取消报名',
       content: '确定取消这场活动的报名吗？',
-      success: (res) => {
+      success: async (res) => {
         if (!res.confirm) return
-        const result = activitiesService.cancelSignup(
-          activity.signupId,
-          auth.getSession().user.phone
-        )
-        if (!result.ok) {
-          wx.showToast({ title: result.message, icon: 'none' })
-          return
+        wx.showLoading({ title: '处理中', mask: true })
+        try {
+          let result = null
+          if (api.isRemoteSession()) {
+            result = await bridge.cancelSignupRemote(activity.signupId)
+          }
+          if (!result) {
+            result = activitiesService.cancelSignup(activity.signupId, auth.getSession().user.phone)
+          }
+          if (!result.ok) {
+            wx.showToast({ title: result.message || '取消失败', icon: 'none' })
+            return
+          }
+          wx.showToast({ title: '已取消', icon: 'success' })
+          this.refresh()
+        } catch (err) {
+          wx.showToast({ title: (err && err.message) || '取消失败', icon: 'none' })
+        } finally {
+          wx.hideLoading()
         }
-        wx.showToast({ title: '已取消', icon: 'success' })
-        this.refresh()
       }
     })
   }

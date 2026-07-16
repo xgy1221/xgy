@@ -79,6 +79,12 @@ curl -s -X POST http://localhost:8080/api/auth/login \
 
 统一响应：`{ "code": 0, "message": "ok", "data": ... }`
 
+### 探活
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/ping` | 公开探活（小程序 `useRemote: auto` 用） |
+
 ### 认证 `/api/auth`
 
 | 方法 | 路径 | 说明 |

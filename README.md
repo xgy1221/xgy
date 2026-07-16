@@ -51,7 +51,8 @@ npm run dev
 
 1. 用微信开发者工具导入仓库根目录（`miniprogramRoot` 已配置）  
 2. AppID 可用测试号 / `touristappid`  
-3. 登录页快捷账号，或任意手机号体验家长引导  
+3. 先起后端（见下方），再登录；`services/api.js` 默认 `useRemote: 'auto'`，能连上 `http://localhost:8080` 则走 JWT，否则回退本地演示  
+4. **真机调试**：把 `api.config.baseUrl` 改成电脑局域网 IP（如 `http://192.168.x.x:8080`），并勾选「不校验合法域名」  
 
 **主用角色：** 学生/家长、老师、教务。  
 **合伙 / 管理员若登录：** 看业绩或全校运营快览，文案会引导去 Web 做对账与配置。
@@ -83,7 +84,7 @@ mvn spring-boot:run           # http://localhost:8080
 
 登录：`POST /api/auth/login`，短信码演示固定 `123456`。详见 [`backend/README.md`](backend/README.md)。
 
-> 说明：小程序 / Web 目前仍可用本地演示数据独立跑；接真实接口时指向该后端即可。
+> 说明：小程序默认 **auto** 对接本后端（登录水合 + 切孩子/比赛写透）；后端不可用时自动回退本地 storage。Web 管理端仍可本地演示，后续再接同一 API。
 
 ## 目录
 

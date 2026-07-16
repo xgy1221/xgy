@@ -144,7 +144,8 @@ function getStudentsByPhone(phone) {
 }
 
 function getStudentById(id) {
-  const s = getAllStudents().find((x) => x.id === id)
+  if (id == null || id === '') return null
+  const s = getAllStudents().find((x) => String(x.id) === String(id))
   return s ? decorate(s) : null
 }
 

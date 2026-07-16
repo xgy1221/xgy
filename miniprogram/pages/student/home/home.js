@@ -1,6 +1,7 @@
 const auth = require('../../../utils/auth')
 const studentsService = require('../../../services/students')
 const lessonsService = require('../../../services/lessons')
+const bridge = require('../../../services/bridge')
 const { todayKey, formatDisplay } = require('../../../utils/date')
 
 const STATUS_TEXT = {
@@ -59,12 +60,12 @@ Page({
   refresh(studentId, date) {
     const markedDates = lessonsService.getLessonDateMarksForStudent(studentId)
     const lessons = lessonsService.getStudentLessonsByDate(studentId, date).map((l) => {
-      const me = l.attendees.find((a) => a.studentId === studentId)
+      const me = (l.attendees || []).find((a) => a.studentId === studentId) || {}
       return {
         ...l,
         statusText: STATUS_TEXT[l.status] || l.status,
-        myType: me ? me.type : 'regular',
-        homeClassName: me ? me.homeClassName : '',
+        myType: me.type || 'regular',
+        homeClassName: me.homeClassName || '',
         needRate: l.status === 'finished' && me && !me.absent && !me.studentRated
       }
     })
@@ -81,17 +82,24 @@ Page({
     this.refresh(this.data.currentStudentId, date)
   },
 
-  onSwitchChild(e) {
+  async onSwitchChild(e) {
     const id = e.currentTarget.dataset.id
-    if (!id) return
-    auth.setCurrentStudentId(id)
-    const student = this.data.children.find((c) => c.id === id)
-    this.setData({
-      currentStudentId: id,
-      studentName: student ? student.studentName : '',
-      orgName: student ? student.orgName : ''
-    })
-    this.refresh(id, this.data.selectedDate)
+    if (!id || id === this.data.currentStudentId) return
+    wx.showLoading({ title: '切换中', mask: true })
+    try {
+      await bridge.remoteSwitchStudent(id)
+      const student = this.data.children.find((c) => c.id === id)
+      this.setData({
+        currentStudentId: id,
+        studentName: student ? student.studentName : '',
+        orgName: student ? student.orgName : ''
+      })
+      this.refresh(id, this.data.selectedDate)
+    } catch (err) {
+      wx.showToast({ title: (err && err.message) || '切换失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
   },
 
   goDetail(e) {

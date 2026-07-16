@@ -89,15 +89,31 @@ Page({
     this.setData({ rateComment: e.detail.value })
   },
 
-  onSubmitRate() {
-    const result = lessonsService.rateByTeacher(
-      this.data.id,
-      this.data.rateStudentId,
-      this.data.rateScore,
-      this.data.rateComment
-    )
-    wx.showToast({ title: result.message || (result.ok ? '已评价' : '失败'), icon: 'none' })
-    this.setData({ rateVisible: false })
-    this.refresh()
+  async onSubmitRate() {
+    const api = require('../../../services/api')
+    wx.showLoading({ title: '提交中', mask: true })
+    try {
+      if (api.isRemoteSession()) {
+        await api.rateByTeacher(this.data.id, {
+          studentId: Number(this.data.rateStudentId),
+          rating: Number(this.data.rateScore) || 5,
+          comment: this.data.rateComment || ''
+        })
+      }
+      const result = lessonsService.rateByTeacher(
+        this.data.id,
+        this.data.rateStudentId,
+        this.data.rateScore,
+        this.data.rateComment
+      )
+      wx.showToast({ title: result.message || (result.ok ? '已评价' : '失败'), icon: 'none' })
+      this.setData({ rateVisible: false })
+      this.refresh()
+    } catch (err) {
+      wx.showToast({ title: (err && err.message) || '评价失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
   }
 })
+

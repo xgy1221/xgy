@@ -193,19 +193,21 @@ function getSignupCount(activityId) {
 
 function decorate(activity, studentId) {
   const today = todayKey()
-  const enrolled = getSignupCount(activity.id)
+  const localEnrolled = getSignupCount(activity.id)
+  // 远程水合会带上服务端报名人数；与本地取较大值，避免名额显示偏少
+  const enrolled = Math.max(localEnrolled, Number(activity.enrolled) || 0)
   const isPast = compareDate(activity.startDate, today) < 0
   const deadlinePassed = compareDate(activity.enrollDeadline, today) < 0
   let enrollStatus = 'open'
   if (isPast) enrollStatus = 'past'
   else if (deadlinePassed) enrollStatus = 'closed'
-  else if (enrolled >= activity.capacity) enrollStatus = 'full'
+  else if (activity.capacity > 0 && enrolled >= activity.capacity) enrollStatus = 'full'
 
   const mySignup = studentId
     ? ensureSignups().find(
         (s) =>
-          s.activityId === activity.id &&
-          s.studentId === studentId &&
+          String(s.activityId) === String(activity.id) &&
+          String(s.studentId) === String(studentId) &&
           s.status !== 'cancelled'
       )
     : null

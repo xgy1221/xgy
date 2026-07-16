@@ -3,6 +3,8 @@ const { ROLE_META } = require('../../../utils/constants')
 const studentsService = require('../../../services/students')
 const enrollmentsService = require('../../../services/enrollments')
 const lessonsService = require('../../../services/lessons')
+const bridge = require('../../../services/bridge')
+const api = require('../../../services/api')
 const { formatDisplay } = require('../../../utils/date')
 
 const PAGE_SIZE = 8
@@ -115,7 +117,7 @@ Page({
     this.loadLessonsForPackage(studentId, currentPackageId, packages)
   },
 
-  loadLessonsForPackage(studentId, packageId, packages) {
+  async loadLessonsForPackage(studentId, packageId, packages) {
     const pkgList = packages || this.data.packages
     const currentPackage = pkgList.find((p) => p.id === packageId) || null
     if (!studentId || !packageId) {
@@ -130,10 +132,27 @@ Page({
       return
     }
 
-    const lessonRows = lessonsService.getStudentLessonsByPackage(studentId, packageId).map((l) => ({
-      ...l,
-      dateText: formatDisplay(l.date)
-    }))
+    let lessonRows = []
+    if (api.isRemoteSession()) {
+      try {
+        const remote = await bridge.fetchPackageLessonsRemote(studentId, packageId)
+        if (remote) {
+          lessonRows = remote.map((l) => ({
+            ...l,
+            dateText: formatDisplay(l.date)
+          }))
+        }
+      } catch (e) {
+        lessonRows = []
+      }
+    }
+    if (!lessonRows.length) {
+      lessonRows = lessonsService.getStudentLessonsByPackage(studentId, packageId).map((l) => ({
+        ...l,
+        dateText: formatDisplay(l.date)
+      }))
+    }
+
     const evalCount = lessonRows.filter((l) => l.hasTeacherEval).length
     const shownCount = Math.min(PAGE_SIZE, lessonRows.length)
 
@@ -147,18 +166,33 @@ Page({
     })
   },
 
-  onPickRole(e) {
+  async onPickRole(e) {
     const role = e.currentTarget.dataset.role
     if (!role || role === this.data.currentRoleKey) return
-    auth.switchToRoleHome(role)
+    wx.showLoading({ title: '切换中', mask: true })
+    try {
+      await bridge.remoteSwitchRole(role)
+      wx.reLaunch({ url: auth.getRoleHome(role) })
+    } catch (err) {
+      wx.showToast({ title: (err && err.message) || '切换失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
   },
 
-  onSwitchChild(e) {
+  async onSwitchChild(e) {
     const id = e.currentTarget.dataset.id
     if (!id || id === this.data.currentStudentId) return
-    auth.setCurrentStudentId(id)
-    this.setData({ currentStudentId: id })
-    this.loadPackagesForStudent(id)
+    wx.showLoading({ title: '切换中', mask: true })
+    try {
+      await bridge.remoteSwitchStudent(id)
+      this.setData({ currentStudentId: id })
+      this.loadPackagesForStudent(id)
+    } catch (err) {
+      wx.showToast({ title: (err && err.message) || '切换失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
   },
 
   onSwitchPackage(e) {
@@ -201,8 +235,8 @@ Page({
     wx.redirectTo({ url: '/pages/student/activities/activities' })
   },
 
-  onLogout() {
-    auth.clearSession()
+  async onLogout() {
+    await bridge.remoteLogout()
     wx.reLaunch({ url: '/pages/login/login' })
   }
 })

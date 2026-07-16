@@ -1,11 +1,13 @@
 const { ROLE_META, ROLES } = require('../../utils/constants')
-const { DEMO_USERS, loginByPhone } = require('../../services/mock')
+const { DEMO_USERS } = require('../../services/mock')
 const auth = require('../../utils/auth')
+const bridge = require('../../services/bridge')
 
 Page({
   data: {
     phone: '',
-    accounts: []
+    accounts: [],
+    loading: false
   },
 
   onLoad() {
@@ -45,15 +47,24 @@ Page({
     this.doLogin(this.data.phone)
   },
 
-  doLogin(phone) {
-    const result = loginByPhone(phone)
-    if (!result.ok) {
-      wx.showToast({ title: result.message, icon: 'none' })
-      return
+  async doLogin(phone) {
+    if (this.data.loading) return
+    this.setData({ loading: true })
+    wx.showLoading({ title: '登录中', mask: true })
+    try {
+      const result = await bridge.login(phone)
+      if (!result.ok) {
+        wx.showToast({ title: result.message, icon: 'none' })
+        return
+      }
+      auth.setSession(result.session)
+      this.redirectBySession(result.session)
+    } catch (e) {
+      wx.showToast({ title: (e && e.message) || '登录失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+      this.setData({ loading: false })
     }
-
-    auth.setSession(result.session)
-    this.redirectBySession(result.session)
   },
 
   redirectBySession(session) {
