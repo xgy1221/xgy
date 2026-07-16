@@ -1,0 +1,20 @@
+<view class="container">
+  <view class="page-title">组织架构</view>
+  <view class="page-sub">{{orgName}} · 校区层级（本机构内）</view>
+  <view class="section">
+    <view class="card" wx:for="{{list}}" wx:key="id">
+      <view class="row">
+        <view>
+          <view class="item-title">{{item.name}}</view>
+          <view class="muted">类型：{{item.type}}</view>
+        </view>
+        <view class="tag">{{item.children}} 个子节点</view>
+      </view>
+    </view>
+  </view>
+  <view class="web-hint">
+    <view class="web-hint-title">新建校区请到 Web</view>
+    <view class="web-hint-text">手机端仅浏览组织树；校区、教室、人员归属等配置在 Web 管理端完成后再同步过来。</view>
+  </view>
+  <role-nav current="/pages/admin/org/org" />
+</view>

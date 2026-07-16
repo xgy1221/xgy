@@ -1,0 +1,14 @@
+<view class="container">
+  <view class="page-title">系统设置</view>
+  <view class="page-sub">基础开关（前端演示）</view>
+  <view class="section card">
+    <view class="list-item"><text>允许家长自助约课</text><switch checked="{{settings.selfBook}}" bindchange="onToggle" data-key="selfBook" color="#0F3D3E"/></view>
+    <view class="list-item"><text>课时不足提醒</text><switch checked="{{settings.hourAlert}}" bindchange="onToggle" data-key="hourAlert" color="#0F3D3E"/></view>
+    <view class="list-item"><text>合伙人业绩可见退费</text><switch checked="{{settings.partnerRefund}}" bindchange="onToggle" data-key="partnerRefund" color="#0F3D3E"/></view>
+  </view>
+  <view class="web-hint">
+    <view class="web-hint-title">完整系统配置在 Web</view>
+    <view class="web-hint-text">这里只放外出常用开关。教案定价、财务口径、角色授权等请在 Web 管理端统一维护。</view>
+  </view>
+  <role-nav current="/pages/admin/settings/settings" />
+</view>

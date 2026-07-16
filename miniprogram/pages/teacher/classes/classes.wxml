@@ -1,0 +1,12 @@
+<view class="container">
+  <view class="page-title">我的班级</view>
+  <view class="page-sub">固定班花名册（临时补课不会改这里）</view>
+  <view class="section">
+    <view class="card" wx:for="{{list}}" wx:key="id">
+      <view class="item-title">{{item.name}}</view>
+      <view class="muted">教案：{{item.packageName}} · 教室 {{item.room}}</view>
+      <view class="muted">固定学员 {{item.students}} 人：{{item.studentNames}}</view>
+    </view>
+  </view>
+  <role-nav current="/pages/teacher/classes/classes" />
+</view>

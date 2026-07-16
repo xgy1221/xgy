@@ -1,0 +1,85 @@
+<view class="page">
+  <view class="atmosphere"></view>
+
+  <view class="head anim-rise">
+    <view class="kicker">今日上课</view>
+    <view class="title">课表</view>
+    <view class="sub">点日期看班级课次 · 可搜索临补 · 下课评价后消课</view>
+  </view>
+
+  <view class="swap {{contentReady ? 'in' : 'out'}}">
+    <view class="next-hero tapable" wx:if="{{nextLesson}}" data-id="{{nextLesson.id}}" bindtap="goDetail">
+      <view class="next-kicker">{{nextLesson.whenLabel}}</view>
+      <view class="next-title">{{nextLesson.className}}</view>
+      <view class="next-time">{{nextLesson.startTime}}-{{nextLesson.endTime}}</view>
+      <view class="next-meta">{{nextLesson.packageName}} · {{nextLesson.room}} · {{nextLesson.attendeeCount}} 人</view>
+      <view class="next-foot">
+        <text class="next-status">{{nextLesson.statusText}}</text>
+        <text class="next-cta">进课堂</text>
+      </view>
+    </view>
+
+    <view class="next-empty" wx:elif="{{!loading}}">
+      <view class="next-kicker">近期安排</view>
+      <view class="next-title soft">暂时没有待上的课</view>
+      <view class="muted">教务排课后会出现在这里。也可在下方月历翻看。</view>
+    </view>
+
+    <view class="day-block">
+      <view class="day-head">
+        <view class="day-title">{{displayDate}}</view>
+        <view class="day-hint">绿已上 · 橙未上</view>
+      </view>
+
+      <view class="empty-day" wx:if="{{!lessons.length}}">
+        <view class="empty-title">这天没有排课</view>
+        <view class="muted" wx:if="{{nextLesson}}">下一节在 {{nextLesson.whenLabel}}</view>
+        <button class="btn-ghost jump-btn" wx:if="{{nextLesson}}" data-id="{{nextLesson.id}}" bindtap="goNextDay">
+          去看下一节
+        </button>
+      </view>
+
+      <view class="lesson-card" wx:for="{{lessons}}" wx:key="id">
+        <view class="row tapable" data-id="{{item.id}}" bindtap="goDetail">
+          <view>
+            <view class="item-title">{{item.className}}</view>
+            <view class="muted">{{item.startTime}}-{{item.endTime}} · {{item.room}}</view>
+            <view class="muted">{{item.packageName}}</view>
+          </view>
+          <view class="tag {{item.status === 'finished' ? 'ok' : 'warn'}}">{{item.statusText}}</view>
+        </view>
+
+        <view class="students">
+          <view class="stu" wx:for="{{item.attendees}}" wx:for-item="stu" wx:key="studentId">
+            <text class="stu-name">{{stu.studentName}}</text>
+            <text class="stu-tag makeup" wx:if="{{stu.type === 'makeup'}}">临补</text>
+            <text class="stu-tag absent" wx:elif="{{stu.absent}}">旷课</text>
+            <text class="stu-tag" wx:else>本班</text>
+          </view>
+        </view>
+
+        <view class="ops">
+          <button class="btn-ghost mini" size="mini" data-id="{{item.id}}" bindtap="goDetail">课堂详情</button>
+          <button
+            class="btn-primary mini"
+            size="mini"
+            wx:if="{{item.status !== 'finished'}}"
+            data-id="{{item.id}}"
+            catchtap="goAddTemp"
+          >搜索加学员</button>
+        </view>
+      </view>
+    </view>
+
+    <view class="cal-block">
+      <view class="section-title">月历</view>
+      <month-calendar
+        selected="{{selectedDate}}"
+        markedDates="{{markedDates}}"
+        bind:select="onSelectDate"
+      />
+    </view>
+  </view>
+
+  <role-nav current="/pages/teacher/home/home" />
+</view>

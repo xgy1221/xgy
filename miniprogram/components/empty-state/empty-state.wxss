@@ -1,0 +1,18 @@
+.empty {
+  padding: 80rpx 40rpx;
+  text-align: center;
+  color: #5b6b69;
+}
+
+.title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #14201f;
+}
+
+.desc {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+}

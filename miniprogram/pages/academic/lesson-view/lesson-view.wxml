@@ -1,0 +1,71 @@
+<view class="page">
+  <view class="card head">
+    <view class="title">{{lesson.className}}</view>
+    <view class="muted">{{lesson.date}} {{lesson.startTime}}-{{lesson.endTime}} · {{lesson.room}}</view>
+    <view class="muted">教案：{{lesson.packageName}}</view>
+    <view class="teacher-line">
+      <view class="avatar">{{teacherAvatar}}</view>
+      <view>
+        <view class="teacher-name">授课老师 · {{lesson.teacherName}}</view>
+        <view class="tag {{lesson.status === 'finished' ? 'ok' : 'warn'}}">{{statusText}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="stats">
+    <view class="stat">
+      <text class="num">{{summary.present}}</text>
+      <text class="label">到课</text>
+    </view>
+    <view class="stat">
+      <text class="num">{{summary.absent}}</text>
+      <text class="label">旷课</text>
+    </view>
+    <view class="stat">
+      <text class="num">{{summary.makeup}}</text>
+      <text class="label">临补</text>
+    </view>
+    <view class="stat">
+      <text class="num">{{summary.consumed}}</text>
+      <text class="label">已消课</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">评价明细</view>
+    <view class="muted tip">查看学生对老师、老师对学生的评价（教务只看，不改）。</view>
+
+    <view class="stu" wx:for="{{rows}}" wx:key="studentId">
+      <view class="stu-head">
+        <view>
+          <view class="name-line">
+            <text class="name">{{item.studentName}}</text>
+            <text class="pill makeup" wx:if="{{item.type === 'makeup'}}">临补</text>
+            <text class="pill absent" wx:elif="{{item.absent}}">旷课</text>
+          </view>
+          <view class="muted" wx:if="{{item.type === 'makeup'}}">原班：{{item.homeClassName}}</view>
+        </view>
+        <view class="tag {{item.consumed ? 'ok' : ''}}">{{item.consumed ? '已消课' : (item.absent ? '不计消课' : '未消课')}}</view>
+      </view>
+
+      <view class="eval-grid" wx:if="{{!item.absent}}">
+        <view class="eval-box">
+          <view class="eval-label">学生 → 老师</view>
+          <view wx:if="{{item.studentRated}}" class="eval-body">
+            <view class="stars">{{item.studentStars}}</view>
+            <view class="comment">{{item.studentComment || '无评语'}}</view>
+          </view>
+          <view wx:else class="eval-empty">未评价（可选）</view>
+        </view>
+        <view class="eval-box">
+          <view class="eval-label">老师 → 学生</view>
+          <view wx:if="{{item.teacherRated}}" class="eval-body">
+            <view class="stars">{{item.teacherStars}}</view>
+            <view class="comment">{{item.teacherComment || '无评语'}}</view>
+          </view>
+          <view wx:else class="eval-empty">未评价</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

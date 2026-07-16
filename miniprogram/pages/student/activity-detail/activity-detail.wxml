@@ -1,0 +1,67 @@
+<view class="page" wx:if="{{activity}}">
+  <view class="hero cover-{{activity.coverTone}}">
+    <view class="hero-cat">{{activity.category}}</view>
+    <view class="hero-title">{{activity.title}}</view>
+    <view class="hero-sub">{{activity.orgName}} · {{activity.campus}}</view>
+  </view>
+
+  <view class="body">
+    <view class="block">
+      <view class="label">时间</view>
+      <view class="value">{{activity.dateText}}</view>
+      <view class="label">地点</view>
+      <view class="value">{{activity.address}}</view>
+      <view class="label">适合</view>
+      <view class="value">{{activity.targetGrade}}</view>
+      <view class="row stats">
+        <view>
+          <view class="stat-num">{{activity.feeText}}</view>
+          <view class="muted">费用</view>
+        </view>
+        <view>
+          <view class="stat-num">{{activity.remain}}</view>
+          <view class="muted">剩余名额</view>
+        </view>
+        <view>
+          <view class="stat-num">{{activity.statusText}}</view>
+          <view class="muted">状态</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="block">
+      <view class="section-title">活动介绍</view>
+      <view class="text">{{activity.summary}}</view>
+      <view class="highlights" wx:if="{{activity.highlights.length}}">
+        <view class="hi" wx:for="{{activity.highlights}}" wx:key="*this">{{item}}</view>
+      </view>
+    </view>
+
+    <view class="block" wx:if="{{activity.isPast}}">
+      <view class="section-title">赛果回顾</view>
+      <view class="text" wx:if="{{activity.recap}}">{{activity.recap}}</view>
+      <view class="gallery" wx:if="{{activity.gallery.length}}">
+        <view class="shot" wx:for="{{activity.gallery}}" wx:key="*this">
+          <view class="shot-inner">{{item}}</view>
+        </view>
+      </view>
+      <view class="muted" wx:if="{{!activity.recap && !activity.gallery.length}}">赛果与照片筹备中。</view>
+    </view>
+
+    <view class="block" wx:else>
+      <view class="section-title">参赛说明</view>
+      <view class="muted">当前学员：{{studentName}}</view>
+      <view class="muted">报名截止：{{activity.deadlineText}}</view>
+      <view class="muted">比赛按机构发布；切换孩子后看到的是该机构场次。</view>
+    </view>
+  </view>
+
+  <view class="footer safe-bottom {{footerFlash ? 'success-flash' : ''}}">
+    <button class="btn-ghost cancel" wx:if="{{activity.signed && !activity.isPast}}" bindtap="onCancel">
+      取消报名
+    </button>
+    <button class="btn-primary main {{canSignup ? '' : 'disabled'}}" bindtap="onSignup" disabled="{{!canSignup}}">
+      {{btnText}}
+    </button>
+  </view>
+</view>

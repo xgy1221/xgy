@@ -1,0 +1,54 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: xueguan-yun
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/xgy?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${DB_USER:xgy}
+    password: ${DB_PASSWORD:xgy123}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: Asia/Shanghai
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 3s
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:xgy-cloud-jwt-secret-key-change-me-in-production-must-be-long-enough-256bits-minimum-for-hs256}
+    expire-days: ${JWT_EXPIRE_DAYS:7}
+  sms:
+    demo-code: ${SMS_DEMO_CODE:123456}
+  security:
+    require-whitelist-for-new-parent: true
+    login-max-per-phone: 8
+    login-max-per-ip: 30
+    login-window-seconds: 60
+    cors-allowed-origins:
+      - http://localhost:5173
+      - http://127.0.0.1:5173
+      - http://localhost:4173
+      - http://127.0.0.1:4173
+
+logging:
+  level:
+    com.xgy.cloud: INFO
+    org.springframework.security: WARN

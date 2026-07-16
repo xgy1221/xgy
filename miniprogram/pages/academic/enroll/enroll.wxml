@@ -1,0 +1,35 @@
+<view class="container">
+  <view class="page-title">报名 / 报读</view>
+  <view class="page-sub">在读学员由教务代录；也可查看家长自助报读</view>
+
+  <view class="section card entry" bindtap="goSetup">
+    <view class="row">
+      <view>
+        <view class="item-title">代录在读学员</view>
+        <view class="muted">手机号 → 建档孩子 → 绑定教案与剩余课次</view>
+      </view>
+      <text class="link">去代录</text>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">报读列表</view>
+    <view class="card" wx:for="{{list}}" wx:key="id">
+      <view class="row">
+        <view>
+          <view class="item-title">{{item.studentName}}</view>
+          <view class="muted">{{item.packageName}}</view>
+          <view class="muted">{{item.parentPhone}} · 剩余 {{item.remainLessons}}/{{item.totalLessons}}</view>
+        </view>
+        <view class="right">
+          <view class="tag {{item.status === '学习中' ? 'ok' : 'warn'}}">{{item.status}}</view>
+          <view class="source">{{item.source}}</view>
+        </view>
+      </view>
+      <view class="ops">
+        <button class="btn-ghost mini" size="mini" data-phone="{{item.parentPhone}}" data-id="{{item.studentId}}" bindtap="goEdit">编辑</button>
+      </view>
+    </view>
+  </view>
+  <role-nav current="/pages/academic/enroll/enroll" />
+</view>

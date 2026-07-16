@@ -1,0 +1,5 @@
+{
+  "usingComponents": {
+    "role-nav": "/components/role-nav/role-nav"
+  }
+}

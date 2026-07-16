@@ -1,0 +1,52 @@
+<view class="container">
+  <view class="page-title">课表总览</view>
+  <view class="page-sub">看每天哪个老师有课；点进课次可查看评价与消课情况</view>
+
+  <view class="section">
+    <month-calendar
+      selected="{{selectedDate}}"
+      markedDates="{{markedDates}}"
+      bind:select="onSelectDate"
+    />
+  </view>
+
+  <view class="section">
+    <view class="section-title">{{displayDate}}</view>
+    <view class="card" wx:if="{{!groups.length}}">
+      <view class="muted">这天没有课</view>
+    </view>
+
+    <view class="card group" wx:for="{{groups}}" wx:key="teacherName">
+      <view class="teacher-row">
+        <view class="teacher-avatar">{{item.avatarText}}</view>
+        <view>
+          <view class="teacher-name">{{item.teacherName}}</view>
+          <view class="muted">当天 {{item.lessons.length}} 节课</view>
+        </view>
+      </view>
+
+      <view
+        class="lesson"
+        wx:for="{{item.lessons}}"
+        wx:for-item="les"
+        wx:key="id"
+        data-id="{{les.id}}"
+        bindtap="goDetail"
+      >
+        <view class="row">
+          <view>
+            <view class="item-title">{{les.className}}</view>
+            <view class="muted">{{les.startTime}}-{{les.endTime}} · {{les.room}}</view>
+            <view class="muted">{{les.packageName}} · {{les.presentCount}} 人到课</view>
+          </view>
+          <view class="right">
+            <view class="tag {{les.status === 'finished' ? 'ok' : 'warn'}}">{{les.statusText}}</view>
+            <view class="rate-line">评 {{les.ratedCount}}/{{les.presentCount}}</view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <role-nav current="/pages/academic/schedule/schedule" />
+</view>

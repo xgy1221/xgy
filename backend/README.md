@@ -1,0 +1,224 @@
+# 学管云 Backend
+
+Spring Boot 3.3 后端服务，包名 `com.xgy.cloud`。
+
+## 技术栈
+
+- Java 21 / Spring Boot 3.3.5
+- Spring Web / Data JPA / Security / Data Redis
+- MySQL 8 + Flyway
+- JJWT 0.12.6 / Lombok / Validation
+
+## 快速启动
+
+### 1. 启动依赖服务
+
+```bash
+cd backend
+docker compose up -d
+```
+
+会启动：
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| MySQL 8.0 | 3306 | 库 `xgy`，用户 `xgy` / `xgy123`，root/`root123` |
+| Redis 7 | 6379 | 会话 / 上次角色 / Token 黑名单 |
+
+### 2. 启动应用
+
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+或：
+
+```bash
+mvn -DskipTests package
+java -jar target/xueguan-yun-1.0.0-SNAPSHOT.jar
+```
+
+默认端口 **8080**，配置见 `src/main/resources/application.yml`。
+
+首次启动 Flyway 自动建表并写入演示数据。
+
+### 3. 编译检查
+
+```bash
+mvn -q -DskipTests compile
+```
+
+## 演示账号
+
+短信验证码统一为 **`123456`**（开发演示）。
+
+| 手机号 | 姓名 | 角色 | 机构 |
+|--------|------|------|------|
+| 13800000001 | 王女士 | 家长（两孩跨机构） | 学趣 + 启航 |
+| 13800000002 | 李老师 | 老师 | 学趣思维 |
+| 13800000003 | 赵教务 | 教务 | 学趣思维 |
+| 13800000004 | 陈合伙人 | 合伙/教务/老师 | 学趣思维 |
+| 13800000000 | 周总 | 管理/合伙/教务/老师 | 学趣思维 |
+| 13800000040 | 启航教务 | 教务 | 启航英语 |
+| 13800000041 | 韩老师 | 老师 | 启航英语 |
+
+演示机构：`org_xuequ` 学趣思维（id=1）、`org_qihang` 启航英语（id=2）。
+
+## 登录示例
+
+```bash
+curl -s -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"phone":"13800000003","smsCode":"123456"}'
+```
+
+后续请求携带：`Authorization: Bearer <token>`。
+
+## API 列表
+
+统一响应：`{ "code": 0, "message": "ok", "data": ... }`
+
+### 探活
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/ping` | 公开探活（小程序 `useRemote: auto` 用） |
+
+### 认证 `/api/auth`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/auth/login` | 手机号+短信登录（公开） |
+| GET | `/api/auth/me` | 当前用户与角色 |
+| POST | `/api/auth/switch-role` | 切换角色 `{role, orgId?}` |
+| POST | `/api/auth/switch-student` | 家长切换学员 `{studentId}` |
+| POST | `/api/auth/logout` | 退出并拉黑 Token |
+
+### 机构 `/api/orgs`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/orgs` | 机构列表（含 `campuses[]`；家长用于切换孩子所属机构） |
+
+### 校区 `/api/campuses`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/campuses` | 当前机构校区列表 |
+
+### 学员 `/api/students`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/students` | 列表（员工按 org；家长跨机构看自己的孩子） |
+| GET | `/api/students/by-phone?phone=` | 按手机号查学员 |
+| POST | `/api/students` | 创建（含 `parentName`） |
+| PUT | `/api/students/{id}` | 更新 |
+| DELETE | `/api/students/{id}` | 软删除（`deleted_at`） |
+
+### 教案 `/api/packages`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/packages` | 列表（过滤已软删；状态兼容上架/下架） |
+| POST | `/api/packages` | 创建 |
+| PUT | `/api/packages/{id}` | 更新 |
+| DELETE | `/api/packages/{id}` | 归档（软删除） |
+
+### 报读 `/api/enrollments`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/enrollments?studentId=` | 学员报读列表 |
+| POST | `/api/enrollments` | 代录/更新报读（状态兼容：学习中→`ACTIVE` 等） |
+
+### 班级 `/api/classes`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/classes?mine=` | 列表（`mine=true` 时老师只看自己的班；含 `packageName`） |
+| POST | `/api/classes` | 建班 |
+| PUT | `/api/classes/{id}` | 更新班级 |
+| POST | `/api/classes/{id}/students` | 加学员 `{studentId}` |
+| DELETE | `/api/classes/{id}/students/{studentId}` | 移出学员 |
+
+### 课次 `/api/lessons`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/lessons?date=yyyy-MM-dd` | 按日期列表（含 `packageName`/`subject`/名单） |
+| GET | `/api/lessons?from=&to=` | 日历区间列表 |
+| GET | `/api/lessons/{id}` | 课次详情（员工看全部考勤；家长仅自己的学员行） |
+| GET | `/api/lessons/student-package?studentId=&packageId=` | 学员某教案下的课次（含评价/消课/`room`/`className`） |
+| POST | `/api/lessons` | 排课（自动带上班级 packageId） |
+| POST | `/api/lessons/{id}/finish` | 下课（状态→`FINISHED`） |
+| POST | `/api/lessons/{id}/absent` | 记旷课 `{studentId, absent}` |
+| POST | `/api/lessons/{id}/makeup` | 临补 |
+| POST | `/api/lessons/{id}/rate-by-teacher` | 老师评价并消课（可带 `absent`） |
+| POST | `/api/lessons/{id}/rate-by-student` | 学生评价老师 |
+
+### 活动 `/api/activities`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/activities?tab=open\|past\|mine` | 活动列表（`highlights`/`gallery` 为数组） |
+| GET | `/api/activities/{id}` | 活动详情（已报名时带 `signupId`） |
+| POST | `/api/activities` | 教务创建活动 |
+| PUT | `/api/activities/{id}` | 教务更新活动 |
+| POST | `/api/activities/{id}/signup` | 报名 `{studentId}` |
+| POST | `/api/activities/signups/{signupId}/cancel` | 取消报名 |
+
+### 财务 `/api/finance`（合伙人 / 管理员）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/finance/summary` | 财务汇总（含校区 `received`/`refund`/`net`/`netPaid`） |
+| GET | `/api/finance/orders` | 订单流水 |
+
+### 教师 `/api/teachers`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/teachers` | 列表 |
+| POST | `/api/teachers` | 创建 |
+| PUT | `/api/teachers/{id}` | 更新 |
+
+### 白名单 `/api/whitelist`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/whitelist` | 列表 |
+| POST | `/api/whitelist` | 添加 |
+| DELETE | `/api/whitelist/{id}` | 删除 |
+
+### 用户权限 `/api/users`（管理员）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/users` | 本机构员工账号与角色 |
+| POST | `/api/users/grant-role` | 授权 `{phone, name?, role}`（不可授 PARENT） |
+| POST | `/api/users/{userId}/revoke-role` | 撤权 `{role}` |
+
+### 校区 / 白名单 / 审计
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/campuses` | 当前机构校区 |
+| GET/POST/DELETE | `/api/whitelist` | 家长开通白名单（新家长登录前置） |
+| GET | `/api/audit` | 操作审计（教务/管理员） |
+| POST | `/api/finance/orders` | 录订单（教务/合伙/管理；可同步报读） |
+| GET | `/api/enrollments` | 机构全部报读（不传 studentId） |
+
+## 安全要点
+
+- 新家长须先入白名单（`app.security.require-whitelist-for-new-parent`）
+- 登录限流（手机号 / IP）；CORS 默认仅本机 Vite
+- 家长禁止课堂写操作；老师仅可操作自己的课
+- 密钥可用环境变量：`JWT_SECRET` `DB_PASSWORD` `SMS_DEMO_CODE` 等（见 `docs/SECURITY.md`）
+
+## 租户隔离说明
+
+- 员工：JWT 绑定 `orgId`，业务查询一律按机构过滤。
+- 家长：手机号全局唯一；学员按 `orgId + parent_phone + student_name` 唯一；切换学员即切换机构上下文。
+- Redis Key：`xgy:session:{userId}`、`xgy:lastRole:{phone}`、`xgy:lastStudent:{phone}`、`xgy:blacklist:{token}`。

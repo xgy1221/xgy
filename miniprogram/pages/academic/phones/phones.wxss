@@ -1,0 +1,28 @@
+.label {
+  margin-top: 18rpx;
+  margin-bottom: 10rpx;
+  color: #5b6b69;
+  font-size: 24rpx;
+}
+
+.input {
+  height: 84rpx;
+  border: 2rpx solid #dce5e3;
+  border-radius: 14rpx;
+  padding: 0 22rpx;
+  background: #f8fbfa;
+}
+
+.save {
+  margin-top: 28rpx;
+}
+
+.item-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  margin-bottom: 6rpx;
+}
+
+.muted {
+  margin-top: 6rpx;
+}

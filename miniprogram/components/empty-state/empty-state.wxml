@@ -1,0 +1,4 @@
+<view class="empty">
+  <text class="title">{{title}}</text>
+  <text class="desc" wx:if="{{desc}}">{{desc}}</text>
+</view>
