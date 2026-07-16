@@ -4,6 +4,10 @@
   align-items: center;
 }
 
+.profile-main {
+  flex: 1;
+}
+
 .avatar {
   width: 96rpx;
   height: 96rpx;
@@ -15,6 +19,7 @@
   justify-content: center;
   font-size: 40rpx;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .name {
@@ -67,4 +72,110 @@
 .link {
   color: var(--brand);
   font-weight: 600;
+}
+
+.section-head {
+  margin-bottom: 16rpx;
+}
+
+.section-head .section-title {
+  margin-bottom: 6rpx;
+}
+
+.kid-card {
+  background: #fff;
+  border-radius: 18rpx;
+  padding: 28rpx;
+  box-shadow: var(--shadow);
+  margin-bottom: 20rpx;
+}
+
+.kid-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+
+.name-row {
+  justify-content: flex-start;
+  gap: 12rpx;
+  align-items: center;
+}
+
+.name-row .tag {
+  margin-top: 0;
+}
+
+.summary {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.toggle {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  padding: 8rpx 0 0 12rpx;
+  flex-shrink: 0;
+}
+
+.kid-body {
+  margin-top: 20rpx;
+  padding-top: 8rpx;
+  border-top: 1rpx solid var(--border);
+}
+
+.enroll {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #eef3f2;
+}
+
+.enroll:last-child {
+  border-bottom: none;
+}
+
+.empty-enroll {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.item-title {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.progress-wrap {
+  margin: 16rpx 0 10rpx;
+  height: 12rpx;
+  background: #e8f2f1;
+  border-radius: 999rpx;
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  background: #0f3d3e;
+  border-radius: 999rpx;
+}
+
+.progress-meta {
+  align-items: center;
+}
+
+.strong {
+  font-weight: 700;
+  color: var(--brand);
+  font-size: 26rpx;
+}
+
+.kid-actions {
+  margin-top: 12rpx;
+  text-align: right;
+}
+
+.empty {
+  margin-bottom: 20rpx;
 }

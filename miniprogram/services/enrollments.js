@@ -76,13 +76,39 @@ function getEnrollmentsDetailedByStudent(studentId) {
 
 function decorate(e) {
   const pkg = packagesService.getPackageById(e.packageId) || {}
+  const total = Number(e.totalLessons) || 0
+  const remain = Number(e.remainLessons) || 0
+  const used = Math.max(0, total - remain)
+  const progress = total ? Math.round((used / total) * 100) : 0
   return {
     ...e,
     packageName: pkg.name || '未知教案',
     subject: pkg.subject || '',
     grade: pkg.grade || '',
     price: pkg.price || 0,
-    outline: pkg.outline || []
+    outline: pkg.outline || [],
+    usedLessons: used,
+    progress,
+    progressText: `${used}/${total}`,
+    remainText: `剩余 ${remain}`
+  }
+}
+
+/** 按学员汇总报读进度，供家长「我的」/ 老师查学员 */
+function summarizeStudentLearning(studentId) {
+  const list = getEnrollmentsDetailedByStudent(studentId)
+  const totalLessons = list.reduce((s, e) => s + (Number(e.totalLessons) || 0), 0)
+  const usedLessons = list.reduce((s, e) => s + (Number(e.usedLessons) || 0), 0)
+  const remainLessons = list.reduce((s, e) => s + (Number(e.remainLessons) || 0), 0)
+  return {
+    enrollments: list,
+    packageCount: list.length,
+    totalLessons,
+    usedLessons,
+    remainLessons,
+    summaryText: list.length
+      ? `已上 ${usedLessons} / 共 ${totalLessons} 课 · 剩 ${remainLessons}`
+      : '尚未报读教案'
   }
 }
 
@@ -201,6 +227,7 @@ module.exports = {
   getAllDetailedEnrollments,
   getEnrollmentsByStudent,
   getEnrollmentsDetailedByStudent,
+  summarizeStudentLearning,
   enrollPackagesForStudent,
   upsertEnrollment,
   updateRemainLessons,

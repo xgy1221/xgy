@@ -1,6 +1,6 @@
 <view class="container">
   <view class="page-title">我的教案</view>
-  <view class="page-sub">当前学员：{{studentName}}</view>
+  <view class="page-sub">{{studentName}} · {{summaryText}}</view>
 
   <view class="section" wx:if="{{list.length}}">
     <view class="card" wx:for="{{list}}" wx:key="id">
@@ -12,7 +12,7 @@
       <view class="progress-wrap">
         <view class="progress" style="width: {{item.progress}}%;"></view>
       </view>
-      <view class="muted">剩余 {{item.remainLessons}} / 共 {{item.totalLessons}} 课次 · {{item.source}}</view>
+      <view class="muted">已上 {{item.usedLessons}} / 教案共 {{item.totalLessons}} 课 · 剩余 {{item.remainLessons}}</view>
     </view>
   </view>
 
@@ -25,5 +25,4 @@
   <view class="section" wx:if="{{list.length}}">
     <button class="btn-ghost" bindtap="onAddPackages">继续添加教案</button>
   </view>
-
 </view>

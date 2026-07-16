@@ -55,7 +55,6 @@ const ROLE_TABS = {
   [ROLES.STUDENT]: [
     { pagePath: '/pages/student/home/home', text: '课表', icon: '▦' },
     { pagePath: '/pages/student/activities/activities', text: '比赛', icon: '◎' },
-    { pagePath: '/pages/student/schedule/schedule', text: '全部', icon: '☰' },
     { pagePath: '/pages/student/mine/mine', text: '我的', icon: '☺' }
   ],
   [ROLES.TEACHER]: [

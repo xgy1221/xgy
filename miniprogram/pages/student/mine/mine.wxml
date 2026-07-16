@@ -1,7 +1,7 @@
 <view class="container">
   <view class="profile card">
     <view class="avatar">{{avatarText}}</view>
-    <view>
+    <view class="profile-main">
       <view class="name">{{name}}</view>
       <view class="muted">{{phone}}</view>
       <view class="tag">{{roleName}}</view>
@@ -28,26 +28,68 @@
     </view>
   </view>
 
-  <view class="section card">
-    <view class="section-title">绑定学员</view>
-    <view class="list-item" wx:for="{{children}}" wx:key="id" data-id="{{item.id}}" bindtap="onSwitchChild">
-      <view>
-        <view class="role-name">{{item.studentName}}</view>
-        <view class="muted">{{item.orgName || '机构'}} · {{item.grade || '未填年级'}}</view>
+  <view class="section">
+    <view class="section-head">
+      <view class="section-title">孩子们的学习</view>
+      <view class="muted">点名字切换当前孩子 · 展开看教案进度</view>
+    </view>
+
+    <view class="empty card" wx:if="{{!familyLearning.length}}">
+      <view class="role-name">还没有学员档案</view>
+      <view class="muted tip">添加孩子并绑定教案后，这里会显示已上/总课次。</view>
+      <button class="btn-primary add-btn" bindtap="onAddChild">添加学员</button>
+    </view>
+
+    <view class="kid-card" wx:for="{{familyLearning}}" wx:key="id">
+      <view class="kid-head" data-id="{{item.id}}" bindtap="onSwitchChild">
+        <view>
+          <view class="row name-row">
+            <view class="role-name">{{item.studentName}}</view>
+            <view class="tag ok" wx:if="{{item.isCurrent}}">当前</view>
+            <view class="tag" wx:else>切换</view>
+          </view>
+          <view class="muted">{{item.orgName || '机构'}} · {{item.grade || '未填年级'}}</view>
+          <view class="summary">{{item.summaryText}}</view>
+        </view>
+        <view class="toggle" data-id="{{item.id}}" catchtap="onToggleKid">
+          {{item.expanded ? '收起' : '展开'}}
+        </view>
       </view>
-      <view class="tag {{item.id === currentStudentId ? 'ok' : ''}}">
-        {{item.id === currentStudentId ? '当前' : '切换'}}
+
+      <view class="kid-body" wx:if="{{item.expanded}}">
+        <view class="enroll empty-enroll" wx:if="{{!item.enrollments.length}}">
+          <view class="muted">尚未报读教案</view>
+          <view class="link" data-id="{{item.id}}" catchtap="goAddPackages">去选教案</view>
+        </view>
+        <view class="enroll" wx:for="{{item.enrollments}}" wx:for-item="en" wx:key="id">
+          <view class="row">
+            <view class="item-title">{{en.packageName}}</view>
+            <view class="tag {{en.status === '学习中' ? 'ok' : 'warn'}}">{{en.status}}</view>
+          </view>
+          <view class="muted">{{en.subject}} · {{en.grade}}</view>
+          <view class="progress-wrap">
+            <view class="progress" style="width: {{en.progress}}%;"></view>
+          </view>
+          <view class="row progress-meta">
+            <text class="strong">已上 {{en.usedLessons}} / 教案共 {{en.totalLessons}} 课</text>
+            <text class="muted">剩余 {{en.remainLessons}}</text>
+          </view>
+        </view>
+        <view class="kid-actions" wx:if="{{item.enrollments.length}}">
+          <text class="link" data-id="{{item.id}}" catchtap="goAddPackages">继续添加教案</text>
+        </view>
       </view>
     </view>
-    <view class="muted tip" wx:if="{{children.length}}">同一家长手机号可关联多个孩子，课表会随切换变化。</view>
-    <view class="muted tip" wx:else>还没有学员档案，去添加孩子并选择教案。</view>
-    <button class="btn-primary add-btn" bindtap="onAddChild">添加 / 完善学员</button>
+
+    <button class="btn-ghost add-btn" bindtap="onAddChild" wx:if="{{familyLearning.length}}">
+      添加 / 完善学员
+    </button>
   </view>
 
   <view class="section card">
-    <view class="section-title">学习与活动</view>
-    <view class="list-item" bindtap="goCourses">
-      <text>我的教案 / 剩余课次</text>
+    <view class="section-title">快捷入口</view>
+    <view class="list-item" bindtap="goSchedule">
+      <text>全部课次列表</text>
       <text class="link">查看</text>
     </view>
     <view class="list-item" bindtap="goActivities">
@@ -66,5 +108,6 @@
       <text class="danger">退出</text>
     </view>
   </view>
+
   <role-nav current="/pages/student/mine/mine" />
 </view>

@@ -5,7 +5,8 @@ const enrollmentsService = require('../../../services/enrollments')
 Page({
   data: {
     list: [],
-    studentName: ''
+    studentName: '',
+    summaryText: ''
   },
 
   onShow() {
@@ -18,15 +19,12 @@ Page({
 
     const studentId = auth.getCurrentStudentId()
     const student = studentsService.getStudentById(studentId)
-    const list = enrollmentsService.getEnrollmentsDetailedByStudent(studentId).map((e) => {
-      const used = Math.max(0, e.totalLessons - e.remainLessons)
-      const progress = e.totalLessons ? Math.round((used / e.totalLessons) * 100) : 0
-      return { ...e, progress }
-    })
+    const learning = enrollmentsService.summarizeStudentLearning(studentId)
 
     this.setData({
-      list,
-      studentName: student ? student.studentName : '学员'
+      list: learning.enrollments,
+      studentName: student ? student.studentName : '学员',
+      summaryText: learning.summaryText
     })
   },
 
