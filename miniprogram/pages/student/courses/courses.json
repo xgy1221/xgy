@@ -1,6 +1,4 @@
 {
-  "usingComponents": {
-    "role-nav": "/components/role-nav/role-nav",
-    "stat-card": "/components/stat-card/stat-card"
-  }
+  "navigationBarTitleText": "我的教案",
+  "usingComponents": {}
 }

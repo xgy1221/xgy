@@ -4,6 +4,8 @@
     "pages/role-select/role-select",
     "pages/onboarding/onboarding",
     "pages/student/home/home",
+    "pages/student/activities/activities",
+    "pages/student/activity-detail/activity-detail",
     "pages/student/courses/courses",
     "pages/student/schedule/schedule",
     "pages/student/lesson-detail/lesson-detail",

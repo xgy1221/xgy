@@ -45,6 +45,18 @@
   </view>
 
   <view class="section card">
+    <view class="section-title">学习与活动</view>
+    <view class="list-item" bindtap="goCourses">
+      <text>我的教案 / 剩余课次</text>
+      <text class="link">查看</text>
+    </view>
+    <view class="list-item" bindtap="goActivities">
+      <text>比赛报名与往期赛果</text>
+      <text class="link">进入</text>
+    </view>
+  </view>
+
+  <view class="section card">
     <view class="list-item">
       <text>当前角色</text>
       <text>{{roleName}}</text>

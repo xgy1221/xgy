@@ -63,3 +63,8 @@
 .add-btn {
   margin-top: 24rpx;
 }
+
+.link {
+  color: var(--brand);
+  font-weight: 600;
+}

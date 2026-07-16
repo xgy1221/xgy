@@ -26,5 +26,4 @@
     <button class="btn-ghost" bindtap="onAddPackages">继续添加教案</button>
   </view>
 
-  <role-nav current="/pages/student/courses/courses" />
 </view>

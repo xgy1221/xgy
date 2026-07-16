@@ -13,7 +13,7 @@ const ROLE_META = {
     key: ROLES.STUDENT,
     name: '学生 / 家长',
     shortName: '家长端',
-    desc: '日历课表、报读进度、课后评价消课',
+    desc: '日历课表、活动报名、课后评价消课',
     color: '#0F3D3E',
     home: '/pages/student/home/home'
   },
@@ -54,7 +54,7 @@ const ROLE_META = {
 const ROLE_TABS = {
   [ROLES.STUDENT]: [
     { pagePath: '/pages/student/home/home', text: '课表', icon: '▦' },
-    { pagePath: '/pages/student/courses/courses', text: '课程', icon: '▣' },
+    { pagePath: '/pages/student/activities/activities', text: '比赛', icon: '◎' },
     { pagePath: '/pages/student/schedule/schedule', text: '全部', icon: '☰' },
     { pagePath: '/pages/student/mine/mine', text: '我的', icon: '☺' }
   ],

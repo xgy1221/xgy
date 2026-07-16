@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "比赛活动",
+  "usingComponents": {
+    "role-nav": "/components/role-nav/role-nav",
+    "stat-card": "/components/stat-card/stat-card"
+  }
+}

@@ -59,6 +59,14 @@ Page({
     wx.navigateTo({ url: '/pages/onboarding/onboarding' })
   },
 
+  goCourses() {
+    wx.navigateTo({ url: '/pages/student/courses/courses' })
+  },
+
+  goActivities() {
+    wx.redirectTo({ url: '/pages/student/activities/activities' })
+  },
+
   onLogout() {
     auth.clearSession()
     wx.reLaunch({ url: '/pages/login/login' })
