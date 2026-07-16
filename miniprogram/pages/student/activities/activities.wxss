@@ -1,3 +1,26 @@
+.chip-scroll {
+  white-space: nowrap;
+  width: 100%;
+}
+
+.chip {
+  display: inline-flex;
+  margin-right: 14rpx;
+  padding: 14rpx 26rpx;
+  border-radius: 999rpx;
+  background: #fff;
+  color: #5b6b69;
+  border: 2rpx solid #dce5e3;
+  font-size: 26rpx;
+}
+
+.chip.on {
+  background: #0f3d3e;
+  color: #fff;
+  border-color: #0f3d3e;
+  font-weight: 600;
+}
+
 .tabs {
   display: flex;
   gap: 12rpx;

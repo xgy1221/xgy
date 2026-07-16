@@ -5,6 +5,8 @@ const activitiesService = require('../../../services/activities')
 Page({
   data: {
     tab: 'open',
+    children: [],
+    currentStudentId: '',
     studentName: '',
     orgName: '',
     openList: [],
@@ -26,16 +28,27 @@ Page({
   },
 
   refresh() {
-    const studentId = auth.getCurrentStudentId()
-    const student = studentsService.getStudentById(studentId)
+    const session = auth.getSession()
+    const children = studentsService.getStudentsByPhone(session.user.phone).map((c) => ({
+      ...c,
+      chipText: c.orgShortName ? `${c.studentName}·${c.orgShortName}` : c.studentName
+    }))
+    let currentStudentId = session.currentStudentId
+    if (children.length && !children.some((c) => c.id === currentStudentId)) {
+      currentStudentId = children[0].id
+      auth.setCurrentStudentId(currentStudentId)
+    }
+    const student = studentsService.getStudentById(currentStudentId)
     const orgId = (student && student.orgId) || auth.getCurrentOrgId()
-    const phone = auth.getSession().user.phone
+    const phone = session.user.phone
 
-    const openList = activitiesService.listOpen(orgId, studentId)
-    const pastList = activitiesService.listPast(orgId, studentId)
-    const myList = activitiesService.listMySignups(phone, studentId)
+    const openList = activitiesService.listOpen(orgId, currentStudentId)
+    const pastList = activitiesService.listPast(orgId, currentStudentId)
+    const myList = activitiesService.listMySignups(phone, currentStudentId)
 
     this.setData({
+      children,
+      currentStudentId,
       studentName: (student && student.studentName) || '学员',
       orgName: (student && student.orgName) || '',
       openList,
@@ -45,6 +58,13 @@ Page({
       pastCount: pastList.length,
       myCount: myList.length
     })
+  },
+
+  onSwitchChild(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id || id === this.data.currentStudentId) return
+    auth.setCurrentStudentId(id)
+    this.refresh()
   },
 
   onTab(e) {

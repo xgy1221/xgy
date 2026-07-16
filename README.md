@@ -6,7 +6,8 @@
 2. **微信小程序**（`miniprogram/`）：家长 / 老师 / 教务现场为主；合伙、管理员轻量看板  
 3. **Web 管理端**（`web-admin/`）：教务 / 合伙人 / 管理员——教案、学员、教师、课程、财务  
 
-产品说明见 [`docs/PRODUCT.md`](docs/PRODUCT.md)。后端启动见 [`backend/README.md`](backend/README.md)。
+可售卖产品设计（问题与改进）见 [`docs/DESIGN.md`](docs/DESIGN.md)。  
+业务规则见 [`docs/PRODUCT.md`](docs/PRODUCT.md)。后端见 [`backend/README.md`](backend/README.md)。
 
 ## 分工
 

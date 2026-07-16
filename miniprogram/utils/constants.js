@@ -70,17 +70,13 @@ const ROLE_TABS = {
     { pagePath: '/pages/academic/enroll/enroll', text: '报名', icon: '✎' },
     { pagePath: '/pages/academic/mine/mine', text: '我的', icon: '☺' }
   ],
+  // 合伙/管理：手机只做快览，深度配置走 Web（可售卖产品的分工）
   [ROLES.PARTNER]: [
-    { pagePath: '/pages/partner/home/home', text: '首页', icon: '⌂' },
-    { pagePath: '/pages/partner/performance/performance', text: '业绩', icon: '▣' },
-    { pagePath: '/pages/partner/team/team', text: '团队', icon: '▦' },
+    { pagePath: '/pages/partner/home/home', text: '业绩', icon: '⌂' },
     { pagePath: '/pages/partner/mine/mine', text: '我的', icon: '☺' }
   ],
   [ROLES.ADMIN]: [
-    { pagePath: '/pages/admin/home/home', text: '首页', icon: '⌂' },
-    { pagePath: '/pages/admin/users/users', text: '账号', icon: '▣' },
-    { pagePath: '/pages/admin/org/org', text: '组织', icon: '▦' },
-    { pagePath: '/pages/admin/settings/settings', text: '设置', icon: '⚙' },
+    { pagePath: '/pages/admin/home/home', text: '概况', icon: '⌂' },
     { pagePath: '/pages/admin/mine/mine', text: '我的', icon: '☺' }
   ]
 }

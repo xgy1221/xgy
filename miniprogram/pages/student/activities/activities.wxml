@@ -4,6 +4,16 @@
     {{studentName}}<text wx:if="{{orgName}}"> · {{orgName}}</text> · 报名参赛 / 往期赛果
   </view>
 
+  <scroll-view scroll-x class="chip-scroll section" wx:if="{{children.length > 1}}">
+    <view
+      class="chip {{item.id === currentStudentId ? 'on' : ''}}"
+      wx:for="{{children}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="onSwitchChild"
+    >{{item.chipText}}</view>
+  </scroll-view>
+
   <view class="tabs section">
     <view class="tab {{tab === 'open' ? 'on' : ''}}" data-tab="open" bindtap="onTab">
       报名参赛 <text class="num">{{openCount}}</text>

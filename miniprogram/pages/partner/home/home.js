@@ -18,5 +18,11 @@ Page({
       shareRatio: u.shareRatio || stats.shareRatio || '-',
       stats
     })
+  },
+  goPerf() {
+    wx.navigateTo({ url: '/pages/partner/performance/performance' })
+  },
+  goTeam() {
+    wx.navigateTo({ url: '/pages/partner/team/team' })
   }
 })

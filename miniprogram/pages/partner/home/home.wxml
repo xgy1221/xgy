@@ -21,10 +21,21 @@
     </view>
   </view>
 
+  <view class="section card">
+    <view class="list-item" bindtap="goPerf">
+      <text>业绩明细（手机快览）</text>
+      <text class="link">查看</text>
+    </view>
+    <view class="list-item" bindtap="goTeam">
+      <text>团队贡献概况</text>
+      <text class="link">查看</text>
+    </view>
+  </view>
+
   <view class="web-hint">
     <view class="web-hint-title">深度财务请用电脑 Web</view>
     <view class="web-hint-text">
-      小程序只做巡店快览：实收、分成、退费。校区对比、教案销售结构、订单流水在「学管云 Web 管理端 · 财务中心」查看；排课改档由教务处理。
+      小程序只做巡店快览。校区对比、订单流水、导出对账请用 Web「财务中心」。
     </view>
   </view>
 
