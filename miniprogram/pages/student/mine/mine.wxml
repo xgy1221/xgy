@@ -32,6 +32,7 @@
     </view>
   </view>
 
+  <view class="swap {{contentReady ? 'in' : 'out'}}">
   <view class="section">
     <view class="section-label">孩子</view>
     <view class="empty-block" wx:if="{{!children.length}}">
@@ -136,9 +137,10 @@
   </view>
 
   <view class="footer-links" wx:if="{{children.length}}">
-    <view class="link-item" bindtap="goAddPackages">为孩子补选教案</view>
-    <view class="link-item" bindtap="onAddChild">添加学员</view>
-    <view class="link-item" bindtap="goSchedule">全部课次</view>
+    <view class="link-item tapable" bindtap="goAddPackages">为孩子补选教案</view>
+    <view class="link-item tapable" bindtap="onAddChild">添加学员</view>
+    <view class="link-item tapable" bindtap="goSchedule">全部课次</view>
+  </view>
   </view>
 
   <role-nav current="/pages/student/mine/mine" />

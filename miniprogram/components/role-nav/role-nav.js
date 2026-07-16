@@ -1,5 +1,6 @@
 const { ROLE_TABS } = require('../../utils/constants')
 const auth = require('../../utils/auth')
+const motion = require('../../utils/motion')
 
 Component({
   properties: {
@@ -26,6 +27,7 @@ Component({
     onTap(e) {
       const path = e.currentTarget.dataset.path
       if (!path || path === this.data.current) return
+      motion.tap('light')
       wx.redirectTo({ url: path })
     }
   }

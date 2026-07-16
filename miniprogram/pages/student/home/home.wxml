@@ -20,8 +20,9 @@
     >{{item.chipText || item.studentName}}</view>
   </scroll-view>
 
+  <view class="swap {{contentReady ? 'in' : 'out'}}">
   <!-- 首屏唯一主角：下一节课 -->
-  <view class="next-hero" wx:if="{{nextLesson}}" data-id="{{nextLesson.id}}" bindtap="goDetail">
+  <view class="next-hero tapable" wx:if="{{nextLesson}}" data-id="{{nextLesson.id}}" bindtap="goDetail">
     <view class="next-kicker">{{nextLesson.whenLabel}}</view>
     <view class="next-title">{{nextLesson.packageName}}</view>
     <view class="next-time">{{nextLesson.startTime}}-{{nextLesson.endTime}}</view>
@@ -87,6 +88,7 @@
       markedDates="{{markedDates}}"
       bind:select="onSelectDate"
     />
+  </view>
   </view>
 
   <role-nav current="/pages/student/home/home" />

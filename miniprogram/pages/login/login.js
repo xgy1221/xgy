@@ -2,16 +2,19 @@ const { ROLE_META, ROLES } = require('../../utils/constants')
 const { DEMO_USERS } = require('../../services/mock')
 const auth = require('../../utils/auth')
 const bridge = require('../../services/bridge')
+const motion = require('../../utils/motion')
 
 Page({
   data: {
     phone: '',
     accounts: [],
     loading: false,
-    showDemo: false
+    showDemo: false,
+    focusPhone: false
   },
 
   toggleDemo() {
+    motion.tap('light')
     this.setData({ showDemo: !this.data.showDemo })
   },
 
@@ -44,16 +47,23 @@ Page({
 
   onQuickLogin(e) {
     const phone = e.currentTarget.dataset.phone
+    motion.tap('medium')
     this.setData({ phone })
     this.doLogin(phone)
   },
 
   onLogin() {
+    motion.tap('light')
     this.doLogin(this.data.phone)
   },
 
   async doLogin(phone) {
     if (this.data.loading) return
+    if (!phone) {
+      this.setData({ focusPhone: true })
+      wx.showToast({ title: '请先输入手机号', icon: 'none' })
+      return
+    }
     this.setData({ loading: true })
     wx.showLoading({ title: '登录中', mask: true })
     try {
@@ -62,6 +72,7 @@ Page({
         wx.showToast({ title: result.message, icon: 'none' })
         return
       }
+      motion.tap('medium')
       auth.setSession(result.session)
       this.redirectBySession(result.session)
     } catch (e) {

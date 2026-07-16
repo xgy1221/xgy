@@ -1,11 +1,11 @@
 <view class="login-page">
-  <view class="hero">
-    <view class="brand-mark">学</view>
+  <view class="hero anim-rise">
+    <view class="brand-mark anim-pop">学</view>
     <view class="brand">学管云</view>
     <view class="slogan">看课表、看老师评价、给孩子报比赛——机构上课，家长心里有数。</view>
   </view>
 
-  <view class="panel">
+  <view class="panel anim-rise d1">
     <view class="field-label">手机号登录</view>
     <input
       class="field"
@@ -14,19 +14,21 @@
       placeholder="请输入手机号"
       value="{{phone}}"
       bindinput="onPhoneInput"
+      focus="{{focusPhone}}"
     />
     <button class="btn-primary login-btn" loading="{{loading}}" bindtap="onLogin">进入</button>
     <view class="tip">演示环境短信码由后端固定校验；未建档手机号也可作为家长登录并引导完善学员。</view>
   </view>
 
-  <view class="demo-toggle" bindtap="toggleDemo">
+  <view class="demo-toggle anim-fade d2" bindtap="toggleDemo">
     {{showDemo ? '收起演示账号' : '演示账号（销售/体验用）'}}
   </view>
 
   <view class="quick" wx:if="{{showDemo}}">
-    <view class="quick-hint">点账号直接进入对应角色；家长 01 可体验跨机构切孩子。</view>
+    <view class="quick-hint anim-fade">点账号直接进入对应角色；家长 01 可体验跨机构切孩子。</view>
     <view
-      class="quick-item"
+      class="quick-item tapable anim-rise"
+      style="animation-delay: {{index * 0.04}}s"
       wx:for="{{accounts}}"
       wx:key="phone"
       data-phone="{{item.phone}}"

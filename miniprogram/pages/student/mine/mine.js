@@ -5,6 +5,7 @@ const enrollmentsService = require('../../../services/enrollments')
 const lessonsService = require('../../../services/lessons')
 const bridge = require('../../../services/bridge')
 const api = require('../../../services/api')
+const motion = require('../../../utils/motion')
 const { formatDisplay } = require('../../../utils/date')
 
 const PAGE_SIZE = 8
@@ -31,7 +32,8 @@ Page({
     hasMore: false,
     shownCount: 0,
     evalCount: 0,
-    latestEval: null
+    latestEval: null,
+    contentReady: true
   },
 
   onShow() {
@@ -75,6 +77,7 @@ Page({
   },
 
   toggleAccount() {
+    motion.tap('light')
     this.setData({ showAccount: !this.data.showAccount })
   },
 
@@ -125,7 +128,7 @@ Page({
     if (currentPackageId) this.setLastPackage(studentId, currentPackageId)
 
     this.setData({ packages, currentPackageId })
-    this.loadLessonsForPackage(studentId, currentPackageId, packages)
+    return this.loadLessonsForPackage(studentId, currentPackageId, packages)
   },
 
   async loadLessonsForPackage(studentId, packageId, packages) {
@@ -197,6 +200,8 @@ Page({
   async onSwitchChild(e) {
     const id = e.currentTarget.dataset.id
     if (!id || id === this.data.currentStudentId) return
+    motion.tap('medium')
+    this.setData({ contentReady: false })
     wx.showLoading({ title: '切换中', mask: true })
     try {
       await bridge.remoteSwitchStudent(id)
@@ -204,8 +209,10 @@ Page({
       const orgName = student.orgName || ''
       if (orgName) wx.setNavigationBarTitle({ title: orgName })
       this.setData({ currentStudentId: id, orgName })
-      this.loadPackagesForStudent(id)
+      await this.loadPackagesForStudent(id)
+      this.setData({ contentReady: true })
     } catch (err) {
+      this.setData({ contentReady: true })
       wx.showToast({ title: (err && err.message) || '切换失败', icon: 'none' })
     } finally {
       wx.hideLoading()
@@ -215,9 +222,12 @@ Page({
   onSwitchPackage(e) {
     const id = e.currentTarget.dataset.id
     if (!id || id === this.data.currentPackageId) return
-    this.setLastPackage(this.data.currentStudentId, id)
-    this.setData({ currentPackageId: id })
-    this.loadLessonsForPackage(this.data.currentStudentId, id)
+    motion.tap('light')
+    motion.swap(this, () => {
+      this.setLastPackage(this.data.currentStudentId, id)
+      this.setData({ currentPackageId: id })
+      this.loadLessonsForPackage(this.data.currentStudentId, id)
+    }, 90)
   },
 
   onLoadMore() {

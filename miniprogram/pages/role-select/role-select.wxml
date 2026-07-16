@@ -1,19 +1,24 @@
-<view class="container">
-  <view class="page-title">选择要进入的身份</view>
-  <view class="page-sub">账号「{{userName}}」有多个角色。选过后会记住，下次登录默认进入上次身份；也可在「我的」里切换。</view>
+<view class="page">
+  <view class="atmosphere"></view>
+  <view class="head anim-rise">
+    <view class="kicker">多身份账号</view>
+    <view class="title">选择要进入的身份</view>
+    <view class="sub">「{{userName}}」可选下方角色。选过后会记住，下次默认进入；也可在「我的」随时切换。</view>
+  </view>
 
   <view class="role-list">
     <view
-      class="role-card {{item.key === lastRole ? 'last' : ''}}"
+      class="role-card tapable anim-rise {{item.key === lastRole ? 'last' : ''}}"
+      style="border-left-color: {{item.color}}; animation-delay: {{index * 0.06}}s"
       wx:for="{{roles}}"
       wx:key="key"
-      style="border-left-color: {{item.color}};"
       data-role="{{item.key}}"
       bindtap="onSelect"
     >
       <view class="row">
         <view class="role-name">{{item.name}}</view>
         <view class="tag ok" wx:if="{{item.key === lastRole}}">上次使用</view>
+        <view class="enter" wx:else>进入 ›</view>
       </view>
       <view class="role-desc">{{item.desc}}</view>
     </view>

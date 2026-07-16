@@ -1,5 +1,6 @@
 const auth = require('../../../utils/auth')
 const lessonsService = require('../../../services/lessons')
+const motion = require('../../../utils/motion')
 
 Page({
   data: {
@@ -40,11 +41,13 @@ Page({
   },
 
   onClear() {
+    motion.tap('light')
     this.runSearch('')
   },
 
   onAdd(e) {
     const { id, name } = e.currentTarget.dataset
+    motion.tap('light')
     wx.showModal({
       title: `确认临时加入？`,
       content: `将「${name}」加入本节课。只影响本课次，原班不变。`,
@@ -52,6 +55,7 @@ Page({
       success: async (res) => {
         if (!res.confirm) return
         const api = require('../../../services/api')
+        motion.tap('medium')
         wx.showLoading({ title: '加入中', mask: true })
         try {
           if (api.isRemoteSession()) {
@@ -72,7 +76,7 @@ Page({
                   url: `/pages/teacher/lesson-detail/lesson-detail?id=${this.data.lessonId}`
                 })
             })
-          }, 400)
+          }, 450)
         } catch (err) {
           wx.showToast({ title: (err && err.message) || '加入失败', icon: 'none' })
         } finally {

@@ -3,6 +3,7 @@ const studentsService = require('../../../services/students')
 const activitiesService = require('../../../services/activities')
 const bridge = require('../../../services/bridge')
 const api = require('../../../services/api')
+const motion = require('../../../utils/motion')
 
 Page({
   data: {
@@ -10,7 +11,8 @@ Page({
     activity: null,
     studentName: '',
     canSignup: false,
-    btnText: '立即报名'
+    btnText: '立即报名',
+    footerFlash: false
   },
 
   onLoad(query) {
@@ -85,11 +87,14 @@ Page({
       return
     }
 
+    motion.tap('light')
     wx.showModal({
       title: '确认报名参赛',
       content: `为「${student.studentName}」报名「${this.data.activity.title}」？`,
+      confirmText: '确认报名',
       success: async (res) => {
         if (!res.confirm) return
+        motion.tap('medium')
         wx.showLoading({ title: '提交中', mask: true })
         try {
           let result = null
@@ -112,8 +117,10 @@ Page({
             wx.showToast({ title: result.message || '报名失败', icon: 'none' })
             return
           }
+          this.setData({ footerFlash: true })
           wx.showToast({ title: '报名成功，准时参赛', icon: 'success' })
-          this.refresh()
+          await this.refresh()
+          setTimeout(() => this.setData({ footerFlash: false }), 500)
         } catch (err) {
           wx.showToast({ title: (err && err.message) || '报名失败', icon: 'none' })
         } finally {

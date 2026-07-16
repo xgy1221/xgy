@@ -25,6 +25,7 @@
     </view>
   </view>
 
+  <view class="swap {{contentReady ? 'in' : 'out'}}">
   <view class="list" wx:if="{{tab === 'open'}}">
     <view class="empty-block" wx:if="{{!openList.length}}">
       <view class="empty-title">暂无开放报名的比赛</view>
@@ -92,6 +93,7 @@
       </view>
       <view class="tag ok">已报名</view>
     </view>
+  </view>
   </view>
 
   <role-nav current="/pages/student/activities/activities" />

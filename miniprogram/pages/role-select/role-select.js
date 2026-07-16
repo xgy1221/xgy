@@ -1,6 +1,7 @@
 const { ROLE_META, ROLES } = require('../../utils/constants')
 const auth = require('../../utils/auth')
 const bridge = require('../../services/bridge')
+const motion = require('../../utils/motion')
 
 Page({
   data: {
@@ -28,7 +29,8 @@ Page({
   async onSelect(e) {
     const role = e.currentTarget.dataset.role
     if (!role) return
-    wx.showLoading({ title: '切换中', mask: true })
+    motion.tap('medium')
+    wx.showLoading({ title: '进入中', mask: true })
     try {
       const session = await bridge.remoteSwitchRole(role)
       if (role === ROLES.STUDENT && session.needsOnboarding) {

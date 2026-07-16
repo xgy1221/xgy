@@ -25,6 +25,13 @@
   line-height: 64rpx;
   font-size: 40rpx;
   color: #0f3d3e;
+  border-radius: 50%;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.nav:active {
+  background: #e8f2f1;
+  transform: scale(0.92);
 }
 
 .week-row,
@@ -53,6 +60,11 @@
   font-size: 28rpx;
   color: #14201f;
   border-radius: 14rpx;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.15s ease;
+}
+
+.day:active {
+  transform: scale(0.92);
 }
 
 .day.empty {
@@ -87,6 +99,8 @@
 .day.selected {
   background: #0f3d3e;
   color: #fff;
+  transform: scale(1.04);
+  box-shadow: 0 6rpx 16rpx rgba(15, 61, 62, 0.22);
 }
 
 .dots {

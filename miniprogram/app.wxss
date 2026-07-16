@@ -194,3 +194,109 @@ textarea {
   color: var(--brand);
   font-weight: 600;
 }
+
+/* —— 动效系统：进场 / 切换 / 按压 —— */
+@keyframes xgy-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes xgy-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes xgy-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  70% {
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes xgy-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+.anim-rise {
+  animation: xgy-rise 0.45s ease both;
+}
+
+.anim-fade {
+  animation: xgy-fade 0.35s ease both;
+}
+
+.anim-pop {
+  animation: xgy-pop 0.4s ease both;
+}
+
+.d1 {
+  animation-delay: 0.05s;
+}
+.d2 {
+  animation-delay: 0.1s;
+}
+.d3 {
+  animation-delay: 0.16s;
+}
+.d4 {
+  animation-delay: 0.22s;
+}
+
+/* 内容区切换：切孩子 / 切 Tab */
+.swap {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.swap.out {
+  opacity: 0;
+  transform: translateY(10rpx);
+  pointer-events: none;
+}
+
+.swap.in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tapable {
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.tapable:active {
+  transform: scale(0.97);
+  opacity: 0.92;
+}
+
+.btn-primary,
+.btn-ghost {
+  transition: transform 0.15s ease, opacity 0.15s ease, background 0.2s ease;
+}
+
+.btn-primary:active,
+.btn-ghost:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}

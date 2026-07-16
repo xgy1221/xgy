@@ -1,17 +1,163 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  padding: 28rpx 32rpx calc(140rpx + env(safe-area-inset-bottom));
+  overflow: hidden;
+}
+
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 40% at 0% 0%, rgba(15, 61, 62, 0.1), transparent 50%),
+    linear-gradient(180deg, #e8f0ef 0%, var(--bg) 34%);
+}
+
+.page > view:not(.atmosphere) {
+  position: relative;
+  z-index: 1;
+}
+
+.kicker {
+  font-size: 22rpx;
+  letter-spacing: 3rpx;
+  color: var(--text-secondary);
+}
+
+.title {
+  margin-top: 6rpx;
+  font-size: 44rpx;
+  font-weight: 700;
+  color: var(--brand);
+  font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
+}
+
+.sub {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.next-hero,
+.next-empty {
+  margin-top: 28rpx;
+  padding: 32rpx 28rpx;
+  border-radius: 24rpx;
+  color: #fff;
+  background: linear-gradient(155deg, #0f3d3e 0%, #1a5c5e 100%);
+  box-shadow: 0 16rpx 40rpx rgba(15, 61, 62, 0.2);
+}
+
+.next-kicker {
+  font-size: 22rpx;
+  opacity: 0.78;
+  letter-spacing: 2rpx;
+}
+
+.next-title {
+  margin-top: 10rpx;
+  font-size: 38rpx;
+  font-weight: 700;
+  font-family: "Songti SC", "Noto Serif SC", serif;
+}
+
+.next-title.soft {
+  margin-bottom: 10rpx;
+}
+
+.next-time {
+  margin-top: 12rpx;
+  font-size: 42rpx;
+  font-weight: 700;
+}
+
+.next-meta {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  opacity: 0.88;
+}
+
+.next-foot {
+  margin-top: 22rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.next-status {
+  font-size: 22rpx;
+  padding: 8rpx 14rpx;
+  border-radius: 8rpx;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.next-cta {
+  font-weight: 600;
+  font-size: 26rpx;
+}
+
+.day-block {
+  margin-top: 32rpx;
+}
+
+.day-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 16rpx;
+}
+
+.day-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.day-hint {
+  font-size: 22rpx;
+  color: var(--text-secondary);
+}
+
+.empty-day {
+  padding: 28rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1rpx solid var(--border);
+}
+
+.empty-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+
+.jump-btn {
+  margin-top: 18rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  font-size: 26rpx;
+}
+
+.lesson-card {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 18rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  box-shadow: var(--shadow);
+}
+
 .item-title {
   font-size: 32rpx;
   font-weight: 700;
   margin-bottom: 8rpx;
 }
 
-.lesson + .lesson {
-  margin-top: 18rpx;
-}
-
 .students {
-  margin-top: 18rpx;
-  padding-top: 14rpx;
-  border-top: 1rpx solid #dce5e3;
+  margin-top: 16rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid #e8f0ee;
 }
 
 .stu {
@@ -39,9 +185,9 @@
 }
 
 .ops {
-  margin-top: 16rpx;
+  margin-top: 14rpx;
   display: flex;
-  gap: 16rpx;
+  gap: 14rpx;
 }
 
 .mini {
@@ -50,4 +196,8 @@
   line-height: 56rpx;
   font-size: 24rpx;
   height: 56rpx;
+}
+
+.cal-block {
+  margin-top: 36rpx;
 }

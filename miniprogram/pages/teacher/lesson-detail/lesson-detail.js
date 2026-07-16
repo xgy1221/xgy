@@ -1,5 +1,6 @@
 const auth = require('../../../utils/auth')
 const lessonsService = require('../../../services/lessons')
+const motion = require('../../../utils/motion')
 
 const STATUS_TEXT = {
   upcoming: '未开始',
@@ -43,6 +44,7 @@ Page({
   },
 
   goAddTemp() {
+    motion.tap('medium')
     wx.navigateTo({
       url: `/pages/teacher/add-temp/add-temp?lessonId=${this.data.id}`
     })
@@ -50,24 +52,29 @@ Page({
 
   onToggleAbsent(e) {
     const { id, absent } = e.currentTarget.dataset
+    motion.tap('light')
     lessonsService.markAbsent(this.data.id, id, !!absent)
     this.refresh()
   },
 
   onFinish() {
+    motion.tap('light')
     wx.showModal({
       title: '确认下课？',
       content: '下课后请评价学生以消课。学生评价老师可选。临时插班不改变原班归属。',
+      confirmText: '确认下课',
       success: (res) => {
         if (!res.confirm) return
+        motion.tap('medium')
         const result = lessonsService.finishLesson(this.data.id)
-        wx.showToast({ title: result.ok ? '已下课' : result.message, icon: 'none' })
+        wx.showToast({ title: result.ok ? '已下课，请评价学生' : result.message, icon: 'none' })
         this.refresh()
       }
     })
   },
 
   openRate(e) {
+    motion.tap('light')
     this.setData({
       rateVisible: true,
       rateStudentId: e.currentTarget.dataset.id,
@@ -82,6 +89,7 @@ Page({
   },
 
   onStar(e) {
+    motion.tap('light')
     this.setData({ rateScore: e.currentTarget.dataset.score })
   },
 
@@ -91,6 +99,7 @@ Page({
 
   async onSubmitRate() {
     const api = require('../../../services/api')
+    motion.tap('medium')
     wx.showLoading({ title: '提交中', mask: true })
     try {
       if (api.isRemoteSession()) {
@@ -106,7 +115,10 @@ Page({
         this.data.rateScore,
         this.data.rateComment
       )
-      wx.showToast({ title: result.message || (result.ok ? '已评价' : '失败'), icon: 'none' })
+      const msg = result.consumed
+        ? '已评价并消 1 课'
+        : result.message || (result.ok ? '已评价' : '失败')
+      wx.showToast({ title: msg, icon: result.ok ? 'success' : 'none' })
       this.setData({ rateVisible: false })
       this.refresh()
     } catch (err) {

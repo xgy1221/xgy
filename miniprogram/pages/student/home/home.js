@@ -2,6 +2,7 @@ const auth = require('../../../utils/auth')
 const studentsService = require('../../../services/students')
 const lessonsService = require('../../../services/lessons')
 const bridge = require('../../../services/bridge')
+const motion = require('../../../utils/motion')
 const { todayKey, formatDisplay } = require('../../../utils/date')
 
 const STATUS_TEXT = {
@@ -34,7 +35,8 @@ Page({
     lessons: [],
     nextLesson: null,
     weekAheadCount: 0,
-    loading: true
+    loading: true,
+    contentReady: true
   },
 
   onShow() {
@@ -111,16 +113,22 @@ Page({
 
   onSelectDate(e) {
     const date = e.detail.date
-    this.setData({ selectedDate: date })
-    this.refresh(this.data.currentStudentId, date)
+    motion.tap('light')
+    motion.swap(this, () => {
+      this.setData({ selectedDate: date })
+      this.refresh(this.data.currentStudentId, date)
+    }, 80)
   },
 
   goNextDay(e) {
     const id = e.currentTarget.dataset.id
     const next = this.data.nextLesson
+    motion.tap('light')
     if (next && next.date) {
-      this.setData({ selectedDate: next.date })
-      this.refresh(this.data.currentStudentId, next.date)
+      motion.swap(this, () => {
+        this.setData({ selectedDate: next.date })
+        this.refresh(this.data.currentStudentId, next.date)
+      }, 80)
       return
     }
     if (id) {
@@ -131,6 +139,8 @@ Page({
   async onSwitchChild(e) {
     const id = e.currentTarget.dataset.id
     if (!id || id === this.data.currentStudentId) return
+    motion.tap('medium')
+    this.setData({ contentReady: false })
     wx.showLoading({ title: '切换中', mask: true })
     try {
       await bridge.remoteSwitchStudent(id)
@@ -145,7 +155,9 @@ Page({
         selectedDate: todayKey()
       })
       this.refresh(id, todayKey())
+      this.setData({ contentReady: true })
     } catch (err) {
+      this.setData({ contentReady: true })
       wx.showToast({ title: (err && err.message) || '切换失败', icon: 'none' })
     } finally {
       wx.hideLoading()
@@ -155,6 +167,7 @@ Page({
   goDetail(e) {
     const id = e.currentTarget.dataset.id
     if (!id) return
+    motion.tap('light')
     wx.navigateTo({
       url: `/pages/student/lesson-detail/lesson-detail?id=${id}`
     })

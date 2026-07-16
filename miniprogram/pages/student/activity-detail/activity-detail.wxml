@@ -56,7 +56,7 @@
     </view>
   </view>
 
-  <view class="footer safe-bottom">
+  <view class="footer safe-bottom {{footerFlash ? 'success-flash' : ''}}">
     <button class="btn-ghost cancel" wx:if="{{activity.signed && !activity.isPast}}" bindtap="onCancel">
       取消报名
     </button>

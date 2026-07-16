@@ -13,7 +13,7 @@ const ROLE_META = {
     key: ROLES.STUDENT,
     name: '学生 / 家长',
     shortName: '家长端',
-    desc: '日历课表、活动报名、课后评价消课',
+    desc: '下一节课、比赛报名、进度与老师评价',
     color: '#0F3D3E',
     home: '/pages/student/home/home'
   },

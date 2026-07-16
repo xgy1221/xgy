@@ -3,6 +3,7 @@ const studentsService = require('../../../services/students')
 const activitiesService = require('../../../services/activities')
 const bridge = require('../../../services/bridge')
 const api = require('../../../services/api')
+const motion = require('../../../utils/motion')
 
 Page({
   data: {
@@ -16,7 +17,8 @@ Page({
     myList: [],
     openCount: 0,
     pastCount: 0,
-    myCount: 0
+    myCount: 0,
+    contentReady: true
   },
 
   onShow() {
@@ -76,11 +78,15 @@ Page({
   async onSwitchChild(e) {
     const id = e.currentTarget.dataset.id
     if (!id || id === this.data.currentStudentId) return
+    motion.tap('medium')
+    this.setData({ contentReady: false })
     wx.showLoading({ title: '切换中', mask: true })
     try {
       await bridge.remoteSwitchStudent(id)
       await this.refresh()
+      this.setData({ contentReady: true })
     } catch (err) {
+      this.setData({ contentReady: true })
       wx.showToast({ title: (err && err.message) || '切换失败', icon: 'none' })
     } finally {
       wx.hideLoading()
@@ -90,12 +96,14 @@ Page({
   onTab(e) {
     const tab = e.currentTarget.dataset.tab
     if (!tab || tab === this.data.tab) return
-    this.setData({ tab })
+    motion.tap('light')
+    motion.swap(this, () => this.setData({ tab }), 80)
   },
 
   goDetail(e) {
     const id = e.currentTarget.dataset.id
     if (!id) return
+    motion.tap('light')
     wx.navigateTo({ url: `/pages/student/activity-detail/activity-detail?id=${id}` })
   }
 })

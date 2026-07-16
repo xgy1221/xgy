@@ -7,6 +7,7 @@
 .hero {
   padding: 48rpx 36rpx 56rpx;
   color: #fff;
+  animation: xgy-rise 0.45s ease both;
 }
 
 .cover-teal {
@@ -46,6 +47,7 @@
 .body {
   padding: 24rpx 28rpx;
   margin-top: -24rpx;
+  animation: xgy-rise 0.5s ease 0.08s both;
 }
 
 .block {
@@ -54,6 +56,7 @@
   padding: 28rpx;
   margin-bottom: 20rpx;
   box-shadow: var(--shadow);
+  transition: transform 0.15s ease;
 }
 
 .label {
@@ -145,6 +148,11 @@
   padding: 16rpx 28rpx calc(16rpx + env(safe-area-inset-bottom));
   background: rgba(243, 246, 245, 0.96);
   border-top: 1rpx solid var(--border);
+  animation: xgy-rise 0.4s ease 0.15s both;
+}
+
+.footer.success-flash .main {
+  animation: xgy-pulse 0.45s ease;
 }
 
 .footer .main {

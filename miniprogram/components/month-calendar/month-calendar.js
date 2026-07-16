@@ -1,4 +1,5 @@
 const { getMonthMatrix, shiftMonth, todayKey } = require('../../utils/date')
+const motion = require('../../utils/motion')
 
 Component({
   properties: {
@@ -60,16 +61,19 @@ Component({
       })
     },
     onPrev() {
+      motion.tap('light')
       const next = shiftMonth(this.data.year, this.data.month, -1)
       this.setData(next, () => this.build())
     },
     onNext() {
+      motion.tap('light')
       const next = shiftMonth(this.data.year, this.data.month, 1)
       this.setData(next, () => this.build())
     },
     onSelect(e) {
       const key = e.currentTarget.dataset.key
       if (!key) return
+      motion.tap('light')
       this.triggerEvent('select', { date: key })
     }
   }

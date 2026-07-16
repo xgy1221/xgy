@@ -39,6 +39,24 @@
   border-radius: 20rpx;
   padding: 32rpx 28rpx;
   box-shadow: 0 8rpx 28rpx rgba(15, 61, 62, 0.08);
+  animation: xgy-rise 0.4s ease both;
+}
+
+.step,
+.line {
+  transition: color 0.25s ease, background 0.25s ease;
+}
+
+.org-chip,
+.child-chip,
+.pkg {
+  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.org-chip:active,
+.child-chip:active,
+.pkg:active {
+  transform: scale(0.97);
 }
 
 .title {

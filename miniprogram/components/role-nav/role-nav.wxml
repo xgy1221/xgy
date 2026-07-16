@@ -6,7 +6,10 @@
     data-path="{{item.pagePath}}"
     bindtap="onTap"
   >
-    <text class="icon">{{item.icon}}</text>
+    <view class="icon-wrap">
+      <text class="icon">{{item.icon}}</text>
+      <view class="dot" wx:if="{{item.pagePath === current}}"></view>
+    </view>
     <text class="label">{{item.text}}</text>
   </view>
 </view>
