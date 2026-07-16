@@ -24,9 +24,7 @@ public class WhitelistService {
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> list(UserPrincipal principal) {
-        if (SecurityUtils.isParent()) {
-            throw new BizException(403, "家长无权查看白名单");
-        }
+        SecurityUtils.requireStaff();
         Long orgId = SecurityUtils.requireOrgId();
         return phoneWhitelistRepository.findByOrgIdOrderByIdDesc(orgId).stream()
                 .map(this::toView).collect(Collectors.toList());
@@ -34,9 +32,7 @@ public class WhitelistService {
 
     @Transactional
     public Map<String, Object> add(UserPrincipal principal, WhitelistAddRequest req) {
-        if (SecurityUtils.isParent()) {
-            throw new BizException(403, "家长无权操作");
-        }
+        SecurityUtils.requireAcademicOrAdmin();
         Long orgId = SecurityUtils.requireOrgId();
         if (!StringUtils.hasText(req.getPhone())) {
             throw new BizException("手机号不能为空");
@@ -55,9 +51,7 @@ public class WhitelistService {
 
     @Transactional
     public void remove(UserPrincipal principal, Long id) {
-        if (SecurityUtils.isParent()) {
-            throw new BizException(403, "家长无权操作");
-        }
+        SecurityUtils.requireAcademicOrAdmin();
         Long orgId = SecurityUtils.requireOrgId();
         PhoneWhitelist w = phoneWhitelistRepository.findById(id)
                 .orElseThrow(() -> new BizException("白名单不存在"));

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { canEdit, getUser } from '../auth/roles'
-import { listCampuses, listStudents, upsertStudent } from '../data/store'
+import { archiveStudent, listCampuses, listStudents, upsertStudent } from '../data/store'
 
 const empty = {
   studentName: '',
@@ -132,20 +132,35 @@ export default function Students() {
                   <span className="tag ok">{s.status || '在读'}</span>
                 </td>
                 <td className="muted">{s.remark || '-'}</td>
-                {editable && (
-                  <td>
-                    <button
-                      className="btn ghost"
-                      type="button"
-                      onClick={() => {
-                        setForm(s)
-                        setOpen(true)
-                      }}
-                    >
-                      编辑
-                    </button>
-                  </td>
-                )}
+              {editable && (
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    onClick={() => {
+                      setForm(s)
+                      setOpen(true)
+                    }}
+                  >
+                    编辑
+                  </button>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    onClick={async () => {
+                      if (!confirm(`确认归档「${s.studentName}」？`)) return
+                      try {
+                        await archiveStudent(s.id)
+                        await reload()
+                      } catch (e) {
+                        alert(e.message || '归档失败')
+                      }
+                    }}
+                  >
+                    归档
+                  </button>
+                </td>
+              )}
               </tr>
             ))}
           </tbody>

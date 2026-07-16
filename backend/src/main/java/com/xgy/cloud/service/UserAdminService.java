@@ -26,6 +26,7 @@ public class UserAdminService {
     private final UserAccountRepository userAccountRepository;
     private final UserRoleRepository userRoleRepository;
     private final OrgRepository orgRepository;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> list(UserPrincipal principal) {
@@ -79,6 +80,7 @@ public class UserAdminService {
             ur.setOrgId(orgId);
             userRoleRepository.save(ur);
         }
+        auditService.log(principal, "GRANT_ROLE", "user", user.getId(), role.name() + " / " + req.getPhone());
         return toView(user, orgId);
     }
 
@@ -94,6 +96,7 @@ public class UserAdminService {
                 .filter(r -> roleType.name().equals(r.getRole()) && orgId.equals(r.getOrgId()))
                 .findFirst()
                 .ifPresent(userRoleRepository::delete);
+        auditService.log(principal, "REVOKE_ROLE", "user", userId, roleType.name());
         return toView(user, orgId);
     }
 

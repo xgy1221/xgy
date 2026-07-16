@@ -200,6 +200,23 @@ curl -s -X POST http://localhost:8080/api/auth/login \
 | POST | `/api/users/grant-role` | 授权 `{phone, name?, role}`（不可授 PARENT） |
 | POST | `/api/users/{userId}/revoke-role` | 撤权 `{role}` |
 
+### 校区 / 白名单 / 审计
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/campuses` | 当前机构校区 |
+| GET/POST/DELETE | `/api/whitelist` | 家长开通白名单（新家长登录前置） |
+| GET | `/api/audit` | 操作审计（教务/管理员） |
+| POST | `/api/finance/orders` | 录订单（教务/合伙/管理；可同步报读） |
+| GET | `/api/enrollments` | 机构全部报读（不传 studentId） |
+
+## 安全要点
+
+- 新家长须先入白名单（`app.security.require-whitelist-for-new-parent`）
+- 登录限流（手机号 / IP）；CORS 默认仅本机 Vite
+- 家长禁止课堂写操作；老师仅可操作自己的课
+- 密钥可用环境变量：`JWT_SECRET` `DB_PASSWORD` `SMS_DEMO_CODE` 等（见 `docs/SECURITY.md`）
+
 ## 租户隔离说明
 
 - 员工：JWT 绑定 `orgId`，业务查询一律按机构过滤。

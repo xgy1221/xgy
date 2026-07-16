@@ -33,10 +33,28 @@ public final class SecurityUtils {
         throw new BizException(403, "当前角色无权限");
     }
 
+    /** 非家长员工（老师/教务/合伙/管理） */
+    public static void requireStaff() {
+        if (isParent()) {
+            throw new BizException(403, "家长无权操作");
+        }
+    }
+
+    /** 教务或管理员（排课/报读/白名单等运营写操作） */
+    public static void requireAcademicOrAdmin() {
+        requireRole(RoleType.ACADEMIC, RoleType.ADMIN);
+    }
+
     public static boolean isParent() {
         UserPrincipal user = currentUser();
         return user.getCurrentRole() != null
                 && RoleType.PARENT.name().equalsIgnoreCase(user.getCurrentRole());
+    }
+
+    public static boolean isTeacher() {
+        UserPrincipal user = currentUser();
+        return user.getCurrentRole() != null
+                && RoleType.TEACHER.name().equalsIgnoreCase(user.getCurrentRole());
     }
 
     public static Long requireOrgId() {

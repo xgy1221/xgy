@@ -294,6 +294,31 @@ function markAbsent(lessonId, payload) {
   })
 }
 
+function fetchWhitelist() {
+  return request({ path: '/api/whitelist', method: 'GET' })
+}
+
+function addWhitelist(payload) {
+  return request({ path: '/api/whitelist', method: 'POST', data: payload })
+}
+
+function removeWhitelist(id) {
+  return request({ path: `/api/whitelist/${id}`, method: 'DELETE' })
+}
+
+function fetchEnrollments(studentId) {
+  const q = studentId != null ? `?studentId=${studentId}` : ''
+  return request({ path: `/api/enrollments${q}`, method: 'GET' })
+}
+
+function upsertEnrollment(payload) {
+  return request({ path: '/api/enrollments', method: 'POST', data: payload })
+}
+
+function fetchFinanceSummary() {
+  return request({ path: '/api/finance/summary', method: 'GET' })
+}
+
 /**
  * 后端登录载荷 → 小程序 session
  * orgId 在 session / user 上使用机构 code，便于本地服务过滤；numericOrgId 留给写接口。
@@ -586,6 +611,13 @@ module.exports = {
   makeupStudent,
   finishLesson,
   markAbsent,
+  fetchWhitelist,
+  addWhitelist,
+  removeWhitelist,
+  fetchEnrollments,
+  upsertEnrollment,
+  fetchFinanceSummary,
+  mapEnrollmentStatus,
   mapAuthToSession,
   normalizeStudent,
   normalizePackage,

@@ -10,4 +10,6 @@ public interface PhoneWhitelistRepository extends JpaRepository<PhoneWhitelist, 
     List<PhoneWhitelist> findByOrgIdOrderByIdDesc(Long orgId);
 
     Optional<PhoneWhitelist> findByOrgIdAndPhone(Long orgId, String phone);
+
+    boolean existsByPhone(String phone);
 }

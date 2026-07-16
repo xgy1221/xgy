@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { canEdit } from '../auth/roles'
-import { listPackages, upsertPackage } from '../data/store'
+import { archivePackage, listPackages, upsertPackage } from '../data/store'
 
 const empty = {
   name: '',
@@ -109,20 +109,35 @@ export default function Packages() {
                 <td>
                   <span className={`tag ${p.status === '上架' ? 'ok' : 'warn'}`}>{p.status}</span>
                 </td>
-                {editable && (
-                  <td>
-                    <button
-                      className="btn ghost"
-                      type="button"
-                      onClick={() => {
-                        setForm({ ...p })
-                        setOpen(true)
-                      }}
-                    >
-                      编辑
-                    </button>
-                  </td>
-                )}
+              {editable && (
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    onClick={() => {
+                      setForm({ ...p })
+                      setOpen(true)
+                    }}
+                  >
+                    编辑
+                  </button>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    onClick={async () => {
+                      if (!confirm(`确认下架归档「${p.name}」？`)) return
+                      try {
+                        await archivePackage(p.id)
+                        await reload()
+                      } catch (e) {
+                        alert(e.message || '归档失败')
+                      }
+                    }}
+                  >
+                    归档
+                  </button>
+                </td>
+              )}
               </tr>
             ))}
           </tbody>

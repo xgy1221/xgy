@@ -64,8 +64,35 @@ public class LessonService {
             // 家长列表带本人名单即可
             return lessons.stream().map(l -> toView(l, principal, true)).collect(Collectors.toList());
         }
-        // 员工（老师/教务）列表带完整名单，方便课堂与临补
+        // 老师仅看自己的课；教务/合伙/管理看机构全部
+        if (SecurityUtils.isTeacher()) {
+            Long teacherId = resolveTeacherId(principal);
+            if (teacherId == null) {
+                return List.of();
+            }
+            lessons = lessons.stream()
+                    .filter(l -> teacherId.equals(l.getTeacherId()))
+                    .collect(Collectors.toList());
+        }
         return lessons.stream().map(l -> toView(l, principal, true)).collect(Collectors.toList());
+    }
+
+    /** 家长禁止；老师仅可操作自己的课次；教务/管理/合伙可操作本机构课次 */
+    private void assertCanManageLesson(UserPrincipal principal, Lesson lesson) {
+        SecurityUtils.requireStaff();
+        if (!SecurityUtils.isTeacher()) {
+            return;
+        }
+        Long teacherId = resolveTeacherId(principal);
+        if (teacherId == null || !teacherId.equals(lesson.getTeacherId())) {
+            throw new BizException(403, "仅可操作自己的课次");
+        }
+    }
+
+    private Long resolveTeacherId(UserPrincipal principal) {
+        return teacherRepository.findByOrgIdAndUserId(principal.getOrgId(), principal.getUserId())
+                .map(Teacher::getId)
+                .orElse(null);
     }
 
     @Transactional(readOnly = true)
@@ -127,12 +154,10 @@ public class LessonService {
 
     @Transactional
     public Map<String, Object> finish(UserPrincipal principal, Long lessonId) {
-        if (SecurityUtils.isParent()) {
-            throw new BizException(403, "家长无权下课");
-        }
         Long orgId = SecurityUtils.requireOrgId();
         Lesson lesson = lessonRepository.findByIdAndOrgId(lessonId, orgId)
                 .orElseThrow(() -> new BizException("课次不存在"));
+        assertCanManageLesson(principal, lesson);
         if ("FINISHED".equalsIgnoreCase(lesson.getStatus())) {
             return toView(lesson, principal, true);
         }
@@ -143,15 +168,13 @@ public class LessonService {
 
     @Transactional
     public Map<String, Object> markAbsent(UserPrincipal principal, Long lessonId, AbsentRequest req) {
-        if (SecurityUtils.isParent()) {
-            throw new BizException(403, "家长无权记旷课");
-        }
         if (req.getStudentId() == null) {
             throw new BizException("请指定学员");
         }
         Long orgId = SecurityUtils.requireOrgId();
-        lessonRepository.findByIdAndOrgId(lessonId, orgId)
+        Lesson lesson = lessonRepository.findByIdAndOrgId(lessonId, orgId)
                 .orElseThrow(() -> new BizException("课次不存在"));
+        assertCanManageLesson(principal, lesson);
         LessonAttendee att = lessonAttendeeRepository.findByLessonIdAndStudentId(lessonId, req.getStudentId())
                 .orElseThrow(() -> new BizException("考勤记录不存在"));
         if (Boolean.TRUE.equals(att.getConsumed()) && Boolean.TRUE.equals(req.getAbsent())) {
@@ -159,16 +182,12 @@ public class LessonService {
         }
         att.setAbsent(Boolean.TRUE.equals(req.getAbsent()));
         lessonAttendeeRepository.save(att);
-        Lesson lesson = lessonRepository.findById(lessonId)
-                .orElseThrow(() -> new BizException("课次不存在"));
         return toView(lesson, principal, true);
     }
 
     @Transactional
     public Map<String, Object> create(UserPrincipal principal, LessonCreateRequest req) {
-        if (SecurityUtils.isParent()) {
-            throw new BizException(403, "家长无权排课");
-        }
+        SecurityUtils.requireAcademicOrAdmin();
         Long orgId = SecurityUtils.requireOrgId();
         Clazz clazz = clazzRepository.findByIdAndOrgId(req.getClassId(), orgId)
                 .orElseThrow(() -> new BizException("班级不存在"));
@@ -205,12 +224,10 @@ public class LessonService {
 
     @Transactional
     public Map<String, Object> makeup(UserPrincipal principal, Long lessonId, MakeupRequest req) {
-        if (SecurityUtils.isParent()) {
-            throw new BizException(403, "家长无权临补");
-        }
         Long orgId = SecurityUtils.requireOrgId();
         Lesson lesson = lessonRepository.findByIdAndOrgId(lessonId, orgId)
                 .orElseThrow(() -> new BizException("课次不存在"));
+        assertCanManageLesson(principal, lesson);
         Student student = studentRepository.findByIdAndOrgId(req.getStudentId(), orgId)
                 .orElseThrow(() -> new BizException("学员不存在"));
         lessonAttendeeRepository.findByLessonIdAndStudentId(lessonId, student.getId())
@@ -241,6 +258,7 @@ public class LessonService {
         Long orgId = SecurityUtils.requireOrgId();
         Lesson lesson = lessonRepository.findByIdAndOrgId(lessonId, orgId)
                 .orElseThrow(() -> new BizException("课次不存在"));
+        assertCanManageLesson(principal, lesson);
         LessonAttendee att = lessonAttendeeRepository.findByLessonIdAndStudentId(lessonId, req.getStudentId())
                 .orElseThrow(() -> new BizException("考勤记录不存在"));
 

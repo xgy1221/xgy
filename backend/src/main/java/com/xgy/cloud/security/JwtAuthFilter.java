@@ -2,6 +2,7 @@ package com.xgy.cloud.security;
 
 import com.xgy.cloud.service.SessionRedisService;
 import com.xgy.cloud.tenant.TenantContext;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,14 +37,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     filterChain.doFilter(request, response);
                     return;
                 }
-                UserPrincipal principal = jwtService.parseToken(token);
-                principal.setRawToken(token);
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                if (principal.getOrgId() != null) {
-                    TenantContext.setOrgId(principal.getOrgId());
+                try {
+                    UserPrincipal principal = jwtService.parseToken(token);
+                    principal.setRawToken(token);
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    if (principal.getOrgId() != null) {
+                        TenantContext.setOrgId(principal.getOrgId());
+                    }
+                } catch (JwtException | IllegalArgumentException ex) {
+                    log.debug("invalid jwt: {}", ex.getMessage());
                 }
             }
             filterChain.doFilter(request, response);

@@ -38,8 +38,12 @@ export const PERMISSIONS = {
     teachers: 'edit',
     courses: 'edit',
     packages: 'edit',
+    enrollments: 'edit',
+    whitelist: 'edit',
+    activities: 'edit',
     finance: 'none',
     users: 'none',
+    audit: 'view',
     campusScope: 'all'
   },
   partner: {
@@ -47,8 +51,12 @@ export const PERMISSIONS = {
     teachers: 'view',
     courses: 'view',
     packages: 'view',
+    enrollments: 'view',
+    whitelist: 'none',
+    activities: 'view',
     finance: 'partner',
     users: 'none',
+    audit: 'none',
     campusScope: 'own'
   },
   admin: {
@@ -56,8 +64,12 @@ export const PERMISSIONS = {
     teachers: 'edit',
     courses: 'edit',
     packages: 'edit',
+    enrollments: 'edit',
+    whitelist: 'edit',
+    activities: 'edit',
     finance: 'all',
     users: 'edit',
+    audit: 'view',
     campusScope: 'all'
   }
 }
@@ -142,11 +154,15 @@ export const DEMO_ACCOUNTS = [
 export const NAV_ITEMS = [
   { to: '/', label: '工作台', end: true, module: null },
   { to: '/students', label: '学员管理', module: 'students' },
+  { to: '/enrollments', label: '报读管理', module: 'enrollments' },
+  { to: '/whitelist', label: '家长白名单', module: 'whitelist' },
   { to: '/teachers', label: '教师管理', module: 'teachers' },
   { to: '/courses', label: '课程管理', module: 'courses' },
   { to: '/packages', label: '教案管理', module: 'packages' },
+  { to: '/activities', label: '比赛活动', module: 'activities' },
   { to: '/finance', label: '财务中心', module: 'finance' },
-  { to: '/users', label: '账号权限', module: 'users' }
+  { to: '/users', label: '账号权限', module: 'users' },
+  { to: '/audit', label: '操作审计', module: 'audit' }
 ]
 
 function pickWebBackendRole(roles) {

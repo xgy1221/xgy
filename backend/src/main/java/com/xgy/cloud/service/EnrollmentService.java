@@ -37,11 +37,18 @@ public class EnrollmentService {
                 .stream().map(this::toView).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> listByOrg(UserPrincipal principal) {
+        SecurityUtils.requireStaff();
+        Long orgId = SecurityUtils.requireOrgId();
+        return enrollmentRepository.findByOrgIdOrderByIdDesc(orgId).stream()
+                .map(this::toView)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public Map<String, Object> upsert(UserPrincipal principal, EnrollmentUpsertRequest req) {
-        if (SecurityUtils.isParent()) {
-            throw new BizException(403, "家长无权代录报读");
-        }
+        SecurityUtils.requireAcademicOrAdmin();
         Long orgId = SecurityUtils.requireOrgId();
         Student student = studentRepository.findByIdAndOrgId(req.getStudentId(), orgId)
                 .orElseThrow(() -> new BizException("学员不存在"));
@@ -127,6 +134,11 @@ public class EnrollmentService {
         m.put("paidAmount", e.getPaidAmount());
         m.put("status", e.getStatus());
         m.put("source", e.getSource());
+        studentRepository.findById(e.getStudentId()).ifPresent(s -> {
+            m.put("studentName", s.getStudentName());
+            m.put("parentPhone", s.getParentPhone());
+            m.put("campus", s.getCampus());
+        });
         coursePackageRepository.findById(e.getPackageId()).ifPresent(pkg -> {
             m.put("packageName", pkg.getName());
             m.put("subject", pkg.getSubject());

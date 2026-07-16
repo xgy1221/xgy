@@ -3,11 +3,13 @@ package com.xgy.cloud.service;
 import com.xgy.cloud.common.BizException;
 import com.xgy.cloud.common.RoleType;
 import com.xgy.cloud.config.AppConfig;
+import com.xgy.cloud.config.SecurityProperties;
 import com.xgy.cloud.domain.Org;
 import com.xgy.cloud.domain.Student;
 import com.xgy.cloud.domain.UserAccount;
 import com.xgy.cloud.domain.UserRole;
 import com.xgy.cloud.repository.OrgRepository;
+import com.xgy.cloud.repository.PhoneWhitelistRepository;
 import com.xgy.cloud.repository.StudentRepository;
 import com.xgy.cloud.repository.UserAccountRepository;
 import com.xgy.cloud.repository.UserRoleRepository;
@@ -18,10 +20,13 @@ import com.xgy.cloud.tenant.TenantContext;
 import com.xgy.cloud.web.auth.LoginRequest;
 import com.xgy.cloud.web.auth.SwitchRoleRequest;
 import com.xgy.cloud.web.auth.SwitchStudentRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -40,18 +45,37 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final SessionRedisService sessionRedisService;
     private final AppConfig.SmsProperties smsProperties;
+    private final SecurityProperties securityProperties;
+    private final PhoneWhitelistRepository phoneWhitelistRepository;
+    private final LoginRateLimiter loginRateLimiter;
+    private final AuditService auditService;
 
     @Transactional
     public Map<String, Object> login(LoginRequest request) {
-        if (!smsProperties.getDemoCode().equals(request.getSmsCode())) {
-            throw new BizException("验证码错误");
-        }
         if (request.getPhone() == null || !request.getPhone().matches("1\\d{10}")) {
             throw new BizException("请输入正确的 11 位手机号");
         }
-        // 员工按库内账号；任意新手机号自动建家长账号（对齐小程序）
-        UserAccount user = userAccountRepository.findByPhone(request.getPhone())
-                .orElseGet(() -> createParentAccount(request.getPhone()));
+        String ip = resolveClientIp();
+        loginRateLimiter.check(request.getPhone(), ip);
+
+        if (!smsProperties.getDemoCode().equals(request.getSmsCode())) {
+            auditService.logAnon(request.getPhone(), "LOGIN_FAIL", "验证码错误");
+            throw new BizException("验证码错误");
+        }
+
+        Optional<UserAccount> existing = userAccountRepository.findByPhone(request.getPhone());
+        UserAccount user;
+        if (existing.isPresent()) {
+            user = existing.get();
+        } else {
+            // 新产品安全：新家长须先出现在教务白名单，禁止任意手机号自注册
+            if (securityProperties.isRequireWhitelistForNewParent()
+                    && !phoneWhitelistRepository.existsByPhone(request.getPhone())) {
+                auditService.logAnon(request.getPhone(), "LOGIN_DENY", "未在白名单");
+                throw new BizException("尚未开通，请联系教务将手机号加入白名单");
+            }
+            user = createParentAccount(request.getPhone());
+        }
         if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
             throw new BizException("账号已停用");
         }
@@ -105,6 +129,7 @@ public class AuthService {
             sessionRedisService.saveLastStudent(user.getPhone(), currentStudentId);
         }
 
+        auditService.log(principal, "LOGIN_OK", "user", user.getId(), currentRole);
         return buildAuthPayload(token, user, roleViews, currentRole, orgId, currentStudentId);
     }
 
@@ -352,5 +377,22 @@ public class AuthService {
         parentRole.setOrgId(null);
         userRoleRepository.save(parentRole);
         return user;
+    }
+
+    private String resolveClientIp() {
+        try {
+            ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attrs == null) {
+                return null;
+            }
+            HttpServletRequest req = attrs.getRequest();
+            String xff = req.getHeader("X-Forwarded-For");
+            if (StringUtils.hasText(xff)) {
+                return xff.split(",")[0].trim();
+            }
+            return req.getRemoteAddr();
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

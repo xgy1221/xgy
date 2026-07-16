@@ -19,10 +19,13 @@ public class EnrollmentController {
     private final EnrollmentService enrollmentService;
 
     @GetMapping
-    public ApiResponse<List<Map<String, Object>>> listByStudent(
+    public ApiResponse<List<Map<String, Object>>> list(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam Long studentId) {
-        return ApiResponse.ok(enrollmentService.listByStudent(principal, studentId));
+            @RequestParam(required = false) Long studentId) {
+        if (studentId != null) {
+            return ApiResponse.ok(enrollmentService.listByStudent(principal, studentId));
+        }
+        return ApiResponse.ok(enrollmentService.listByOrg(principal));
     }
 
     @PostMapping

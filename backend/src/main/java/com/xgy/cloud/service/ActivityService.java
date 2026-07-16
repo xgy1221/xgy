@@ -119,9 +119,7 @@ public class ActivityService {
 
     @Transactional
     public Map<String, Object> create(UserPrincipal principal, ActivitySaveRequest req) {
-        if (SecurityUtils.isParent()) {
-            throw new BizException(403, "家长无权发布活动");
-        }
+        SecurityUtils.requireAcademicOrAdmin();
         Long orgId = SecurityUtils.requireOrgId();
         Activity a = new Activity();
         a.setOrgId(orgId);
@@ -138,9 +136,7 @@ public class ActivityService {
 
     @Transactional
     public Map<String, Object> update(UserPrincipal principal, Long id, ActivitySaveRequest req) {
-        if (SecurityUtils.isParent()) {
-            throw new BizException(403, "家长无权编辑活动");
-        }
+        SecurityUtils.requireAcademicOrAdmin();
         Long orgId = SecurityUtils.requireOrgId();
         Activity a = activityRepository.findByIdAndOrgId(id, orgId)
                 .orElseThrow(() -> new BizException("活动不存在"));

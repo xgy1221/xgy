@@ -160,6 +160,133 @@ export async function upsertStudent(form) {
   return normalizeStudent(await request('/api/students', { method: 'POST', data: payload }))
 }
 
+export async function archiveStudent(id) {
+  return request(`/api/students/${id}`, { method: 'DELETE' })
+}
+
+export async function archivePackage(id) {
+  return request(`/api/packages/${id}`, { method: 'DELETE' })
+}
+
+function mapEnrollmentStatus(status) {
+  const s = String(status || '').toUpperCase()
+  if (s === 'ACTIVE') return '学习中'
+  if (s === 'FINISHED') return '已结业'
+  if (s === 'SUSPENDED') return '暂停'
+  return status || '-'
+}
+
+export async function listEnrollments(studentId) {
+  const path = studentId ? `/api/enrollments?studentId=${studentId}` : '/api/enrollments'
+  const rows = (await request(path)) || []
+  return rows.map((e) => ({
+    ...e,
+    status: mapEnrollmentStatus(e.status),
+    remainLessons: e.remainLessons,
+    totalLessons: e.totalLessons,
+    packageName: e.packageName || '-',
+    studentName: e.studentName || '-',
+    parentPhone: e.parentPhone || ''
+  }))
+}
+
+export async function upsertEnrollment(form) {
+  return request('/api/enrollments', {
+    method: 'POST',
+    data: {
+      studentId: Number(form.studentId),
+      packageId: Number(form.packageId),
+      totalLessons: form.totalLessons != null ? Number(form.totalLessons) : undefined,
+      remainLessons: form.remainLessons != null ? Number(form.remainLessons) : undefined,
+      status: form.status || 'ACTIVE',
+      source: form.source || '教务代录'
+    }
+  })
+}
+
+export async function listWhitelist() {
+  return (await request('/api/whitelist')) || []
+}
+
+export async function addWhitelist(form) {
+  return request('/api/whitelist', {
+    method: 'POST',
+    data: {
+      phone: form.phone,
+      parentName: form.parentName || '',
+      note: form.note || ''
+    }
+  })
+}
+
+export async function removeWhitelist(id) {
+  return request(`/api/whitelist/${id}`, { method: 'DELETE' })
+}
+
+export async function listActivities(tab = 'open') {
+  return (await request(`/api/activities?tab=${tab}`)) || []
+}
+
+export async function saveActivity(form) {
+  const payload = {
+    title: form.title,
+    category: form.category || '比赛',
+    startDate: form.startDate || null,
+    address: form.address || '',
+    summary: form.summary || '',
+    highlights: Array.isArray(form.highlights)
+      ? form.highlights
+      : String(form.highlights || '')
+          .split(/[,，\n]/)
+          .map((s) => s.trim())
+          .filter(Boolean),
+    published: form.published !== false,
+    status: form.status || 'ACTIVE'
+  }
+  if (form.id) {
+    return request(`/api/activities/${form.id}`, { method: 'PUT', data: payload })
+  }
+  return request('/api/activities', { method: 'POST', data: payload })
+}
+
+export async function createOrder(form) {
+  return request('/api/finance/orders', {
+    method: 'POST',
+    data: {
+      studentId: Number(form.studentId),
+      packageId: Number(form.packageId),
+      campus: form.campus || '',
+      amountTotal: Number(form.amountTotal) || 0,
+      amountPaid: Number(form.amountPaid) || 0,
+      channel: form.channel || '线下',
+      remark: form.remark || '',
+      createEnrollment: form.createEnrollment !== false
+    }
+  })
+}
+
+export async function grantRole(form) {
+  return request('/api/users/grant-role', {
+    method: 'POST',
+    data: {
+      phone: form.phone,
+      name: form.name || '',
+      role: form.role
+    }
+  })
+}
+
+export async function revokeRole(userId, role) {
+  return request(`/api/users/${userId}/revoke-role`, {
+    method: 'POST',
+    data: { role }
+  })
+}
+
+export async function listAuditLogs() {
+  return (await request('/api/audit')) || []
+}
+
 export async function listTeachers(user = getUser()) {
   const rows = (await request('/api/teachers')) || []
   return scopeCampus(rows.map(normalizeTeacher), user)
@@ -355,14 +482,18 @@ const ROLE_LABEL_CN = {
 
 export async function listStaffAccounts() {
   const rows = (await request('/api/users')) || []
-  return rows.map((u) => ({
-    id: u.id,
-    name: u.name,
-    phone: u.phone,
-    campus: u.campus || '-',
-    status: u.status === 'ACTIVE' ? '正常' : u.status || '正常',
-    roles: (u.roles || []).map((r) => ROLE_LABEL_CN[r.role] || r.role)
-  }))
+  return rows.map((u) => {
+    const roleRows = (u.roles || []).filter((r) => r.role && r.role !== 'PARENT')
+    return {
+      id: u.id,
+      name: u.name,
+      phone: u.phone,
+      campus: u.campus || '-',
+      status: u.status === 'ACTIVE' ? '正常' : u.status || '正常',
+      roles: roleRows.map((r) => ROLE_LABEL_CN[r.role] || r.role),
+      rawRoles: roleRows.map((r) => r.role)
+    }
+  })
 }
 
 export async function getDashboardStats(user = getUser()) {

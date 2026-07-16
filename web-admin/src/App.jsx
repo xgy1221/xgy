@@ -10,6 +10,10 @@ import Teachers from './pages/Teachers'
 import Courses from './pages/Courses'
 import Finance from './pages/Finance'
 import Users from './pages/Users'
+import Enrollments from './pages/Enrollments'
+import Whitelist from './pages/Whitelist'
+import Activities from './pages/Activities'
+import Audit from './pages/Audit'
 import './App.css'
 
 function RequireAuth({ children }) {
@@ -32,11 +36,15 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="students" element={<Students />} />
+        <Route path="enrollments" element={<Enrollments />} />
+        <Route path="whitelist" element={<Whitelist />} />
         <Route path="teachers" element={<Teachers />} />
         <Route path="courses" element={<Courses />} />
         <Route path="packages" element={<Packages />} />
+        <Route path="activities" element={<Activities />} />
         <Route path="finance" element={<Finance />} />
         <Route path="users" element={<Users />} />
+        <Route path="audit" element={<Audit />} />
         <Route path="classes" element={<Navigate to="/courses" replace />} />
         <Route path="schedule" element={<Navigate to="/courses" replace />} />
       </Route>

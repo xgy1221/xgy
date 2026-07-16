@@ -1,7 +1,6 @@
 package com.xgy.cloud.service;
 
 import com.xgy.cloud.common.BizException;
-import com.xgy.cloud.common.RoleType;
 import com.xgy.cloud.domain.Org;
 import com.xgy.cloud.domain.Student;
 import com.xgy.cloud.repository.OrgRepository;
@@ -149,10 +148,7 @@ public class StudentService {
     }
 
     private void requireStaff() {
-        if (SecurityUtils.isParent()) {
-            throw new BizException(403, "家长无权操作");
-        }
-        RoleType.from(SecurityUtils.currentUser().getCurrentRole());
+        SecurityUtils.requireAcademicOrAdmin();
     }
 
     private Map<String, Object> toView(Student s) {
