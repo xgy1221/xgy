@@ -26,8 +26,7 @@
     </view>
   </view>
   <view class="legend">
-    <view class="legend-item"><view class="dot finished"></view><text>已上课</text></view>
-    <view class="legend-item"><view class="dot upcoming"></view><text>未上课</text></view>
-    <view class="legend-item"><view class="dot finished"></view><view class="dot upcoming"></view><text>当天都有</text></view>
+    <view class="legend-item"><view class="dot finished"></view><text>已上</text></view>
+    <view class="legend-item"><view class="dot upcoming"></view><text>未上</text></view>
   </view>
 </view>

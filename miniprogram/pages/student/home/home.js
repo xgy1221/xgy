@@ -10,16 +10,31 @@ const STATUS_TEXT = {
   finished: '已结束'
 }
 
+function whenLabel(date) {
+  const today = todayKey()
+  if (date === today) return '今日待上'
+  const t = new Date(`${today}T00:00:00`)
+  const d = new Date(`${date}T00:00:00`)
+  const diff = Math.round((d - t) / 86400000)
+  if (diff === 1) return '明日待上'
+  if (diff > 1 && diff <= 7) return `${diff} 天后`
+  return formatDisplay(date)
+}
+
 Page({
   data: {
     studentName: '',
     orgName: '',
+    orgShortName: '',
     children: [],
     currentStudentId: '',
     selectedDate: '',
     displayDate: '',
     markedDates: [],
-    lessons: []
+    lessons: [],
+    nextLesson: null,
+    weekAheadCount: 0,
+    loading: true
   },
 
   onShow() {
@@ -47,12 +62,19 @@ Page({
     }
     const current = children.find((c) => c.id === currentStudentId) || {}
     const selectedDate = this.data.selectedDate || todayKey()
+    const orgName = current.orgName || ''
+    const orgShortName = current.orgShortName || (orgName ? orgName.slice(0, 1) : '校')
+    if (orgName) {
+      wx.setNavigationBarTitle({ title: orgName })
+    }
     this.setData({
       children: childrenView,
       currentStudentId,
       studentName: current.studentName || '',
-      orgName: current.orgName || '',
-      selectedDate
+      orgName,
+      orgShortName,
+      selectedDate,
+      loading: false
     })
     this.refresh(currentStudentId, selectedDate)
   },
@@ -60,7 +82,7 @@ Page({
   refresh(studentId, date) {
     const markedDates = lessonsService.getLessonDateMarksForStudent(studentId)
     const lessons = lessonsService.getStudentLessonsByDate(studentId, date).map((l) => {
-      const me = (l.attendees || []).find((a) => a.studentId === studentId) || {}
+      const me = (l.attendees || []).find((a) => String(a.studentId) === String(studentId)) || {}
       return {
         ...l,
         statusText: STATUS_TEXT[l.status] || l.status,
@@ -69,10 +91,21 @@ Page({
         needRate: l.status === 'finished' && me && !me.absent && !me.studentRated
       }
     })
+    const rawNext = lessonsService.getNextLessonForStudent(studentId)
+    const nextLesson = rawNext
+      ? {
+          ...rawNext,
+          statusText: STATUS_TEXT[rawNext.status] || rawNext.status,
+          whenLabel: whenLabel(rawNext.date)
+        }
+      : null
+    const weekAheadCount = lessonsService.countUpcomingLessons(studentId, 14)
     this.setData({
       markedDates,
       lessons,
-      displayDate: formatDisplay(date)
+      displayDate: formatDisplay(date),
+      nextLesson,
+      weekAheadCount
     })
   },
 
@@ -82,19 +115,36 @@ Page({
     this.refresh(this.data.currentStudentId, date)
   },
 
+  goNextDay(e) {
+    const id = e.currentTarget.dataset.id
+    const next = this.data.nextLesson
+    if (next && next.date) {
+      this.setData({ selectedDate: next.date })
+      this.refresh(this.data.currentStudentId, next.date)
+      return
+    }
+    if (id) {
+      wx.navigateTo({ url: `/pages/student/lesson-detail/lesson-detail?id=${id}` })
+    }
+  },
+
   async onSwitchChild(e) {
     const id = e.currentTarget.dataset.id
     if (!id || id === this.data.currentStudentId) return
     wx.showLoading({ title: '切换中', mask: true })
     try {
       await bridge.remoteSwitchStudent(id)
-      const student = this.data.children.find((c) => c.id === id)
+      const student = this.data.children.find((c) => c.id === id) || {}
+      const orgName = student.orgName || ''
+      if (orgName) wx.setNavigationBarTitle({ title: orgName })
       this.setData({
         currentStudentId: id,
-        studentName: student ? student.studentName : '',
-        orgName: student ? student.orgName : ''
+        studentName: student.studentName || '',
+        orgName,
+        orgShortName: student.orgShortName || (orgName ? orgName.slice(0, 1) : '校'),
+        selectedDate: todayKey()
       })
-      this.refresh(id, this.data.selectedDate)
+      this.refresh(id, todayKey())
     } catch (err) {
       wx.showToast({ title: (err && err.message) || '切换失败', icon: 'none' })
     } finally {
@@ -103,8 +153,10 @@ Page({
   },
 
   goDetail(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id) return
     wx.navigateTo({
-      url: `/pages/student/lesson-detail/lesson-detail?id=${e.currentTarget.dataset.id}`
+      url: `/pages/student/lesson-detail/lesson-detail?id=${id}`
     })
   }
 })

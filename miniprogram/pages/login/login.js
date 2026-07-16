@@ -7,7 +7,12 @@ Page({
   data: {
     phone: '',
     accounts: [],
-    loading: false
+    loading: false,
+    showDemo: false
+  },
+
+  toggleDemo() {
+    this.setData({ showDemo: !this.data.showDemo })
   },
 
   onLoad() {

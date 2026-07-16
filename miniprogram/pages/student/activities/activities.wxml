@@ -1,10 +1,13 @@
-<view class="container">
-  <view class="page-title">比赛活动</view>
-  <view class="page-sub">
-    {{studentName}}<text wx:if="{{orgName}}"> · {{orgName}}</text> · 报名参赛 / 往期赛果
+<view class="page">
+  <view class="atmosphere"></view>
+
+  <view class="head">
+    <view class="head-kicker">{{orgName || '机构活动'}}</view>
+    <view class="head-title">比赛</view>
+    <view class="head-sub">为 {{studentName}} 报名参赛，或翻看往期赛果</view>
   </view>
 
-  <scroll-view scroll-x class="chip-scroll section" wx:if="{{children.length > 1}}">
+  <scroll-view scroll-x class="chip-scroll" wx:if="{{children.length > 1}}">
     <view
       class="chip {{item.id === currentStudentId ? 'on' : ''}}"
       wx:for="{{children}}"
@@ -14,26 +17,21 @@
     >{{item.chipText}}</view>
   </scroll-view>
 
-  <view class="tabs section">
-    <view class="tab {{tab === 'open' ? 'on' : ''}}" data-tab="open" bindtap="onTab">
-      报名参赛 <text class="num">{{openCount}}</text>
-    </view>
-    <view class="tab {{tab === 'past' ? 'on' : ''}}" data-tab="past" bindtap="onTab">
-      往期赛果 <text class="num">{{pastCount}}</text>
-    </view>
+  <view class="tabs">
+    <view class="tab {{tab === 'open' ? 'on' : ''}}" data-tab="open" bindtap="onTab">报名中</view>
+    <view class="tab {{tab === 'past' ? 'on' : ''}}" data-tab="past" bindtap="onTab">往期</view>
     <view class="tab {{tab === 'mine' ? 'on' : ''}}" data-tab="mine" bindtap="onTab">
-      我的参赛 <text class="num">{{myCount}}</text>
+      已报{{myCount ? ' · ' + myCount : ''}}
     </view>
   </view>
 
-  <!-- 报名中 -->
-  <view class="section" wx:if="{{tab === 'open'}}">
-    <view class="empty card" wx:if="{{!openList.length}}">
-      <view class="item-title">暂无进行中的比赛</view>
-      <view class="muted">机构发布思维赛、速算赛、口语赛等后会出现在这里，可直接为孩子报名。</view>
+  <view class="list" wx:if="{{tab === 'open'}}">
+    <view class="empty-block" wx:if="{{!openList.length}}">
+      <view class="empty-title">暂无开放报名的比赛</view>
+      <view class="muted">机构发布思维赛、口语赛等后会出现在这里，可直接为孩子报名。</view>
     </view>
     <view
-      class="act-card"
+      class="act"
       wx:for="{{openList}}"
       wx:key="id"
       data-id="{{item.id}}"
@@ -42,27 +40,24 @@
       <view class="cover cover-{{item.coverTone}}">
         <view class="cover-cat">{{item.coverLabel}}</view>
         <view class="cover-title">{{item.title}}</view>
+        <view class="cover-date">{{item.dateText}}</view>
       </view>
-      <view class="act-body">
-        <view class="muted">{{item.dateText}}</view>
-        <view class="muted">{{item.campus}} · {{item.address}}</view>
-        <view class="row meta">
-          <view class="tag {{item.enrollStatus === 'open' ? 'ok' : 'warn'}}">{{item.statusText}}</view>
-          <view class="fee">{{item.feeText}}</view>
-          <view class="muted">余 {{item.remain}} 席</view>
+      <view class="act-foot">
+        <view class="muted">{{item.campus}} · 余 {{item.remain}} 席 · {{item.feeText}}</view>
+        <view class="cta {{item.signed ? 'done' : ''}}">
+          {{item.signed ? '已报名' : '为' + studentName + '报名'}}
         </view>
       </view>
     </view>
   </view>
 
-  <!-- 往期赛果 -->
-  <view class="section" wx:if="{{tab === 'past'}}">
-    <view class="empty card" wx:if="{{!pastList.length}}">
-      <view class="item-title">还没有往期赛果</view>
-      <view class="muted">比赛结束后会在这里放回顾与获奖亮点，方便家长翻看。</view>
+  <view class="list" wx:if="{{tab === 'past'}}">
+    <view class="empty-block" wx:if="{{!pastList.length}}">
+      <view class="empty-title">还没有往期赛果</view>
+      <view class="muted">比赛结束后会放回顾与亮点，方便家长翻看孩子的表现。</view>
     </view>
     <view
-      class="act-card"
+      class="act"
       wx:for="{{pastList}}"
       wx:key="id"
       data-id="{{item.id}}"
@@ -75,34 +70,27 @@
       <view class="act-body">
         <view class="muted">{{item.dateText}}</view>
         <view class="recap" wx:if="{{item.recap}}">{{item.recap}}</view>
-        <view class="gallery" wx:if="{{item.gallery.length}}">
-          <text class="pill" wx:for="{{item.gallery}}" wx:for-item="g" wx:key="*this">{{g}}</text>
-        </view>
       </view>
     </view>
   </view>
 
-  <!-- 我的参赛 -->
-  <view class="section" wx:if="{{tab === 'mine'}}">
-    <view class="empty card" wx:if="{{!myList.length}}">
-      <view class="item-title">还没有参赛记录</view>
-      <view class="muted">在「报名参赛」里选一场比赛，为当前学员报名即可。</view>
+  <view class="list" wx:if="{{tab === 'mine'}}">
+    <view class="empty-block" wx:if="{{!myList.length}}">
+      <view class="empty-title">还没有参赛记录</view>
+      <view class="muted">在「报名中」选一场比赛，为当前孩子报名即可。</view>
     </view>
     <view
-      class="act-card compact"
+      class="mine-row"
       wx:for="{{myList}}"
       wx:key="signupId"
       data-id="{{item.id}}"
       bindtap="goDetail"
     >
-      <view class="row">
-        <view>
-          <view class="item-title">{{item.title}}</view>
-          <view class="muted">{{item.dateText}}</view>
-          <view class="muted">学员 {{item.studentName}} · {{item.statusText}}</view>
-        </view>
-        <view class="tag ok">已报名参赛</view>
+      <view>
+        <view class="item-title">{{item.title}}</view>
+        <view class="muted">{{item.dateText}} · {{item.studentName}}</view>
       </view>
+      <view class="tag ok">已报名</view>
     </view>
   </view>
 

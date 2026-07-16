@@ -60,7 +60,11 @@ Page({
       btnText = '报名已截止'
     } else {
       canSignup = true
-      btnText = activity.fee > 0 ? `报名参赛 · ${activity.feeText}` : '免费报名参赛'
+      const who = (student && student.studentName) || '孩子'
+      btnText =
+        activity.fee > 0
+          ? `为${who}报名 · ${activity.feeText}`
+          : `免费为${who}报名`
     }
 
     this.setData({

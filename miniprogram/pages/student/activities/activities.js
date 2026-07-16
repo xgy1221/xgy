@@ -57,11 +57,13 @@ Page({
     const pastList = activitiesService.listPast(orgId, currentStudentId)
     const myList = activitiesService.listMySignups(phone, currentStudentId)
 
+    const orgName = (student && student.orgName) || ''
+    if (orgName) wx.setNavigationBarTitle({ title: orgName })
     this.setData({
       children,
       currentStudentId,
       studentName: (student && student.studentName) || '学员',
-      orgName: (student && student.orgName) || '',
+      orgName,
       openList,
       pastList,
       myList,

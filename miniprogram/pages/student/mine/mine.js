@@ -16,9 +16,11 @@ Page({
     phone: '',
     avatarText: '',
     roleName: '',
+    orgName: '',
     multiRole: false,
     roleOptions: [],
     currentRoleKey: '',
+    showAccount: false,
     children: [],
     currentStudentId: '',
     packages: [],
@@ -28,7 +30,8 @@ Page({
     displayLessons: [],
     hasMore: false,
     shownCount: 0,
-    evalCount: 0
+    evalCount: 0,
+    latestEval: null
   },
 
   onShow() {
@@ -51,6 +54,9 @@ Page({
       currentStudentId = children[0].id
       auth.setCurrentStudentId(currentStudentId)
     }
+    const current = children.find((c) => c.id === currentStudentId) || {}
+    const orgName = current.orgName || ''
+    if (orgName) wx.setNavigationBarTitle({ title: orgName })
     const roleOptions = (u.roles || []).map((key) => ROLE_META[key]).filter(Boolean)
 
     this.setData({
@@ -58,6 +64,7 @@ Page({
       phone: u.phone,
       avatarText: u.avatarText || u.name.slice(0, 1),
       roleName: (ROLE_META[role] && ROLE_META[role].name) || role,
+      orgName,
       multiRole: roleOptions.length > 1,
       roleOptions,
       currentRoleKey: role,
@@ -65,6 +72,10 @@ Page({
       currentStudentId
     })
     this.loadPackagesForStudent(currentStudentId)
+  },
+
+  toggleAccount() {
+    this.setData({ showAccount: !this.data.showAccount })
   },
 
   getLastPackageMap() {
@@ -127,7 +138,8 @@ Page({
         displayLessons: [],
         hasMore: false,
         shownCount: 0,
-        evalCount: 0
+        evalCount: 0,
+        latestEval: null
       })
       return
     }
@@ -154,6 +166,7 @@ Page({
     }
 
     const evalCount = lessonRows.filter((l) => l.hasTeacherEval).length
+    const latestEval = lessonRows.find((l) => l.hasTeacherEval) || null
     const shownCount = Math.min(PAGE_SIZE, lessonRows.length)
 
     this.setData({
@@ -162,7 +175,8 @@ Page({
       displayLessons: lessonRows.slice(0, shownCount),
       shownCount,
       hasMore: lessonRows.length > shownCount,
-      evalCount
+      evalCount,
+      latestEval
     })
   },
 
@@ -186,7 +200,10 @@ Page({
     wx.showLoading({ title: '切换中', mask: true })
     try {
       await bridge.remoteSwitchStudent(id)
-      this.setData({ currentStudentId: id })
+      const student = this.data.children.find((c) => c.id === id) || {}
+      const orgName = student.orgName || ''
+      if (orgName) wx.setNavigationBarTitle({ title: orgName })
+      this.setData({ currentStudentId: id, orgName })
       this.loadPackagesForStudent(id)
     } catch (err) {
       wx.showToast({ title: (err && err.message) || '切换失败', icon: 'none' })
@@ -229,6 +246,10 @@ Page({
 
   goSchedule() {
     wx.navigateTo({ url: '/pages/student/schedule/schedule' })
+  },
+
+  goScheduleTab() {
+    wx.reLaunch({ url: '/pages/student/home/home' })
   },
 
   goActivities() {

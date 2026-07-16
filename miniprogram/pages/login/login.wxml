@@ -2,25 +2,29 @@
   <view class="hero">
     <view class="brand-mark">学</view>
     <view class="brand">学管云</view>
-    <view class="slogan">培训机构多角色协同：家长 · 老师 · 教务 · 合伙人 · 管理</view>
+    <view class="slogan">看课表、看老师评价、给孩子报比赛——机构上课，家长心里有数。</view>
   </view>
 
   <view class="panel">
-    <view class="field-label">手机号登录（演示）</view>
+    <view class="field-label">手机号登录</view>
     <input
       class="field"
       type="number"
       maxlength="11"
-      placeholder="输入演示手机号"
+      placeholder="请输入手机号"
       value="{{phone}}"
       bindinput="onPhoneInput"
     />
-    <button class="btn-primary login-btn" bindtap="onLogin">进入系统</button>
-    <view class="tip">支持多机构隔离：员工绑定一家机构；家长 13800000001 在「学趣」与「启航」都有孩子，切换学员即切换机构。启航员工：13800000040 / 41。合伙/管理深度财务用 Web。</view>
+    <button class="btn-primary login-btn" loading="{{loading}}" bindtap="onLogin">进入</button>
+    <view class="tip">演示环境短信码由后端固定校验；未建档手机号也可作为家长登录并引导完善学员。</view>
   </view>
 
-  <view class="quick">
-    <view class="quick-title">快捷体验账号</view>
+  <view class="demo-toggle" bindtap="toggleDemo">
+    {{showDemo ? '收起演示账号' : '演示账号（销售/体验用）'}}
+  </view>
+
+  <view class="quick" wx:if="{{showDemo}}">
+    <view class="quick-hint">点账号直接进入对应角色；家长 01 可体验跨机构切孩子。</view>
     <view
       class="quick-item"
       wx:for="{{accounts}}"

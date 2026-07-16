@@ -25,17 +25,18 @@
 
 .brand {
   margin-top: 28rpx;
-  font-size: 64rpx;
+  font-size: 68rpx;
   font-weight: 700;
-  letter-spacing: 2rpx;
+  letter-spacing: 4rpx;
+  font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
 }
 
 .slogan {
-  margin-top: 16rpx;
-  font-size: 26rpx;
-  opacity: 0.88;
-  max-width: 560rpx;
-  line-height: 1.6;
+  margin-top: 18rpx;
+  font-size: 28rpx;
+  opacity: 0.9;
+  max-width: 580rpx;
+  line-height: 1.65;
 }
 
 .panel {
@@ -72,15 +73,24 @@
   line-height: 1.5;
 }
 
-.quick {
+.demo-toggle {
   margin-top: 36rpx;
+  text-align: center;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--brand);
+  padding: 12rpx;
 }
 
-.quick-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #14201f;
+.quick {
+  margin-top: 12rpx;
+}
+
+.quick-hint {
+  font-size: 22rpx;
+  color: #8a9a97;
   margin-bottom: 16rpx;
+  line-height: 1.5;
 }
 
 .quick-item {

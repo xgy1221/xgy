@@ -1,37 +1,42 @@
-<view class="container">
-  <view class="profile card">
-    <view class="avatar">{{avatarText}}</view>
-    <view class="profile-main">
-      <view class="name">{{name}}</view>
-      <view class="muted">{{phone}}</view>
-      <view class="tag">{{roleName}}</view>
+<view class="page">
+  <view class="atmosphere"></view>
+
+  <view class="head">
+    <view>
+      <view class="head-kicker">学习进度</view>
+      <view class="head-title">{{orgName || '我的'}}</view>
+      <view class="head-sub">切孩子 → 切教案 → 看课次与老师评价</view>
+    </view>
+    <view class="account-entry" bindtap="toggleAccount">
+      <view class="mini-avatar">{{avatarText}}</view>
     </view>
   </view>
 
-  <view class="section card" wx:if="{{multiRole}}">
-    <view class="section-title">切换身份</view>
-    <view
-      class="role-item {{item.key === currentRoleKey ? 'on' : ''}}"
-      wx:for="{{roleOptions}}"
-      wx:key="key"
-      data-role="{{item.key}}"
-      bindtap="onPickRole"
-    >
+  <!-- 账户抽屉：角色切换 / 退出，不抢首屏 -->
+  <view class="account-sheet" wx:if="{{showAccount}}">
+    <view class="account-row">
       <view>
-        <view class="role-name">{{item.name}}</view>
-        <view class="muted">{{item.desc}}</view>
+        <view class="account-name">{{name}}</view>
+        <view class="muted">{{phone}} · {{roleName}}</view>
       </view>
-      <view class="tag {{item.key === currentRoleKey ? 'ok' : ''}}">
-        {{item.key === currentRoleKey ? '当前' : '进入'}}
-      </view>
+      <text class="danger" bindtap="onLogout">退出</text>
+    </view>
+    <view class="role-switch" wx:if="{{multiRole}}">
+      <view
+        class="role-chip {{item.key === currentRoleKey ? 'on' : ''}}"
+        wx:for="{{roleOptions}}"
+        wx:key="key"
+        data-role="{{item.key}}"
+        bindtap="onPickRole"
+      >{{item.name}}</view>
     </view>
   </view>
 
-  <!-- 1. 切孩子 -->
   <view class="section">
-    <view class="section-title">选择孩子</view>
-    <view class="empty card" wx:if="{{!children.length}}">
-      <view class="role-name">还没有学员</view>
+    <view class="section-label">孩子</view>
+    <view class="empty-block" wx:if="{{!children.length}}">
+      <view class="empty-title">还没有学员档案</view>
+      <view class="muted">在读学员一般由教务建好，家长打开就能看。也可自行添加。</view>
       <button class="btn-primary add-btn" bindtap="onAddChild">添加学员</button>
     </view>
     <scroll-view scroll-x class="chip-scroll" wx:else>
@@ -45,13 +50,12 @@
     </scroll-view>
   </view>
 
-  <!-- 2. 切教案 -->
   <view class="section" wx:if="{{children.length}}">
-    <view class="section-title">选择教案</view>
-    <view class="empty card" wx:if="{{!packages.length}}">
-      <view class="role-name">该孩子还没有报读教案</view>
-      <view class="muted tip">绑定教案后，可按教案查看课次与老师评价。</view>
-      <button class="btn-primary add-btn" bindtap="goAddPackages">去选教案</button>
+    <view class="section-label">教案</view>
+    <view class="empty-block" wx:if="{{!packages.length}}">
+      <view class="empty-title">还没有报读</view>
+      <view class="muted">教务绑定教案后，这里会显示已上进度与老师评价。</view>
+      <button class="btn-primary add-btn" bindtap="goAddPackages">去了解教案</button>
     </view>
     <scroll-view scroll-x class="chip-scroll" wx:else>
       <view
@@ -67,27 +71,42 @@
     </scroll-view>
   </view>
 
-  <!-- 3. 当前教案进度 + 课次/评价 -->
+  <!-- 首屏核心：进度 + 最新评价 -->
+  <view class="progress-hero" wx:if="{{currentPackage}}">
+    <view class="ph-top">
+      <view class="ph-name">{{currentPackage.name}}</view>
+      <view class="tag {{currentPackage.status === '学习中' ? 'ok' : 'warn'}}">{{currentPackage.status}}</view>
+    </view>
+    <view class="ph-nums">
+      <text class="ph-strong">已上 {{currentPackage.usedLessons}}</text>
+      <text class="ph-slash">/</text>
+      <text>共 {{currentPackage.totalLessons}} 课</text>
+      <text class="ph-remain">剩余 {{currentPackage.remainLessons}}</text>
+    </view>
+    <view class="progress-wrap">
+      <view class="progress" style="width: {{currentPackage.progress}}%;"></view>
+    </view>
+    <view class="latest-eval" wx:if="{{latestEval}}">
+      <view class="eval-kicker">最近一次老师评价 · {{latestEval.dateText}}</view>
+      <view class="stars">{{latestEval.teacherStars}}</view>
+      <view class="eval-text" wx:if="{{latestEval.teacherComment}}">{{latestEval.teacherComment}}</view>
+      <view class="muted" wx:else>老师给了评分</view>
+    </view>
+    <view class="latest-eval muted" wx:elif="{{evalCount === 0}}">
+      上课并由老师评价后，评语会出现在这里。
+    </view>
+  </view>
+
   <view class="section" wx:if="{{currentPackage}}">
-    <view class="pkg-summary card">
-      <view class="row">
-        <view class="item-title">{{currentPackage.name}}</view>
-        <view class="tag {{currentPackage.status === '学习中' ? 'ok' : 'warn'}}">{{currentPackage.status}}</view>
-      </view>
-      <view class="muted">{{currentPackage.subject}}</view>
-      <view class="progress-wrap">
-        <view class="progress" style="width: {{currentPackage.progress}}%;"></view>
-      </view>
-      <view class="row progress-meta">
-        <text class="strong">已上 {{currentPackage.usedLessons}} / 教案共 {{currentPackage.totalLessons}} 课</text>
-        <text class="muted">剩余 {{currentPackage.remainLessons}}</text>
-      </view>
-      <view class="muted tip">老师评价 {{evalCount}} 条 · 课次较多时先显示最近 {{shownCount}} 节</view>
+    <view class="section-label row-label">
+      <text>课次与评价</text>
+      <text class="muted" wx:if="{{evalCount}}">{{evalCount}} 条评价</text>
     </view>
 
-    <view class="empty card" wx:if="{{!displayLessons.length}}">
-      <view class="role-name">该教案下还没有课次记录</view>
-      <view class="muted">上课并评价后，会出现在这里。</view>
+    <view class="empty-block" wx:if="{{!displayLessons.length}}">
+      <view class="empty-title">该教案下还没有课次</view>
+      <view class="muted">排课并上完课后，可在此查看老师评语。</view>
+      <button class="btn-ghost add-btn" bindtap="goScheduleTab">去课表看看</button>
     </view>
 
     <view
@@ -101,48 +120,25 @@
         <view>
           <view class="item-title">{{item.dateText}}</view>
           <view class="muted">{{item.startTime}}-{{item.endTime}} · {{item.teacherName}}</view>
-          <view class="muted">{{item.className}} · {{item.room}}</view>
         </view>
         <view class="tag {{item.status === 'finished' ? 'ok' : 'warn'}}">{{item.statusText}}</view>
       </view>
-
       <view class="eval" wx:if="{{item.hasTeacherEval}}">
-        <view class="eval-label">老师评价</view>
         <view class="stars">{{item.teacherStars}}</view>
         <view class="eval-text" wx:if="{{item.teacherComment}}">{{item.teacherComment}}</view>
       </view>
       <view class="eval muted" wx:elif="{{item.status === 'finished'}}">老师暂未评价</view>
-      <view class="eval muted" wx:else>上完课后可查看老师评价</view>
     </view>
 
     <button class="btn-ghost more-btn" wx:if="{{hasMore}}" bindtap="onLoadMore">
-      加载更多课次（还有 {{lessonRows.length - shownCount}} 节）
+      加载更多（还有 {{lessonRows.length - shownCount}} 节）
     </button>
   </view>
 
-  <view class="section card">
-    <view class="section-title">更多</view>
-    <view class="muted tip">在读学员的教案建议由教务/老师代录；家长可在此补选或查看。</view>
-    <view class="list-item" bindtap="goAddPackages" wx:if="{{children.length}}">
-      <text>为当前孩子添加教案</text>
-      <text class="link">添加</text>
-    </view>
-    <view class="list-item" bindtap="onAddChild">
-      <text>添加学员</text>
-      <text class="link">去添加</text>
-    </view>
-    <view class="list-item" bindtap="goSchedule">
-      <text>全部课次</text>
-      <text class="link">查看</text>
-    </view>
-    <view class="list-item">
-      <text>当前角色</text>
-      <text>{{roleName}}</text>
-    </view>
-    <view class="list-item" bindtap="onLogout">
-      <text>退出登录</text>
-      <text class="danger">退出</text>
-    </view>
+  <view class="footer-links" wx:if="{{children.length}}">
+    <view class="link-item" bindtap="goAddPackages">为孩子补选教案</view>
+    <view class="link-item" bindtap="onAddChild">添加学员</view>
+    <view class="link-item" bindtap="goSchedule">全部课次</view>
   </view>
 
   <role-nav current="/pages/student/mine/mine" />

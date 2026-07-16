@@ -573,6 +573,33 @@ function markAbsent(lessonId, studentId, absent) {
   return { ok: true, lesson }
 }
 
+/** 家长首页：下一节未上完的课（含进行中） */
+function getNextLessonForStudent(studentId) {
+  if (!studentId) return null
+  const today = todayKey()
+  const list = getAllLessons()
+    .filter((l) =>
+      (l.attendees || []).some((a) => String(a.studentId) === String(studentId) && !a.absent)
+    )
+    .filter((l) => l.status !== 'finished' && l.date >= today)
+    .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`))
+  return list[0] || null
+}
+
+/** 未来 N 天内还有几节未上完的课 */
+function countUpcomingLessons(studentId, withinDays = 14) {
+  if (!studentId) return 0
+  const today = todayKey()
+  const end = addDays(today, withinDays)
+  return getAllLessons().filter(
+    (l) =>
+      l.status !== 'finished' &&
+      l.date >= today &&
+      l.date <= end &&
+      (l.attendees || []).some((a) => String(a.studentId) === String(studentId) && !a.absent)
+  ).length
+}
+
 module.exports = {
   getClasses,
   getClassById,
@@ -585,6 +612,8 @@ module.exports = {
   getLessonDateMarksForTeacher,
   getStudentLessonsByDate,
   getStudentLessonsByPackage,
+  getNextLessonForStudent,
+  countUpcomingLessons,
   getTeacherLessonsByDate,
   addTempMakeupStudent,
   getMakeupCandidates,

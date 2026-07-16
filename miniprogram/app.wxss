@@ -22,6 +22,11 @@ page {
   box-sizing: border-box;
 }
 
+/* 展示标题：机构名 / 比赛名优先用衬线，拉开与后台工具感的距离 */
+.display-font {
+  font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC", "PingFang SC", serif;
+}
+
 view,
 text,
 button,
