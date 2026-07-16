@@ -127,10 +127,14 @@ public class FinanceService {
         m.put("partnerUserId", o.getPartnerUserId());
         m.put("remark", o.getRemark());
         m.put("createdAt", o.getCreatedAt());
-        studentRepository.findById(o.getStudentId())
-                .ifPresent(s -> m.put("studentName", s.getStudentName()));
-        coursePackageRepository.findById(o.getPackageId())
-                .ifPresent(p -> m.put("packageName", p.getName()));
+        studentRepository.findById(o.getStudentId()).ifPresent(s -> {
+            m.put("studentName", s.getStudentName());
+            m.put("parentPhone", s.getParentPhone());
+        });
+        coursePackageRepository.findById(o.getPackageId()).ifPresent(p -> {
+            m.put("packageName", p.getName());
+            m.put("lessonCount", p.getLessonCount());
+        });
         return m;
     }
 

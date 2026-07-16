@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { canEdit, getUser } from '../auth/roles'
+import { useEffect, useState } from 'react'
+import { canEdit } from '../auth/roles'
 import { listPackages, upsertPackage } from '../data/store'
 
 const empty = {
@@ -13,24 +13,48 @@ const empty = {
 }
 
 export default function Packages() {
-  const user = getUser()
   const editable = canEdit('packages')
-  const [tick, setTick] = useState(0)
-  const packages = useMemo(() => listPackages(user), [tick, user])
+  const [packages, setPackages] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(empty)
+  const [saving, setSaving] = useState(false)
 
-  function save() {
+  async function reload() {
+    setLoading(true)
+    setError('')
+    try {
+      setPackages(await listPackages())
+    } catch (e) {
+      setError(e.message || '加载失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    reload()
+  }, [])
+
+  async function save() {
     if (!(form.name || '').trim()) return alert('请填写教案名称')
     if (!Number(form.lessonCount)) return alert('请填写课次数')
-    upsertPackage({
-      ...form,
-      lessonCount: Number(form.lessonCount),
-      price: Number(form.price) || 0
-    })
-    setOpen(false)
-    setForm(empty)
-    setTick((t) => t + 1)
+    setSaving(true)
+    try {
+      await upsertPackage({
+        ...form,
+        lessonCount: Number(form.lessonCount),
+        price: Number(form.price) || 0
+      })
+      setOpen(false)
+      setForm(empty)
+      await reload()
+    } catch (e) {
+      alert(e.message || '保存失败')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -38,7 +62,7 @@ export default function Packages() {
       <div className="toolbar">
         <div>
           <strong>教案管理</strong>
-          <div className="muted">销售产品：包含多少节课、售价、适用年级（教务也可当产品经理维护）</div>
+          <div className="muted">销售产品：包含多少节课、售价、适用年级（与小程序共用后端）</div>
         </div>
         {editable && (
           <button
@@ -54,51 +78,56 @@ export default function Packages() {
         )}
       </div>
 
-      <table className="table">
-        <thead>
-          <tr>
-            <th>名称</th>
-            <th>科类</th>
-            <th>课次数</th>
-            <th>售价</th>
-            <th>状态</th>
-            {editable && <th />}
-          </tr>
-        </thead>
-        <tbody>
-          {packages.map((p) => (
-            <tr key={p.id}>
-              <td>
-                <strong>{p.name}</strong>
-                <div className="muted">{p.grade}</div>
-                <div className="muted">{p.outline}</div>
-              </td>
-              <td>{p.subject}</td>
-              <td>
-                <strong>{p.lessonCount}</strong> 节
-              </td>
-              <td>¥{p.price}</td>
-              <td>
-                <span className={`tag ${p.status === '上架' ? 'ok' : 'warn'}`}>{p.status}</span>
-              </td>
-              {editable && (
-                <td>
-                  <button
-                    className="btn ghost"
-                    type="button"
-                    onClick={() => {
-                      setForm({ ...p })
-                      setOpen(true)
-                    }}
-                  >
-                    编辑
-                  </button>
-                </td>
-              )}
+      {error && <p className="muted" style={{ color: '#b45309' }}>{error}</p>}
+      {loading ? (
+        <p className="muted">加载中…</p>
+      ) : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>科类</th>
+              <th>课次数</th>
+              <th>售价</th>
+              <th>状态</th>
+              {editable && <th />}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {packages.map((p) => (
+              <tr key={p.id}>
+                <td>
+                  <strong>{p.name}</strong>
+                  <div className="muted">{p.grade}</div>
+                  <div className="muted">{p.outline}</div>
+                </td>
+                <td>{p.subject}</td>
+                <td>
+                  <strong>{p.lessonCount}</strong> 节
+                </td>
+                <td>¥{p.price}</td>
+                <td>
+                  <span className={`tag ${p.status === '上架' ? 'ok' : 'warn'}`}>{p.status}</span>
+                </td>
+                {editable && (
+                  <td>
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      onClick={() => {
+                        setForm({ ...p })
+                        setOpen(true)
+                      }}
+                    >
+                      编辑
+                    </button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       {open && (
         <div className="modal-mask">
@@ -153,8 +182,8 @@ export default function Packages() {
               <button className="btn ghost" type="button" onClick={() => setOpen(false)}>
                 取消
               </button>
-              <button className="btn" type="button" onClick={save}>
-                保存
+              <button className="btn" type="button" disabled={saving} onClick={save}>
+                {saving ? '保存中…' : '保存'}
               </button>
             </div>
           </div>

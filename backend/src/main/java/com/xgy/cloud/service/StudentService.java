@@ -135,7 +135,16 @@ public class StudentService {
             s.setRemark(req.getRemark());
         }
         if (StringUtils.hasText(req.getStatus())) {
-            s.setStatus(req.getStatus());
+            String st = req.getStatus().trim();
+            if ("在读".equals(st) || "学习中".equals(st) || "active".equalsIgnoreCase(st)) {
+                s.setStatus("ACTIVE");
+            } else if ("停课".equals(st) || "暂停".equals(st) || "suspended".equalsIgnoreCase(st)) {
+                s.setStatus("SUSPENDED");
+            } else if ("结业".equals(st) || "已结业".equals(st) || "finished".equalsIgnoreCase(st)) {
+                s.setStatus("FINISHED");
+            } else {
+                s.setStatus(st.toUpperCase());
+            }
         }
     }
 

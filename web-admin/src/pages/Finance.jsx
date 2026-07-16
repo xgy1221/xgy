@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { financeMode, getUser } from '../auth/roles'
 import { formatMoney, getFinanceSummary } from '../data/store'
@@ -6,9 +6,42 @@ import { formatMoney, getFinanceSummary } from '../data/store'
 export default function Finance() {
   const user = getUser()
   const mode = financeMode()
+  const [summary, setSummary] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (mode === 'none') return undefined
+    let alive = true
+    getFinanceSummary(user)
+      .then((s) => {
+        if (alive) setSummary(s)
+      })
+      .catch((e) => {
+        if (alive) setError(e.message || '加载失败')
+      })
+    return () => {
+      alive = false
+    }
+  }, [user?.phone, mode])
+
   if (mode === 'none') return <Navigate to="/" replace />
 
-  const summary = useMemo(() => getFinanceSummary(user), [user])
+  if (error) {
+    return (
+      <div className="panel">
+        <strong>财务加载失败</strong>
+        <p className="muted">{error}</p>
+      </div>
+    )
+  }
+
+  if (!summary) {
+    return (
+      <div className="panel">
+        <div className="muted">加载中…</div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -16,7 +49,7 @@ export default function Finance() {
         <strong>财务中心</strong>
         <div className="muted" style={{ marginTop: 6 }}>
           {mode === 'partner'
-            ? '合伙人视角：本校区、本人渠道相关订单；分成=净收×分成比例（示例）。'
+            ? '合伙人视角：本人渠道相关订单；分成=净收×分成比例（示例）。'
             : '管理员视角：全校区报名实收、退费、欠费与销售结构（教培常见财务看板）。'}
         </div>
       </div>
@@ -126,7 +159,7 @@ export default function Finance() {
                 </td>
                 <td>
                   {o.packageName}
-                  <div className="muted">{o.lessonCount} 节</div>
+                  <div className="muted">{o.lessonCount ? `${o.lessonCount} 节` : ''}</div>
                 </td>
                 <td>{o.campus}</td>
                 <td>{formatMoney(o.amount)}</td>

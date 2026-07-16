@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { canEdit, getUser } from '../auth/roles'
 import { listCampuses, listStudents, upsertStudent } from '../data/store'
 
@@ -15,30 +15,57 @@ const empty = {
 export default function Students() {
   const user = getUser()
   const editable = canEdit('students')
-  const [tick, setTick] = useState(0)
   const [keyword, setKeyword] = useState('')
-  const students = useMemo(() => listStudents(user), [tick, user])
-  const campuses = listCampuses(user)
+  const [students, setStudents] = useState([])
+  const [campuses, setCampuses] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(empty)
+  const [saving, setSaving] = useState(false)
+
+  async function reload() {
+    setLoading(true)
+    setError('')
+    try {
+      const [s, c] = await Promise.all([listStudents(user), listCampuses(user)])
+      setStudents(s)
+      setCampuses(c)
+    } catch (e) {
+      setError(e.message || '加载失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    reload()
+  }, [user?.phone])
 
   const filtered = students.filter((s) => {
     const kw = keyword.trim()
     if (!kw) return true
     return (
-      s.studentName.includes(kw) ||
-      s.parentPhone.includes(kw) ||
+      (s.studentName || '').includes(kw) ||
+      (s.parentPhone || '').includes(kw) ||
       (s.parentName || '').includes(kw)
     )
   })
 
-  function save() {
+  async function save() {
     if (!form.studentName.trim()) return alert('请填写学生姓名')
     if (!/^1\d{10}$/.test(form.parentPhone || '')) return alert('请填写正确家长手机号')
-    upsertStudent(form)
-    setOpen(false)
-    setForm(empty)
-    setTick((t) => t + 1)
+    setSaving(true)
+    try {
+      await upsertStudent(form)
+      setOpen(false)
+      setForm(empty)
+      await reload()
+    } catch (e) {
+      alert(e.message || '保存失败')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -62,7 +89,7 @@ export default function Students() {
               className="btn"
               type="button"
               onClick={() => {
-                setForm({ ...empty, campus: user?.campus || '城南校区' })
+                setForm({ ...empty, campus: user?.campus || campuses[0]?.name || '城南校区' })
                 setOpen(true)
               }}
             >
@@ -72,53 +99,58 @@ export default function Students() {
         </div>
       </div>
 
-      <table className="table">
-        <thead>
-          <tr>
-            <th>学生</th>
-            <th>家长</th>
-            <th>年级 / 校区</th>
-            <th>状态</th>
-            <th>备注</th>
-            {editable && <th />}
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map((s) => (
-            <tr key={s.id}>
-              <td>
-                <strong>{s.studentName}</strong>
-              </td>
-              <td>
-                {s.parentName || '家长'}
-                <div className="muted">{s.parentPhone}</div>
-              </td>
-              <td>
-                {s.grade}
-                <div className="muted">{s.campus}</div>
-              </td>
-              <td>
-                <span className="tag ok">{s.status || '在读'}</span>
-              </td>
-              <td className="muted">{s.remark || '-'}</td>
-              {editable && (
-                <td>
-                  <button
-                    className="btn ghost"
-                    type="button"
-                    onClick={() => {
-                      setForm(s)
-                      setOpen(true)
-                    }}
-                  >
-                    编辑
-                  </button>
-                </td>
-              )}
+      {error && <p className="muted" style={{ color: '#b45309' }}>{error}</p>}
+      {loading ? (
+        <p className="muted">加载中…</p>
+      ) : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>学生</th>
+              <th>家长</th>
+              <th>年级 / 校区</th>
+              <th>状态</th>
+              <th>备注</th>
+              {editable && <th />}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filtered.map((s) => (
+              <tr key={s.id}>
+                <td>
+                  <strong>{s.studentName}</strong>
+                </td>
+                <td>
+                  {s.parentName || '家长'}
+                  <div className="muted">{s.parentPhone}</div>
+                </td>
+                <td>
+                  {s.grade}
+                  <div className="muted">{s.campus}</div>
+                </td>
+                <td>
+                  <span className="tag ok">{s.status || '在读'}</span>
+                </td>
+                <td className="muted">{s.remark || '-'}</td>
+                {editable && (
+                  <td>
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      onClick={() => {
+                        setForm(s)
+                        setOpen(true)
+                      }}
+                    >
+                      编辑
+                    </button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       {open && (
         <div className="modal-mask">
@@ -177,8 +209,8 @@ export default function Students() {
               <button className="btn ghost" type="button" onClick={() => setOpen(false)}>
                 取消
               </button>
-              <button className="btn" type="button" onClick={save}>
-                保存
+              <button className="btn" type="button" disabled={saving} onClick={save}>
+                {saving ? '保存中…' : '保存'}
               </button>
             </div>
           </div>

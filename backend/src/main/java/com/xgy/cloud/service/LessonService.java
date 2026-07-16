@@ -351,7 +351,10 @@ public class LessonService {
         m.put("endTime", lesson.getEndTime());
         m.put("room", lesson.getRoom());
         m.put("status", lesson.getStatus());
-        clazzRepository.findById(lesson.getClassId()).ifPresent(c -> m.put("className", c.getName()));
+        clazzRepository.findById(lesson.getClassId()).ifPresent(c -> {
+            m.put("className", c.getName());
+            m.put("campus", c.getCampus());
+        });
         if (lesson.getPackageId() != null) {
             coursePackageRepository.findById(lesson.getPackageId()).ifPresent(p -> {
                 m.put("packageName", p.getName());

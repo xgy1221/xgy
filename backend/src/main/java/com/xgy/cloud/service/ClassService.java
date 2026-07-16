@@ -147,8 +147,11 @@ public class ClassService {
         m.put("room", c.getRoom());
         m.put("status", c.getStatus());
         if (c.getPackageId() != null) {
-            coursePackageRepository.findById(c.getPackageId())
-                    .ifPresent(p -> m.put("packageName", p.getName()));
+            coursePackageRepository.findById(c.getPackageId()).ifPresent(p -> {
+                m.put("packageName", p.getName());
+                m.put("lessonCount", p.getLessonCount());
+                m.put("packagePrice", p.getPrice());
+            });
         }
         if (c.getTeacherId() != null) {
             teacherRepository.findById(c.getTeacherId()).ifPresent(t -> m.put("teacherName", t.getName()));
@@ -157,6 +160,17 @@ public class ClassService {
                 .map(ClassStudent::getStudentId).collect(Collectors.toList());
         m.put("studentIds", studentIds);
         m.put("studentCount", studentIds.size());
+        List<Map<String, Object>> students = studentIds.stream().map(sid -> {
+            Map<String, Object> sm = new LinkedHashMap<>();
+            sm.put("id", sid);
+            studentRepository.findById(sid).ifPresent(s -> {
+                sm.put("studentName", s.getStudentName());
+                sm.put("parentPhone", s.getParentPhone());
+                sm.put("campus", s.getCampus());
+            });
+            return sm;
+        }).collect(Collectors.toList());
+        m.put("students", students);
         return m;
     }
 

@@ -1,5 +1,7 @@
 /** Web 端角色：教务 / 合伙人 / 管理员 */
 
+import { clearToken, getToken, request, setToken } from '../api/client'
+
 export const WEB_ROLES = {
   ACADEMIC: 'academic',
   PARTNER: 'partner',
@@ -10,6 +12,18 @@ export const ROLE_LABEL = {
   academic: '教务',
   partner: '合伙人',
   admin: '管理员'
+}
+
+const BACKEND_TO_WEB = {
+  ACADEMIC: 'academic',
+  PARTNER: 'partner',
+  ADMIN: 'admin'
+}
+
+const WEB_TO_BACKEND = {
+  academic: 'ACADEMIC',
+  partner: 'PARTNER',
+  admin: 'ADMIN'
 }
 
 /**
@@ -62,6 +76,7 @@ export function setUser(user) {
 
 export function clearUser() {
   localStorage.removeItem('xgy_web_user')
+  clearToken()
 }
 
 export function canView(module) {
@@ -82,6 +97,7 @@ export function financeMode() {
   return PERMISSIONS[user?.role]?.finance || 'none'
 }
 
+/** 演示账号：仅快捷填手机号，真实登录走后端短信码 123456 */
 export const DEMO_ACCOUNTS = [
   {
     phone: '13800000003',
@@ -100,7 +116,7 @@ export const DEMO_ACCOUNTS = [
     orgId: 'org_xuequ',
     orgName: '学趣思维',
     shareRatio: 0.15,
-    desc: '查看本校区业绩与分成财务，业务数据只读'
+    desc: '查看本人渠道业绩与分成财务，业务数据只读'
   },
   {
     phone: '13800000000',
@@ -132,3 +148,74 @@ export const NAV_ITEMS = [
   { to: '/finance', label: '财务中心', module: 'finance' },
   { to: '/users', label: '账号权限', module: 'users' }
 ]
+
+function pickWebBackendRole(roles) {
+  const names = (roles || []).map((r) => (typeof r === 'string' ? r : r.role))
+  for (const cand of ['ADMIN', 'PARTNER', 'ACADEMIC']) {
+    if (names.includes(cand)) return cand
+  }
+  return null
+}
+
+function mapAuthToUser(data, preferredCampus) {
+  const webRole = BACKEND_TO_WEB[data.currentRole]
+  const roleRow = (data.roles || []).find((r) => r.role === data.currentRole)
+  return {
+    id: data.userId,
+    phone: data.phone,
+    name: data.name,
+    role: webRole,
+    campus: preferredCampus || '',
+    orgId: data.orgCode || String(data.orgId || ''),
+    orgNumericId: data.orgId,
+    orgName: data.orgName || (roleRow && roleRow.orgName) || '',
+    shareRatio: webRole === 'partner' ? 0.15 : webRole === 'admin' ? 0.3 : undefined,
+    roles: (data.roles || []).map((r) => BACKEND_TO_WEB[r.role] || r.role).filter(Boolean)
+  }
+}
+
+/** 手机号 + 短信登录，并切换到适合 Web 的角色 */
+export async function loginWithSms(phone, smsCode = '123456', preferredCampus = '') {
+  const data = await request('/api/auth/login', {
+    method: 'POST',
+    data: { phone, smsCode },
+    auth: false
+  })
+  setToken(data.token)
+
+  let auth = data
+  const wanted = pickWebBackendRole(data.roles)
+  if (!wanted) {
+    clearUser()
+    throw new Error('该账号无 Web 管理端角色（需要教务/合伙/管理员）')
+  }
+  if (data.currentRole !== wanted) {
+    auth = await request('/api/auth/switch-role', {
+      method: 'POST',
+      data: { role: wanted, orgId: data.orgId }
+    })
+    if (auth.token) setToken(auth.token)
+  }
+
+  const user = mapAuthToUser(auth, preferredCampus)
+  if (!user.role) {
+    clearUser()
+    throw new Error('无法解析管理端角色')
+  }
+  setUser(user)
+  return user
+}
+
+export async function logoutRemote() {
+  try {
+    if (getToken()) {
+      await request('/api/auth/logout', { method: 'POST', data: {} })
+    }
+  } catch {
+    /* ignore */
+  } finally {
+    clearUser()
+  }
+}
+
+export { WEB_TO_BACKEND, getToken }

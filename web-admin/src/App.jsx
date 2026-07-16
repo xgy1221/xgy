@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { getToken } from './api/client'
 import { getUser } from './auth/roles'
 import Layout from './components/Layout'
 import Login from './pages/Login'
@@ -13,7 +14,7 @@ import './App.css'
 
 function RequireAuth({ children }) {
   const user = getUser()
-  if (!user) return <Navigate to="/login" replace />
+  if (!user || !getToken()) return <Navigate to="/login" replace />
   return children
 }
 

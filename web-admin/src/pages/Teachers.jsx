@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { canEdit, getUser } from '../auth/roles'
 import { listCampuses, listTeachers, upsertTeacher } from '../data/store'
 
@@ -14,18 +14,45 @@ const empty = {
 export default function Teachers() {
   const user = getUser()
   const editable = canEdit('teachers')
-  const [tick, setTick] = useState(0)
-  const teachers = useMemo(() => listTeachers(user), [tick, user])
-  const campuses = listCampuses(user)
+  const [teachers, setTeachers] = useState([])
+  const [campuses, setCampuses] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(empty)
+  const [saving, setSaving] = useState(false)
 
-  function save() {
+  async function reload() {
+    setLoading(true)
+    setError('')
+    try {
+      const [t, c] = await Promise.all([listTeachers(user), listCampuses(user)])
+      setTeachers(t)
+      setCampuses(c)
+    } catch (e) {
+      setError(e.message || '加载失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    reload()
+  }, [user?.phone])
+
+  async function save() {
     if (!form.name.trim()) return alert('请填写教师姓名')
-    upsertTeacher(form)
-    setOpen(false)
-    setForm(empty)
-    setTick((t) => t + 1)
+    setSaving(true)
+    try {
+      await upsertTeacher(form)
+      setOpen(false)
+      setForm(empty)
+      await reload()
+    } catch (e) {
+      alert(e.message || '保存失败')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -40,7 +67,7 @@ export default function Teachers() {
             className="btn"
             type="button"
             onClick={() => {
-              setForm({ ...empty, campus: user?.campus || '城南校区' })
+              setForm({ ...empty, campus: user?.campus || campuses[0]?.name || '城南校区' })
               setOpen(true)
             }}
           >
@@ -49,50 +76,55 @@ export default function Teachers() {
         )}
       </div>
 
-      <table className="table">
-        <thead>
-          <tr>
-            <th>姓名</th>
-            <th>手机号</th>
-            <th>职称 / 科类</th>
-            <th>校区</th>
-            <th>状态</th>
-            {editable && <th />}
-          </tr>
-        </thead>
-        <tbody>
-          {teachers.map((t) => (
-            <tr key={t.id}>
-              <td>
-                <strong>{t.name}</strong>
-              </td>
-              <td>{t.phone}</td>
-              <td>
-                {t.title}
-                <div className="muted">{t.subjects}</div>
-              </td>
-              <td>{t.campus}</td>
-              <td>
-                <span className={`tag ${t.status === '在职' ? 'ok' : 'warn'}`}>{t.status}</span>
-              </td>
-              {editable && (
-                <td>
-                  <button
-                    className="btn ghost"
-                    type="button"
-                    onClick={() => {
-                      setForm(t)
-                      setOpen(true)
-                    }}
-                  >
-                    编辑
-                  </button>
-                </td>
-              )}
+      {error && <p className="muted" style={{ color: '#b45309' }}>{error}</p>}
+      {loading ? (
+        <p className="muted">加载中…</p>
+      ) : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>手机号</th>
+              <th>职称 / 科类</th>
+              <th>校区</th>
+              <th>状态</th>
+              {editable && <th />}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {teachers.map((t) => (
+              <tr key={t.id}>
+                <td>
+                  <strong>{t.name}</strong>
+                </td>
+                <td>{t.phone}</td>
+                <td>
+                  {t.title}
+                  <div className="muted">{t.subjects}</div>
+                </td>
+                <td>{t.campus}</td>
+                <td>
+                  <span className={`tag ${t.status === '在职' ? 'ok' : 'warn'}`}>{t.status}</span>
+                </td>
+                {editable && (
+                  <td>
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      onClick={() => {
+                        setForm(t)
+                        setOpen(true)
+                      }}
+                    >
+                      编辑
+                    </button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       {open && (
         <div className="modal-mask">
@@ -137,8 +169,8 @@ export default function Teachers() {
               <button className="btn ghost" type="button" onClick={() => setOpen(false)}>
                 取消
               </button>
-              <button className="btn" type="button" onClick={save}>
-                保存
+              <button className="btn" type="button" disabled={saving} onClick={save}>
+                {saving ? '保存中…' : '保存'}
               </button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import MonthCalendar from '../components/MonthCalendar'
 import { canEdit, getUser } from '../auth/roles'
 import {
@@ -20,13 +20,16 @@ export default function Courses() {
   const user = getUser()
   const editable = canEdit('courses')
   const [tab, setTab] = useState('classes')
-  const [tick, setTick] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const classes = useMemo(() => listClasses(user), [tick, user])
-  const packages = useMemo(() => listPackages(user).filter((p) => p.status === '上架'), [tick, user])
-  const teachers = useMemo(() => listTeachers(user), [tick, user])
-  const students = useMemo(() => listStudents(user), [tick, user])
-  const campuses = listCampuses(user)
+  const [classes, setClasses] = useState([])
+  const [packages, setPackages] = useState([])
+  const [teachers, setTeachers] = useState([])
+  const [students, setStudents] = useState([])
+  const [campuses, setCampuses] = useState([])
+  const [marks, setMarks] = useState([])
+  const [dayLessons, setDayLessons] = useState([])
 
   const [openClass, setOpenClass] = useState(false)
   const [manageId, setManageId] = useState('')
@@ -40,8 +43,6 @@ export default function Courses() {
   })
 
   const [selectedDate, setSelectedDate] = useState(todayKey())
-  const marks = useMemo(() => getLessonDateMarks(user), [tick, user])
-  const dayLessons = useMemo(() => getLessonsByDate(selectedDate, user), [selectedDate, tick, user])
   const [lessonForm, setLessonForm] = useState({
     classId: '',
     teacherId: '',
@@ -50,18 +51,68 @@ export default function Courses() {
     room: ''
   })
 
-  const managing = classes.find((c) => c.id === manageId)
+  async function reload(date = selectedDate) {
+    setLoading(true)
+    setError('')
+    try {
+      const [cls, pkgs, tch, stu, camp, mk, lessons] = await Promise.all([
+        listClasses(),
+        listPackages(),
+        listTeachers(user),
+        listStudents(user),
+        listCampuses(user),
+        getLessonDateMarks(date),
+        getLessonsByDate(date)
+      ])
+      setClasses(cls)
+      setPackages(pkgs.filter((p) => p.status === '上架'))
+      setTeachers(tch)
+      setStudents(stu)
+      setCampuses(camp)
+      setMarks(mk)
+      setDayLessons(lessons)
+    } catch (e) {
+      setError(e.message || '加载失败')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  function saveClass() {
+  useEffect(() => {
+    reload(selectedDate)
+  }, [user?.phone])
+
+  useEffect(() => {
+    let alive = true
+    Promise.all([getLessonDateMarks(selectedDate), getLessonsByDate(selectedDate)])
+      .then(([mk, lessons]) => {
+        if (!alive) return
+        setMarks(mk)
+        setDayLessons(lessons)
+      })
+      .catch((e) => {
+        if (alive) setError(e.message || '课表加载失败')
+      })
+    return () => {
+      alive = false
+    }
+  }, [selectedDate])
+
+  const managing = useMemo(
+    () => classes.find((c) => String(c.id) === String(manageId)),
+    [classes, manageId]
+  )
+
+  async function saveClass() {
     if (!classForm.name.trim()) return alert('请填写班级名')
-    const res = createClass(classForm)
+    const res = await createClass(classForm)
     if (res?.ok === false) return alert(res.message)
     setOpenClass(false)
-    setTick((t) => t + 1)
+    await reload()
   }
 
   function onPickClass(classId) {
-    const cls = classes.find((c) => c.id === classId)
+    const cls = classes.find((c) => String(c.id) === String(classId))
     setLessonForm((f) => ({
       ...f,
       classId,
@@ -70,17 +121,18 @@ export default function Courses() {
     }))
   }
 
-  function submitLesson() {
+  async function submitLesson() {
     if (!lessonForm.classId || !lessonForm.teacherId) return alert('请选择班级和老师')
-    const res = createLesson({ date: selectedDate, ...lessonForm })
+    const res = await createLesson({ date: selectedDate, ...lessonForm })
     if (!res.ok) return alert(res.message)
-    setTick((t) => t + 1)
+    await reload(selectedDate)
   }
 
   const groups = {}
   dayLessons.forEach((l) => {
-    if (!groups[l.teacherName]) groups[l.teacherName] = []
-    groups[l.teacherName].push(l)
+    const key = l.teacherName || '未指定'
+    if (!groups[key]) groups[key] = []
+    groups[key].push(l)
   })
 
   return (
@@ -99,11 +151,25 @@ export default function Courses() {
           </button>
         </div>
         <div className="muted" style={{ marginTop: 8 }}>
-          课程管理 = 班级花名册 + 日历排课指定老师（教培常见做法）
+          课程管理 = 班级花名册 + 日历排课指定老师（数据写入同一后端，小程序实时可见）
         </div>
       </div>
 
-      {tab === 'classes' && (
+      {error && (
+        <div className="panel" style={{ marginBottom: 14 }}>
+          <p className="muted" style={{ color: '#b45309', margin: 0 }}>
+            {error}
+          </p>
+        </div>
+      )}
+
+      {loading && tab === 'classes' && (
+        <div className="panel">
+          <p className="muted">加载中…</p>
+        </div>
+      )}
+
+      {tab === 'classes' && !loading && (
         <div className="panel">
           <div className="toolbar">
             <div>
@@ -119,7 +185,7 @@ export default function Courses() {
                     name: '',
                     packageId: packages[0]?.id || '',
                     teacherId: teachers[0]?.id || '',
-                    campus: user?.campus || '城南校区',
+                    campus: user?.campus || campuses[0]?.name || '城南校区',
                     room: ''
                   })
                   setOpenClass(true)
@@ -157,10 +223,10 @@ export default function Courses() {
                   <td>{c.teacherName}</td>
                   <td>
                     {c.studentCount} 人
-                    <div className="muted">{c.students.map((s) => s.studentName).join('、') || '暂无'}</div>
+                    <div className="muted">{(c.students || []).map((s) => s.studentName).join('、') || '暂无'}</div>
                   </td>
                   <td>
-                    <button className="btn ghost" type="button" onClick={() => setManageId(c.id)}>
+                    <button className="btn ghost" type="button" onClick={() => setManageId(String(c.id))}>
                       {editable ? '管理学员' : '查看学员'}
                     </button>
                   </td>
@@ -249,7 +315,7 @@ export default function Courses() {
                       {l.startTime}-{l.endTime} · {l.className}
                     </strong>
                     <div className="muted">
-                      {l.packageName} · {l.campus} · {l.room || '-'} · {l.studentCount} 人
+                      {l.packageName} · {l.campus || '-'} · {l.room || '-'} · {l.studentCount} 人
                     </div>
                   </div>
                 ))}
@@ -347,7 +413,7 @@ export default function Courses() {
                   >
                     <option value="">选择学员</option>
                     {students
-                      .filter((s) => !(managing.studentIds || []).includes(s.id))
+                      .filter((s) => !(managing.studentIds || []).map(String).includes(String(s.id)))
                       .map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.studentName} · {s.parentPhone}
@@ -357,11 +423,11 @@ export default function Courses() {
                   <button
                     className="btn"
                     type="button"
-                    onClick={() => {
-                      const res = addStudentToClass(managing.id, pickStudentId)
+                    onClick={async () => {
+                      const res = await addStudentToClass(managing.id, pickStudentId)
                       if (!res.ok) return alert(res.message)
                       setPickStudentId('')
-                      setTick((t) => t + 1)
+                      await reload()
                     }}
                   >
                     加入
@@ -378,7 +444,7 @@ export default function Courses() {
                 </tr>
               </thead>
               <tbody>
-                {managing.students.map((s) => (
+                {(managing.students || []).map((s) => (
                   <tr key={s.id}>
                     <td>{s.studentName}</td>
                     <td>{s.parentPhone}</td>
@@ -387,9 +453,9 @@ export default function Courses() {
                         <button
                           className="btn ghost"
                           type="button"
-                          onClick={() => {
-                            removeStudentFromClass(managing.id, s.id)
-                            setTick((t) => t + 1)
+                          onClick={async () => {
+                            await removeStudentFromClass(managing.id, s.id)
+                            await reload()
                           }}
                         >
                           移出
