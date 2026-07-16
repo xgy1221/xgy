@@ -180,6 +180,67 @@ function buildSeedLessons() {
     classA
   )
 
+  /** 已结束数学课：方便家长在「我的」看老师评价 */
+  const lessonPastA = stampOrg(
+    {
+      id: 'les_xuequ_past_a',
+      date: addDays(today, -5),
+      startTime: '16:00',
+      endTime: '17:30',
+      classId: classA.id,
+      className: classA.name,
+      teacherId: classA.teacherId,
+      teacherName: classA.teacherName,
+      packageId: classA.packageId,
+      packageName: classA.packageName,
+      room: classA.room,
+      status: 'finished',
+      attendees: classA.studentIds.map((id) => {
+        const row = buildAttendee(id, 'regular', classA)
+        row.teacherRated = true
+        row.consumed = true
+        if (id === 'stu_xuequ_yn') {
+          row.teacherRating = { score: 5, comment: '思路清晰，课堂发言积极，作业完成度高。' }
+          row.studentRated = true
+          row.studentRating = { score: 5, comment: '喜欢这节课' }
+        } else {
+          row.teacherRating = { score: 4, comment: '认真听讲，计算还需多练。' }
+        }
+        return row
+      })
+    },
+    classA
+  )
+
+  const lessonPastA2 = stampOrg(
+    {
+      id: 'les_xuequ_past_a2',
+      date: addDays(today, -12),
+      startTime: '16:00',
+      endTime: '17:30',
+      classId: classA.id,
+      className: classA.name,
+      teacherId: classA.teacherId,
+      teacherName: classA.teacherName,
+      packageId: classA.packageId,
+      packageName: classA.packageName,
+      room: classA.room,
+      status: 'finished',
+      attendees: classA.studentIds.map((id) => {
+        const row = buildAttendee(id, 'regular', classA)
+        row.teacherRated = true
+        row.consumed = true
+        if (id === 'stu_xuequ_yn') {
+          row.teacherRating = { score: 4, comment: '应用题建模进步明显，注意验算习惯。' }
+        } else {
+          row.teacherRating = { score: 5, comment: '表现稳定。' }
+        }
+        return row
+      })
+    },
+    classA
+  )
+
   const lessonQihangToday = stampOrg(
     {
       id: 'les_qihang_today',
@@ -199,7 +260,16 @@ function buildSeedLessons() {
     classQ
   )
 
-  return [lessonYesterdayB, lessonTodayB, lessonTodayA, lessonTomorrowA, lessonWeekA, lessonQihangToday]
+  return [
+    lessonPastA2,
+    lessonPastA,
+    lessonYesterdayB,
+    lessonTodayB,
+    lessonTodayA,
+    lessonTomorrowA,
+    lessonWeekA,
+    lessonQihangToday
+  ]
 }
 
 function ensureClasses() {
@@ -287,6 +357,55 @@ function getStudentLessonsByDate(studentId, date) {
     (l) =>
       l.date === date && l.attendees.some((a) => a.studentId === studentId && !a.absent)
   )
+}
+
+/**
+ * 某学员在某教案下的课次（含老师评价），按日期倒序
+ * 用于家长「我的」：切孩子 → 切教案 → 看课次与评价
+ */
+function getStudentLessonsByPackage(studentId, packageId) {
+  if (!studentId || !packageId) return []
+  const STATUS_TEXT = {
+    upcoming: '未开始',
+    ongoing: '进行中',
+    finished: '已结束'
+  }
+  return getAllLessons()
+    .filter(
+      (l) =>
+        l.packageId === packageId &&
+        (l.attendees || []).some((a) => a.studentId === studentId && !a.absent)
+    )
+    .sort((a, b) => (a.date + a.startTime < b.date + b.startTime ? 1 : -1))
+    .map((l) => {
+      const me = (l.attendees || []).find((a) => a.studentId === studentId) || {}
+      const rating = me.teacherRating || null
+      return {
+        id: l.id,
+        date: l.date,
+        startTime: l.startTime,
+        endTime: l.endTime,
+        className: l.className,
+        teacherName: l.teacherName,
+        room: l.room,
+        status: l.status,
+        statusText: STATUS_TEXT[l.status] || l.status,
+        packageId: l.packageId,
+        packageName: l.packageName,
+        type: me.type || 'regular',
+        consumed: !!me.consumed,
+        teacherRated: !!me.teacherRated,
+        teacherScore: rating ? rating.score : 0,
+        teacherComment: rating ? rating.comment || '' : '',
+        teacherStars: rating ? starsText(rating.score) : '',
+        hasTeacherEval: !!me.teacherRated
+      }
+    })
+}
+
+function starsText(score) {
+  const n = Math.max(0, Math.min(5, Number(score) || 0))
+  return `${'★'.repeat(n)}${'☆'.repeat(5 - n)}`
 }
 
 function getTeacherLessonsByDate(date, orgId) {
@@ -465,6 +584,7 @@ module.exports = {
   getLessonDateMarksForStudent,
   getLessonDateMarksForTeacher,
   getStudentLessonsByDate,
+  getStudentLessonsByPackage,
   getTeacherLessonsByDate,
   addTempMakeupStudent,
   getMakeupCandidates,

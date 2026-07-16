@@ -39,7 +39,7 @@
 
 .tip {
   margin-top: 8rpx;
-  margin-bottom: 12rpx;
+  margin-bottom: 4rpx;
   line-height: 1.5;
 }
 
@@ -66,7 +66,7 @@
 }
 
 .add-btn {
-  margin-top: 24rpx;
+  margin-top: 20rpx;
 }
 
 .link {
@@ -74,72 +74,44 @@
   font-weight: 600;
 }
 
-.section-head {
-  margin-bottom: 16rpx;
+.chip-scroll {
+  white-space: nowrap;
+  width: 100%;
 }
 
-.section-head .section-title {
-  margin-bottom: 6rpx;
-}
-
-.kid-card {
+.chip {
+  display: inline-flex;
+  flex-direction: column;
+  margin-right: 14rpx;
+  padding: 16rpx 26rpx;
+  border-radius: 999rpx;
   background: #fff;
-  border-radius: 18rpx;
-  padding: 28rpx;
-  box-shadow: var(--shadow);
-  margin-bottom: 20rpx;
-}
-
-.kid-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16rpx;
-}
-
-.name-row {
-  justify-content: flex-start;
-  gap: 12rpx;
-  align-items: center;
-}
-
-.name-row .tag {
-  margin-top: 0;
-}
-
-.summary {
-  margin-top: 10rpx;
+  color: #5b6b69;
+  border: 2rpx solid #dce5e3;
   font-size: 26rpx;
+  vertical-align: top;
+}
+
+.chip.pkg {
+  border-radius: 18rpx;
+  min-width: 160rpx;
+}
+
+.chip.on {
+  background: #0f3d3e;
+  color: #fff;
+  border-color: #0f3d3e;
   font-weight: 600;
-  color: var(--brand);
 }
 
-.toggle {
-  font-size: 24rpx;
-  color: var(--text-secondary);
-  padding: 8rpx 0 0 12rpx;
-  flex-shrink: 0;
+.chip-sub {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  opacity: 0.85;
 }
 
-.kid-body {
-  margin-top: 20rpx;
-  padding-top: 8rpx;
-  border-top: 1rpx solid var(--border);
-}
-
-.enroll {
-  padding: 20rpx 0;
-  border-bottom: 1rpx solid #eef3f2;
-}
-
-.enroll:last-child {
-  border-bottom: none;
-}
-
-.empty-enroll {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.pkg-summary {
+  margin-bottom: 16rpx;
 }
 
 .item-title {
@@ -171,11 +143,47 @@
   font-size: 26rpx;
 }
 
-.kid-actions {
-  margin-top: 12rpx;
-  text-align: right;
+.lesson-card {
+  background: #fff;
+  border-radius: 18rpx;
+  padding: 26rpx;
+  box-shadow: var(--shadow);
+  margin-bottom: 16rpx;
+}
+
+.lesson-card .tag {
+  margin-top: 0;
+}
+
+.eval {
+  margin-top: 18rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #eef3f2;
+}
+
+.eval-label {
+  font-size: 22rpx;
+  color: var(--text-secondary);
+  margin-bottom: 6rpx;
+}
+
+.stars {
+  color: #d97706;
+  font-size: 28rpx;
+  letter-spacing: 2rpx;
+  margin-bottom: 8rpx;
+}
+
+.eval-text {
+  font-size: 26rpx;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.more-btn {
+  margin-top: 8rpx;
 }
 
 .empty {
-  margin-bottom: 20rpx;
+  margin-bottom: 16rpx;
 }
