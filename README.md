@@ -42,7 +42,9 @@ cd web-admin && npm install && npm run dev
 - Web：http://localhost:5173（已代理 `/api`）  
 - 演示短信码：`123456`（上线务必换掉）
 
-生产部署见 **[docs/DEPLOY_BAOTA.md](docs/DEPLOY_BAOTA.md)**。
+生产部署见 **[docs/DEPLOY_BAOTA.md](docs/DEPLOY_BAOTA.md)**。  
+内网宝塔一键脚本：`scripts/baota/deploy-on-server.sh`（示例 IP `192.168.50.4`）。  
+面板打不开：`scripts/baota/diagnose-bt-panel.sh`。
 
 ### 演示账号
 
