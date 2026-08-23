@@ -166,35 +166,50 @@ app:
 
 ## 9. 宝塔面板主页打不开（排障）
 
+已知历史入口：
+
+```text
+https://192.168.50.4:29846/site/php
+```
+
+说明：
+
+- 端口是 **29846**（不是默认 8888），协议是 **HTTPS**
+- `/site/php` 是登录后的「网站 / PHP」页面；若整站都进不去，应先恢复面板登录页，而不是死磕这个路径
+- Cloud Agent 从公网探测该地址会 **超时**；请在与服务器同一局域网的电脑上测，或 SSH 进服务器本机测
+
 在服务器 SSH 执行：
 
 ```bash
 sudo bash scripts/baota/diagnose-bt-panel.sh
 ```
 
-按输出逐项看。常见原因与处理：
-
-| 现象 / 原因 | 处理 |
-|-------------|------|
-| 面板进程未运行 | `bt start` 或 `/etc/init.d/bt start`，再 `bt restart` |
-| 端口不是 8888 | `bt default` 查看真实端口与**安全入口路径**，浏览器必须带齐 |
-| 本机 curl 通、外机不通 | 系统防火墙 / 宝塔「安全」/ 路由器 ACL 未放行面板端口 |
-| 只能内网访问 | 用与 `192.168.50.4` 同一网段的电脑打开；公网/云端 Agent 访问不到 |
-| 磁盘满 | `df -h`，清理日志后再 `bt restart` |
-| 面板损坏 | 按[宝塔官方](https://www.bt.cn)修复/更新脚本（如 `update6.sh`，以官网为准） |
-
-快速自检：
+针对本机端口的快速命令：
 
 ```bash
-bt default                    # 入口 URL / 账号
-ss -lntp | grep -E '8888|7800|$(cat /www/server/panel/data/port.pl 2>/dev/null)'
-curl -I http://127.0.0.1:8888/
+bt default
+cat /www/server/panel/data/port.pl          # 当前端口，历史为 29846
+cat /www/server/panel/data/admin_path.pl    # 安全入口（登录必须带）
+ls /www/server/panel/data/ssl.pl            # 存在则必须用 https://
+ss -lntp | grep 29846
+curl -k -I https://127.0.0.1:29846/
 bt restart
 ```
 
+| 现象 / 原因 | 处理 |
+|-------------|------|
+| 面板进程未运行 | `bt start` 或 `bt restart` |
+| 端口不是 29846 了 | `bt default` / `port.pl` 看新端口，改收藏夹 |
+| 缺安全入口 | 只开 `https://IP:端口/` 会 404；必须带 `admin_path.pl` 里的路径 |
+| `/site/php` 单独打不开 | 先打开登录页登录；未登录直接进子页面会失败 |
+| HTTPS 证书/开关异常 | 本机 `curl -k https://127.0.0.1:29846/`；可临时关面板 SSL 再开 |
+| 本机 curl 通、浏览器不通 | 放行防火墙 **TCP 29846**；确认电脑与 `192.168.50.4` 同网段 |
+| 磁盘满 | `df -h`，清理后再 `bt restart` |
+| 面板损坏 | 按[宝塔官方](https://www.bt.cn)修复/更新（以官网命令为准） |
+
 **注意区分：**
 
-- **宝塔面板**打不开 → 端口多为 `8888`（或自定义）+ 安全入口  
+- **宝塔面板**打不开 → `https://192.168.50.4:29846/` + 安全入口  
 - **学管云站点**打不开 → 查 Nginx `80`、`xueguan-yun` 服务、`/www/wwwlogs/xueguan-admin.error.log`
 
 更细的安全说明见 `docs/SECURITY.md`。

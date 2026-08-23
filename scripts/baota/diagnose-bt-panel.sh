@@ -40,8 +40,9 @@ fi
 
 # 4. 端口监听
 hr
-echo ">>> 常见面板端口监听情况"
-PANEL_PORTS=(8888 888 7800 443 80)
+echo ">>> 常见/已知面板端口监听情况"
+# 29846：本环境已知的历史面板端口（https://192.168.50.4:29846/site/php）
+PANEL_PORTS=(29846 8888 888 7800 443 80)
 for p in "${PANEL_PORTS[@]}"; do
   if ss -lntu 2>/dev/null | grep -qE ":${p}\\b" || netstat -lntu 2>/dev/null | grep -qE ":${p}\\b"; then
     ok "端口 ${p} 正在监听"
@@ -53,6 +54,8 @@ done
 
 # 自定义端口：读宝塔配置
 PORT_FILE="/www/server/panel/data/port.pl"
+SSL_FLAG="/www/server/panel/data/ssl.pl"
+ADMIN_PATH_FILE="/www/server/panel/data/admin_path.pl"
 if [[ -f "$PORT_FILE" ]]; then
   CUSTOM_PORT="$(tr -d '[:space:]' < "$PORT_FILE")"
   ok "配置文件中的面板端口: ${CUSTOM_PORT} (${PORT_FILE})"
@@ -63,20 +66,44 @@ if [[ -f "$PORT_FILE" ]]; then
   fi
 else
   warn "未找到 ${PORT_FILE}（面板未装完或数据目录不同）"
+  CUSTOM_PORT=""
 fi
 
-# 5. 本机 HTTP 探测
+if [[ -f "$SSL_FLAG" ]]; then
+  ok "已开启面板 SSL（存在 ${SSL_FLAG}）—— 请用 https:// 访问"
+else
+  warn "未检测到面板 SSL 标记；若以前用 https://IP:29846 打开，证书/开关可能被关"
+fi
+
+if [[ -f "$ADMIN_PATH_FILE" ]]; then
+  ADMIN_PATH="$(tr -d '[:space:]' < "$ADMIN_PATH_FILE")"
+  ok "安全入口路径: /${ADMIN_PATH#/}"
+  echo "  登录页应类似: https://192.168.50.4:${CUSTOM_PORT:-29846}/${ADMIN_PATH#/}"
+else
+  warn "未找到安全入口文件 ${ADMIN_PATH_FILE}"
+fi
+
+# 5. 本机 HTTP/HTTPS 探测
 hr
-echo ">>> 本机访问探测"
+echo ">>> 本机访问探测（含历史端口 29846）"
 PROBE_PORTS=()
-[[ -f "$PORT_FILE" ]] && PROBE_PORTS+=("$(tr -d '[:space:]' < "$PORT_FILE")")
-PROBE_PORTS+=(8888 80)
+[[ -n "${CUSTOM_PORT:-}" ]] && PROBE_PORTS+=("$CUSTOM_PORT")
+PROBE_PORTS+=(29846 8888 80)
+# 去重
+mapfile -t PROBE_PORTS < <(printf '%s\n' "${PROBE_PORTS[@]}" | awk '!a[$0]++')
 for p in "${PROBE_PORTS[@]}"; do
-  code="$(curl -sS -m 3 -o /dev/null -w '%{http_code}' "http://127.0.0.1:${p}/" 2>/dev/null || echo '000')"
-  if [[ "$code" != "000" ]]; then
-    ok "http://127.0.0.1:${p}/ -> HTTP ${code}"
-  else
-    bad "http://127.0.0.1:${p}/ 无响应"
+  for scheme in https http; do
+    code="$(curl -skS -m 3 -o /dev/null -w '%{http_code}' "${scheme}://127.0.0.1:${p}/" 2>/dev/null || echo '000')"
+    if [[ "$code" != "000" ]]; then
+      ok "${scheme}://127.0.0.1:${p}/ -> HTTP ${code}"
+    else
+      warn "${scheme}://127.0.0.1:${p}/ 无响应"
+    fi
+  done
+  # 用户反馈的历史路径
+  code2="$(curl -skS -m 3 -o /dev/null -w '%{http_code}' "https://127.0.0.1:${p}/site/php" 2>/dev/null || echo '000')"
+  if [[ "$code2" != "000" ]]; then
+    ok "https://127.0.0.1:${p}/site/php -> HTTP ${code2}"
   fi
 done
 
