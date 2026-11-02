@@ -55,7 +55,7 @@ fun QueueScreen(vm: AppViewModel) {
                 ) {
                     itemsIndexed(vm.queue, key = { _, s -> s.id }) { index, song ->
                         FocusSurface(
-                            onClick = { vm.openPlayback(song) },
+                            onClick = { vm.singNow(song) },
                             corner = 12.dp,
                         ) { focused ->
                             Row(
@@ -71,7 +71,7 @@ fun QueueScreen(vm: AppViewModel) {
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Column {
-                                    Text("${index + 1}. ${song.displayTitle}", color = KaraokeColors.textPrimary, fontSize = 18.sp)
+                                    Text("${index + 1}. ${song.title}", color = KaraokeColors.textPrimary, fontSize = 18.sp)
                                     Text(song.artist, color = KaraokeColors.textSecondary, fontSize = 14.sp)
                                 }
                                 FocusSurface(onClick = { vm.removeFromQueue(song) }, corner = 8.dp) {

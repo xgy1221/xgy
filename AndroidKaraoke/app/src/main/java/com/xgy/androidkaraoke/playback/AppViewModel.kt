@@ -1,299 +1,438 @@
 package com.xgy.androidkaraoke.playback
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.media3.exoplayer.ExoPlayer
 import com.xgy.androidkaraoke.AppContainer
-import com.xgy.androidkaraoke.data.MockData
+import com.xgy.androidkaraoke.library.SongGrouper
+import com.xgy.androidkaraoke.model.LibrarySource
 import com.xgy.androidkaraoke.model.MainTab
 import com.xgy.androidkaraoke.model.Overlay
-import com.xgy.androidkaraoke.model.PlayOrderMode
 import com.xgy.androidkaraoke.model.Song
+import com.xgy.androidkaraoke.model.SongListFilter
 import com.xgy.androidkaraoke.model.VocalMode
-import com.xgy.androidkaraoke.nas.NasConfig
-import com.xgy.androidkaraoke.nas.NasEntry
-import com.xgy.androidkaraoke.nas.NasError
+import com.xgy.androidkaraoke.nas.NasLibraryClient
+import com.xgy.androidkaraoke.remote.LanRemoteServer
+import com.xgy.androidkaraoke.remote.PhoneRemote
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class AppViewModel(private val container: AppContainer) : ViewModel() {
-    var selectedTab by mutableStateOf(MainTab.FreeSing)
+class AppViewModel(private val container: AppContainer) : ViewModel(), PhoneRemote {
+    var selectedTab by mutableStateOf(MainTab.Songs)
+        private set
+    var songFilter by mutableStateOf(SongListFilter.All)
+        private set
+    var drillTitle by mutableStateOf<String?>(null)
         private set
     var overlay by mutableStateOf(Overlay.None)
         private set
     var toastMessage by mutableStateOf<String?>(null)
         private set
-
-    var nowPlaying by mutableStateOf<Song?>(null)
+    var statusMessage by mutableStateOf("正在准备曲库")
         private set
-    var nextSong by mutableStateOf<Song?>(MockData.nextSong)
+
+    var catalog by mutableStateOf<List<Song>>(emptyList())
+        private set
+    val queue: SnapshotStateList<Song> = emptyList<Song>().toMutableStateList()
+    var nowPlaying by mutableStateOf<Song?>(null)
         private set
     var isPlaying by mutableStateOf(false)
         private set
     var currentTimeSec by mutableLongStateOf(0L)
         private set
-    var vocalMode by mutableStateOf(VocalMode.Accompaniment)
+    var durationSec by mutableLongStateOf(0L)
         private set
-    var orderMode by mutableStateOf(PlayOrderMode.Sequential)
+    var vocalMode by mutableStateOf(VocalMode.Accompaniment)
         private set
     var isFavorite by mutableStateOf(false)
         private set
-    val queue = mutableStateListOf<Song>().also { it.addAll(MockData.aiSongs.take(4)) }
 
-    var nasPath by mutableStateOf(container.nasConfigStore.load().normalizedPath)
+    var libraries by mutableStateOf<List<LibrarySource>>(emptyList())
         private set
-    var nasEntries = mutableStateListOf<NasEntry>()
-        private set
-    var nasLoading by mutableStateOf(false)
-        private set
-    var nasError by mutableStateOf<String?>(null)
-        private set
-
-    var settingsBaseUrl by mutableStateOf(container.nasConfigStore.load().normalizedBaseUrl)
-    var settingsPath by mutableStateOf(container.nasConfigStore.load().normalizedPath)
-    var settingsUsername by mutableStateOf(container.credentialStore.username())
-    var settingsPassword by mutableStateOf("")
+    var editingId by mutableStateOf<String?>(null)
+    var formName by mutableStateOf("家庭 NAS")
+    var formUrl by mutableStateOf(com.xgy.androidkaraoke.BrandConfig.defaultNasBaseUrl)
+    var formPath by mutableStateOf(com.xgy.androidkaraoke.BrandConfig.defaultNasLibraryPath)
+    var formUser by mutableStateOf("")
+    var formPass by mutableStateOf("")
     var settingsBusy by mutableStateOf(false)
         private set
-    var settingsMessage by mutableStateOf<String?>(null)
+
+    var searchQuery by mutableStateOf("")
+    var remoteUrl by mutableStateOf<String?>(null)
         private set
-    var settingsIsError by mutableStateOf(false)
-        private set
+
+    val videoPlayer: ExoPlayer get() = engine.videoPlayer
 
     val progress: Float
         get() {
-            val total = (nowPlaying?.durationSec ?: 1).coerceAtLeast(1)
+            val total = durationSec.coerceAtLeast(1)
             return (currentTimeSec.toFloat() / total).coerceIn(0f, 1f)
         }
 
+    private val engine = PlaybackEngine(container.appContext, container.http)
+    private val scanner = NasLibraryClient()
+    private val remote = LanRemoteServer()
     private var toastJob: Job? = null
-    private var tickJob: Job? = null
+    private var scanJob: Job? = null
+
+    init {
+        libraries = container.libraryStore.loadLibraries()
+        catalog = container.libraryStore.loadSongs()
+        restoreQueue()
+        selectLibrary(libraries.first())
+        engine.onEnded = { viewModelScope.launch { nextTrack() } }
+        engine.onError = { message -> viewModelScope.launch { showToast(message) } }
+        remoteUrl = remote.start(this)
+        viewModelScope.launch {
+            while (true) {
+                engine.sync()
+                currentTimeSec = engine.currentPosition() / 1000
+                durationSec = engine.durationMs() / 1000
+                isPlaying = engine.isPlaying()
+                delay(400)
+            }
+        }
+        rescan()
+    }
 
     fun selectTab(tab: MainTab) {
-        if (!tab.implemented) {
-            showToast("「${tab.title}」即将推出")
-            return
-        }
         selectedTab = tab
-        if (tab == MainTab.NasLibrary) {
-            refreshNas(nasPath)
+        drillTitle = null
+    }
+
+    fun selectFilter(filter: SongListFilter) {
+        songFilter = filter
+        drillTitle = null
+    }
+
+    fun openSinger(name: String) {
+        drillTitle = name
+        selectedTab = MainTab.Singers
+    }
+
+    fun openPlaylist(name: String) {
+        drillTitle = name
+        selectedTab = MainTab.Playlists
+    }
+
+    fun clearDrill() {
+        drillTitle = null
+    }
+
+    fun visibleSongs(): List<Song> {
+        val drilled = drillTitle
+        if (drilled != null && selectedTab == MainTab.Singers) {
+            return catalog.filter { it.artist == drilled }
+        }
+        if (drilled != null && selectedTab == MainTab.Playlists) {
+            return catalog.filter { it.playlist == drilled }
+        }
+        return when (selectedTab) {
+            MainTab.Charts -> catalog
+                .filter { container.history.count(it.id) > 0 }
+                .sortedByDescending { container.history.count(it.id) }
+            MainTab.Songs -> when (songFilter) {
+                SongListFilter.All -> catalog
+                SongListFilter.Frequent -> catalog
+                    .filter { container.history.count(it.id) > 0 }
+                    .sortedByDescending { container.history.count(it.id) }
+                SongListFilter.Week -> {
+                    val since = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
+                    catalog.filter { container.history.lastPlayed(it.id) >= since }
+                        .sortedByDescending { container.history.count(it.id) }
+                }
+            }
+            else -> catalog
         }
     }
 
-    fun openSettings() {
-        val cfg = container.nasConfigStore.load()
-        settingsBaseUrl = cfg.normalizedBaseUrl
-        settingsPath = cfg.normalizedPath
-        settingsUsername = container.credentialStore.username()
-        settingsPassword = ""
-        settingsMessage = null
-        overlay = Overlay.Settings
+    fun playlists(): List<String> = catalog.map { it.playlist }.filter { it.isNotBlank() }.distinct().sorted()
+
+    fun favoriteSongs(): List<Song> = catalog.filter { container.history.isFavorite(it.id) }
+
+    fun recentSongs(): List<Song> = catalog
+        .filter { container.history.lastPlayed(it.id) > 0 }
+        .sortedByDescending { container.history.lastPlayed(it.id) }
+
+    fun searchResults(): List<Song> {
+        val query = searchQuery.trim()
+        if (query.isEmpty()) return catalog.take(80)
+        return catalog.filter {
+            it.title.contains(query, true) || it.artist.contains(query, true)
+        }.take(80)
+    }
+
+    fun openSearch() {
+        overlay = Overlay.Search
     }
 
     fun openQueue() {
         overlay = Overlay.Queue
     }
 
-    fun openPlayback(song: Song? = null) {
-        if (song != null) {
-            play(song)
-        } else if (nowPlaying == null) {
-            play(MockData.nowPlaying)
-            nextSong = MockData.nextSong
+    fun openRemote() {
+        overlay = Overlay.Remote
+    }
+
+    fun openProfile() {
+        overlay = Overlay.Profile
+    }
+
+    fun openSettings() {
+        if (libraries.isNotEmpty() && editingId == null) selectLibrary(libraries.first())
+        overlay = Overlay.Settings
+    }
+
+    fun openPlayback() {
+        if (nowPlaying == null) {
+            showToast("还没有正在播放的歌")
+            return
         }
         overlay = Overlay.Playback
     }
 
-    fun openGuess() {
-        overlay = Overlay.Guess
-    }
-
     fun dismissOverlay() {
-        overlay = when (overlay) {
-            Overlay.Guess -> Overlay.Playback
-            Overlay.Playback, Overlay.Queue, Overlay.Settings -> Overlay.None
-            Overlay.None -> Overlay.None
-        }
+        overlay = Overlay.None
     }
 
-    fun addToQueue(song: Song) {
-        queue.add(song)
-        if (nextSong == null) nextSong = song
-        showToast("已加入点唱：${song.title}")
+    fun singNow(song: Song) {
+        queue.removeAll { it.id == song.id }
+        persistQueue()
+        startSong(song)
+        showToast("正在播放 ${song.title}")
+    }
+
+    fun enqueue(song: Song) {
+        if (nowPlaying?.id == song.id) {
+            showToast("这首正在播放")
+            return
+        }
+        if (queue.none { it.id == song.id }) queue.add(song)
+        if (nowPlaying == null) {
+            queue.removeAll { it.id == song.id }
+            persistQueue()
+            startSong(song)
+        } else {
+            persistQueue()
+            showToast("已点歌：${song.title}")
+        }
     }
 
     fun removeFromQueue(song: Song) {
         queue.removeAll { it.id == song.id }
-        if (nextSong?.id == song.id) nextSong = queue.firstOrNull()
-    }
-
-    fun play(song: Song) {
-        nowPlaying = song
-        isPlaying = true
-        currentTimeSec = (song.durationSec * 0.1).toLong().coerceAtMost(30)
-        startTicker()
+        persistQueue()
     }
 
     fun togglePlayPause() {
-        isPlaying = !isPlaying
-        if (isPlaying) startTicker() else tickJob?.cancel()
+        engine.togglePause()
+        isPlaying = engine.isPlaying()
     }
 
     fun nextTrack() {
-        val upcoming = nextSong ?: queue.firstOrNull() ?: return
-        if (queue.isNotEmpty() && queue.first().id == upcoming.id) {
-            queue.removeAt(0)
+        val upcoming = queue.firstOrNull()
+        if (upcoming == null) {
+            engine.stop()
+            nowPlaying = null
+            isPlaying = false
+            showToast("没有下一首了")
+            return
         }
-        nowPlaying = upcoming
-        nextSong = queue.firstOrNull() ?: MockData.aiSongs.random()
-        currentTimeSec = 0
-        isPlaying = true
-        startTicker()
+        queue.removeAt(0)
+        persistQueue()
+        startSong(upcoming)
     }
 
     fun replay() {
-        currentTimeSec = 0
-        isPlaying = true
-        startTicker()
+        engine.seekTo(0)
+        if (!engine.isPlaying()) engine.togglePause()
     }
 
     fun skipPrelude() {
-        val total = nowPlaying?.durationSec ?: 300
-        currentTimeSec = (currentTimeSec + 30).coerceAtMost(total - 1)
+        engine.seekBy(30_000)
     }
 
     fun toggleVocal() {
-        vocalMode = if (vocalMode == VocalMode.Accompaniment) VocalMode.Original else VocalMode.Accompaniment
-        showToast(if (vocalMode == VocalMode.Accompaniment) "伴唱" else "原唱")
-    }
-
-    fun cycleOrder() {
-        orderMode = when (orderMode) {
-            PlayOrderMode.Sequential -> PlayOrderMode.Shuffle
-            PlayOrderMode.Shuffle -> PlayOrderMode.Loop
-            PlayOrderMode.Loop -> PlayOrderMode.Sequential
+        val song = nowPlaying ?: return
+        val target = if (vocalMode == VocalMode.Accompaniment) VocalMode.Original else VocalMode.Accompaniment
+        if (engine.setVocal(song, target)) {
+            vocalMode = target
+            showToast(if (target == VocalMode.Accompaniment) "伴唱" else "原唱")
+        } else {
+            showToast(if (target == VocalMode.Accompaniment) "这首没有伴唱音源" else "这首没有原唱音源")
         }
-        showToast(
-            when (orderMode) {
-                PlayOrderMode.Sequential -> "顺序播放"
-                PlayOrderMode.Shuffle -> "随机播放"
-                PlayOrderMode.Loop -> "单曲循环"
-            },
-        )
     }
 
     fun toggleFavorite() {
-        isFavorite = !isFavorite
-        showToast(if (isFavorite) "已收藏" else "已取消收藏")
+        val id = nowPlaying?.id ?: return
+        val on = container.history.toggleFavorite(id)
+        isFavorite = on
+        showToast(if (on) "已收藏" else "已取消收藏")
     }
 
-    fun formatTime(sec: Long): String {
-        val m = sec / 60
-        val s = sec % 60
-        return "%02d:%02d".format(m, s)
+    fun formatTime(sec: Long): String = "%02d:%02d".format(sec / 60, sec % 60)
+
+    fun selectLibrary(library: LibrarySource) {
+        editingId = library.id
+        formName = library.name
+        formUrl = library.baseUrl
+        formPath = library.path
+        formUser = library.username
+        formPass = ""
     }
 
-    fun refreshNas(path: String = nasPath) {
-        viewModelScope.launch {
-            nasLoading = true
-            nasError = null
-            try {
-                container.nasSource.reloadConfig()
-                nasPath = path
-                val entries = container.nasSource.listDirectory(path)
-                nasEntries.clear()
-                nasEntries.addAll(entries)
-            } catch (e: Exception) {
-                nasEntries.clear()
-                nasError = (e as? NasError)?.message ?: (e.message ?: "无法连接 NAS")
-            } finally {
-                nasLoading = false
-            }
+    fun saveLibrary() {
+        val id = editingId ?: "lib-${System.currentTimeMillis()}"
+        val source = LibrarySource(
+            id = id,
+            name = formName.trim().ifBlank { "曲库" },
+            baseUrl = formUrl.trim(),
+            path = formPath.trim(),
+            username = formUser.trim(),
+        )
+        container.credentials.saveLibrary(id, source.username, formPass)
+        libraries = libraries.filterNot { it.id == id } + source
+        container.libraryStore.saveLibraries(libraries)
+        editingId = id
+        formPass = ""
+        showToast("曲库已保存")
+        rescan()
+    }
+
+    fun addLibrary() {
+        editingId = null
+        formName = "曲库 ${libraries.size + 1}"
+        formPass = ""
+        saveLibrary()
+    }
+
+    fun removeLibrary(id: String) {
+        libraries = libraries.filterNot { it.id == id }
+        container.libraryStore.saveLibraries(libraries)
+        if (editingId == id) {
+            libraries.firstOrNull()?.let { selectLibrary(it) } ?: run { editingId = null }
         }
+        rescan()
     }
 
-    fun openNasEntry(entry: NasEntry) {
-        when (entry.kind) {
-            com.xgy.androidkaraoke.nas.NasEntryKind.Folder -> refreshNas(entry.path)
-            com.xgy.androidkaraoke.nas.NasEntryKind.Audio,
-            com.xgy.androidkaraoke.nas.NasEntryKind.Video,
-            -> {
-                val song = Song(
-                    id = entry.id,
-                    title = entry.name.substringBeforeLast('.'),
-                    artist = "NAS",
-                    mediaUrl = entry.absoluteUrl,
-                    relativePath = entry.path,
-                )
-                addToQueue(song)
-                openPlayback(song)
-            }
-            else -> showToast("暂不支持打开：${entry.name}")
-        }
-    }
-
-    fun nasGoUp() {
-        val parent = nasPath.trimEnd('/').substringBeforeLast('/', missingDelimiterValue = "/")
-        refreshNas(if (parent.isEmpty()) "/" else parent)
-    }
-
-    fun saveSettingsAndTest(test: Boolean) {
-        viewModelScope.launch {
+    fun rescan() {
+        scanJob?.cancel()
+        scanJob = viewModelScope.launch {
             settingsBusy = true
-            settingsMessage = null
-            settingsIsError = false
-            try {
-                val cfg = NasConfig(
-                    baseUrlString = settingsBaseUrl.trim(),
-                    libraryPath = settingsPath.trim(),
-                )
-                container.nasConfigStore.save(cfg)
-                val passToStore = settingsPassword.ifEmpty {
-                    // 留空表示不改密；重新填密码才会覆盖。
-                    container.credentialStore.password()
-                }
-                container.credentialStore.save(settingsUsername.trim(), passToStore)
-                settingsPassword = ""
-                container.nasSource.reloadConfig()
-                nasPath = cfg.normalizedPath
-                if (test) {
-                    val msg = container.nasSource.testConnection()
-                    settingsMessage = msg
-                    settingsIsError = false
-                    showToast(msg)
+            if (libraries.isEmpty()) {
+                statusMessage = "请先在设置里添加曲库"
+                settingsBusy = false
+                return@launch
+            }
+            val missingPassword = libraries.any {
+                it.username.isNotBlank() && container.credentials.passwordFor(it.id).isBlank()
+            }
+            if (libraries.all { it.username.isBlank() }) {
+                statusMessage = if (catalog.isEmpty()) {
+                    "在设置里填写 NAS 账号后扫描曲库。点歌不用登录"
                 } else {
-                    settingsMessage = "已保存"
-                    showToast("设置已保存")
+                    "已缓存 ${catalog.size} 首。要更新曲库，请在设置里保存 NAS 账号并重新扫描"
+                }
+                settingsBusy = false
+                return@launch
+            }
+            if (missingPassword && catalog.isEmpty()) {
+                statusMessage = "NAS 密码还没保存，请在设置里填写后点保存并扫描"
+            }
+            try {
+                val songs = withContext(Dispatchers.IO) {
+                    libraries.flatMap { library ->
+                        val password = container.credentials.passwordFor(library.id)
+                        if (library.username.isBlank() || password.isBlank()) return@flatMap emptyList()
+                        val files = scanner.collect(library, password) { message ->
+                            viewModelScope.launch { statusMessage = message }
+                        }
+                        SongGrouper.group(files).map { song ->
+                            song.copy(
+                                id = library.id + ":" + song.id,
+                                playlist = if (song.playlist == "我的曲库") library.name else song.playlist,
+                            )
+                        }
+                    }
+                }
+                if (songs.isNotEmpty()) {
+                    catalog = songs
+                    container.libraryStore.saveSongs(songs)
+                    restoreQueue()
+                    statusMessage = "曲库 ${songs.size} 首，每首按 MV、原唱、伴唱配对"
+                } else if (catalog.isEmpty()) {
+                    statusMessage = "没有扫到歌曲。请按「歌手/歌名/歌名.mp4 + 原唱 + 伴唱」放文件"
+                } else {
+                    statusMessage = "没有扫到新歌，继续用已缓存的 ${catalog.size} 首"
                 }
             } catch (e: Exception) {
-                settingsIsError = true
-                settingsMessage = (e as? NasError)?.message ?: (e.message ?: "保存失败")
+                statusMessage = e.message ?: "扫描曲库失败"
+                showToast(statusMessage)
             } finally {
                 settingsBusy = false
             }
         }
     }
 
-    private fun startTicker() {
-        tickJob?.cancel()
-        tickJob = viewModelScope.launch {
-            while (isPlaying) {
-                delay(1000)
-                val total = nowPlaying?.durationSec ?: return@launch
-                if (currentTimeSec < total) {
-                    currentTimeSec += 1
-                } else {
-                    nextTrack()
-                }
-            }
+    override fun searchSongs(query: String, artist: String): List<Song> {
+        return catalog.filter { song ->
+            (query.isBlank() || song.title.contains(query, true) || song.artist.contains(query, true)) &&
+                (artist.isBlank() || song.artist == artist)
         }
+    }
+
+    override fun singers(): List<String> =
+        catalog.map { it.artist }.filter { it.isNotBlank() }.distinct().sorted()
+
+    override fun queueSnapshot(): List<Song> = queue.toList()
+
+    override fun nowPlaying(): Song? = nowPlaying
+
+    override fun order(id: String, singNow: Boolean): String {
+        val song = catalog.firstOrNull { it.id == id } ?: return "找不到这首歌"
+        viewModelScope.launch {
+            if (singNow) singNow(song) else enqueue(song)
+        }
+        return if (singNow) "电视开始播放 ${song.title}" else "已加入已点：${song.title}"
+    }
+
+    override fun songCount(): Int = catalog.size
+
+    private fun startSong(song: Song) {
+        nowPlaying = song
+        container.history.record(song.id)
+        isFavorite = container.history.isFavorite(song.id)
+        val mode = when {
+            song.accompanyUrl != null -> VocalMode.Accompaniment
+            song.originalUrl != null || song.mvUrl != null -> VocalMode.Original
+            else -> VocalMode.Accompaniment
+        }
+        vocalMode = mode
+        engine.play(song, mode)
+        isPlaying = true
+        currentTimeSec = 0
+        overlay = Overlay.Playback
+    }
+
+    private fun restoreQueue() {
+        val byId = catalog.associateBy { it.id }
+        val restored = container.history.queueIds().mapNotNull { byId[it] }
+        queue.clear()
+        queue.addAll(restored)
+    }
+
+    private fun persistQueue() {
+        container.history.saveQueue(queue.map { it.id })
     }
 
     fun showToast(message: String) {
@@ -303,6 +442,11 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             delay(1800)
             if (toastMessage == message) toastMessage = null
         }
+    }
+
+    override fun onCleared() {
+        remote.stop()
+        engine.release()
     }
 }
 

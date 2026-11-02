@@ -36,6 +36,22 @@ class SecureCredentialStore(context: Context) {
             .apply()
     }
 
+    fun passwordFor(libraryId: String): String {
+        val saved = prefs.getString("pass.$libraryId", null)
+        if (!saved.isNullOrEmpty()) return saved
+        return if (libraryId == "home") password() else ""
+    }
+
+    fun saveLibrary(libraryId: String, username: String, password: String) {
+        val editor = prefs.edit().putString("user.$libraryId", username)
+        if (password.isNotEmpty()) editor.putString("pass.$libraryId", password)
+        if (libraryId == "home") {
+            editor.putString(KEY_USER, username)
+            if (password.isNotEmpty()) editor.putString(KEY_PASS, password)
+        }
+        editor.apply()
+    }
+
     fun clear() {
         prefs.edit().remove(KEY_USER).remove(KEY_PASS).apply()
     }
