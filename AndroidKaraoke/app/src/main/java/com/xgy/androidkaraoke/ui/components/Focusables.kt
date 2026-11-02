@@ -3,6 +3,7 @@ package com.xgy.androidkaraoke.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,6 +60,8 @@ fun FocusSurface(
         modifier = modifier
             .scale(scale)
             .onFocusChanged { focused = it.isFocused }
+            // clickable：模拟器 tap / 部分遥控点击也能触发；key 事件覆盖 DPAD 确认键。
+            .clickable(onClick = onClick)
             .focusable()
             .onKeyEvent { event ->
                 if (event.type == KeyEventType.KeyUp &&
