@@ -1,0 +1,10 @@
+.DS_Store
+.idea/
+*.iml
+local.properties
+.gradle/
+**/build/
+*.apk
+*.aab
+*.dex
+captures/
