@@ -1,6 +1,12 @@
 package com.xgy.androidkaraoke
 
 import android.app.Application
+import android.content.Context
+import com.xgy.androidkaraoke.library.LibraryStore
+import com.xgy.androidkaraoke.library.PlayHistory
+import com.xgy.androidkaraoke.nas.HomeNasTls
+import com.xgy.androidkaraoke.nas.SecureCredentialStore
+import okhttp3.OkHttpClient
 
 class KaraokeApp : Application() {
     lateinit var container: AppContainer
@@ -13,8 +19,9 @@ class KaraokeApp : Application() {
 }
 
 class AppContainer(app: Application) {
-    val nasConfigStore = com.xgy.androidkaraoke.nas.NasConfigStore(app)
-    val credentialStore = com.xgy.androidkaraoke.nas.SecureCredentialStore(app)
-    val nasSource = com.xgy.androidkaraoke.nas.HttpsNasMediaSource(nasConfigStore, credentialStore)
-    val microphone = com.xgy.androidkaraoke.audio.StubMicrophoneInput()
+    val appContext: Context = app.applicationContext
+    val libraryStore = LibraryStore(app)
+    val history = PlayHistory(app)
+    val credentials = SecureCredentialStore(app)
+    val http: OkHttpClient = HomeNasTls.client
 }

@@ -14,25 +14,25 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
-import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.FastForward
-import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
@@ -45,102 +45,79 @@ import com.xgy.androidkaraoke.ui.components.FocusSurface
 @Composable
 fun PlaybackScreen(vm: AppViewModel) {
     val song = vm.nowPlaying
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.92f)),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            (song?.coverColor ?: Color(0xFF334455)).copy(alpha = 0.45f),
-                            Color.Black,
-                        ),
-                    ),
-                ),
-        )
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 36.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = "正在播放：${song?.displayTitle ?: "—"}    下一首：${vm.nextSong?.title ?: "—"}",
-                color = KaraokeColors.textPrimary,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Medium,
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        if (song?.hasMv == true) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { context ->
+                    PlayerView(context).apply {
+                        useController = false
+                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        player = vm.videoPlayer
+                    }
+                },
+                update = { it.player = vm.videoPlayer },
             )
+        } else {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(song?.title ?: "没有正在播放的歌", color = KaraokeColors.textPrimary, fontSize = 40.sp)
+            }
         }
-
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(Color.Black.copy(alpha = 0.55f))
-                .padding(horizontal = 48.dp, vertical = 28.dp),
+                .padding(horizontal = 36.dp, vertical = 20.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Text(
+                text = "${song?.title ?: "—"}    ${song?.artist ?: ""}",
+                color = KaraokeColors.textPrimary,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(vm.formatTime(vm.currentTimeSec), color = KaraokeColors.textSecondary, fontSize = 14.sp)
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = 12.dp)
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(Color.White.copy(alpha = 0.15f)),
+                        .background(Color.White.copy(alpha = 0.2f)),
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(vm.progress)
                             .height(4.dp)
-                            .background(Color.White.copy(alpha = 0.85f)),
+                            .background(Color.White),
                     )
                 }
-                Text(
-                    vm.formatTime(song?.durationSec ?: 0),
-                    color = KaraokeColors.textSecondary,
-                    fontSize = 14.sp,
-                )
+                Text(vm.formatTime(vm.durationSec), color = KaraokeColors.textSecondary, fontSize = 14.sp)
             }
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ControlBtn("跳过前奏", Icons.Outlined.FastForward) { vm.skipPrelude() }
-                ControlBtn("顺序", Icons.Outlined.Shuffle) { vm.cycleOrder() }
-                ControlBtn("重唱", Icons.Outlined.Replay) { vm.replay() }
-                ControlBtn(
+                Control("跳过前奏", Icons.Outlined.FastForward) { vm.skipPrelude() }
+                Control("重唱", Icons.Outlined.Replay) { vm.replay() }
+                Control(
                     if (vm.isPlaying) "暂停" else "播放",
                     if (vm.isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
                     prominent = true,
                 ) { vm.togglePlayPause() }
-                ControlBtn(
+                Control(
                     if (vm.vocalMode == VocalMode.Accompaniment) "伴唱" else "原唱",
-                    Icons.Outlined.RecordVoiceOver,
+                    Icons.Outlined.SkipNext,
                 ) { vm.toggleVocal() }
-                ControlBtn("切歌", Icons.Outlined.SkipNext) { vm.nextTrack() }
-                ControlBtn(
+                Control("切歌", Icons.Outlined.SkipNext) { vm.nextTrack() }
+                Control(
                     "收藏",
                     if (vm.isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                 ) { vm.toggleFavorite() }
-            }
-            Spacer(modifier = Modifier.height(14.dp))
-            FocusSurface(onClick = { vm.openGuess() }, corner = 10.dp) {
-                Text(
-                    text = "按【下键】或确认查看「猜你想唱」",
-                    color = KaraokeColors.textSecondary,
-                    fontSize = 15.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
             }
         }
     }
@@ -148,36 +125,22 @@ fun PlaybackScreen(vm: AppViewModel) {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun ControlBtn(
+private fun Control(
     label: String,
     icon: ImageVector,
     prominent: Boolean = false,
     onClick: () -> Unit,
 ) {
-    FocusSurface(onClick = onClick, corner = if (prominent) 28.dp else 14.dp) { focused ->
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-        ) {
+    FocusSurface(onClick = onClick, corner = 16.dp) { focused ->
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(8.dp)) {
             Box(
                 modifier = Modifier
-                    .size(if (prominent) 56.dp else 44.dp)
+                    .size(if (prominent) 56.dp else 42.dp)
                     .clip(CircleShape)
-                    .background(
-                        when {
-                            focused -> Color.White.copy(alpha = 0.22f)
-                            prominent -> Color.White.copy(alpha = 0.12f)
-                            else -> Color.Transparent
-                        },
-                    ),
+                    .background(if (focused) Color.White.copy(alpha = 0.22f) else Color.Transparent),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = KaraokeColors.textPrimary,
-                    modifier = Modifier.size(if (prominent) 28.dp else 22.dp),
-                )
+                Icon(icon, contentDescription = label, tint = KaraokeColors.textPrimary)
             }
             Text(label, color = KaraokeColors.textSecondary, fontSize = 12.sp)
         }

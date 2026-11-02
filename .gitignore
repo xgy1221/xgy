@@ -5,6 +5,7 @@ local.properties
 .gradle/
 **/build/
 *.apk
+!dist/androidkaraoke-debug.apk
 *.aab
 *.dex
 captures/
