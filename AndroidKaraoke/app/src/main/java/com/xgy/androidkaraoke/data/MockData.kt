@@ -57,15 +57,18 @@ object MockData {
         title: String,
         artist: String,
         color: Color,
+        genres: List<String>,
         hd: Boolean = false,
         tag: String? = null,
         duration: Long = 240,
+        hotScore: Int = 10,
     ) = Song(
         id = id,
         title = title,
         artist = artist,
         isHd = hd,
         tag = tag,
+        genres = genres,
         coverColor = color,
         durationSec = duration,
         source = MediaSource.Mock,
@@ -73,14 +76,15 @@ object MockData {
         mvUrl = SAMPLE_MV,
         originalUrl = SAMPLE_AUDIO,
         accompanimentUrl = SAMPLE_AUDIO,
+        hotScore = hotScore,
     )
 
     val aiSongs = listOf(
-        demoSong("xiaoban", "小半", "陈粒", Color(0xFF8C5973)),
-        demoSong("chahua", "茶花开了", "王睿卓", Color(0xFFB26659), hd = true),
-        demoSong("yongchun", "咏春", "七朵组合", Color(0xFFD98C4D), hd = true),
-        demoSong("shimian", "失眠", "Suki刘舒妤", Color(0xFF596699)),
-        demoSong("shexiang", "奢香夫人", "凤凰传奇", Color(0xFFBF4D59)),
+        demoSong("xiaoban", "小半", "陈粒", Color(0xFF8C5973), genres = listOf("民谣", "独立"), tag = "治愈", hotScore = 40),
+        demoSong("chahua", "茶花开了", "王睿卓", Color(0xFFB26659), genres = listOf("民谣", "原生态"), hd = true, hotScore = 35),
+        demoSong("yongchun", "咏春", "七朵组合", Color(0xFFD98C4D), genres = listOf("古风", "女声"), hd = true, tag = "国风", hotScore = 55),
+        demoSong("shimian", "失眠", "Suki刘舒妤", Color(0xFF596699), genres = listOf("流行", "抒情"), hotScore = 30),
+        demoSong("shexiang", "奢香夫人", "凤凰传奇", Color(0xFFBF4D59), genres = listOf("民族", "劲歌"), tag = "热歌TOP", hotScore = 80),
     )
 
     val hotPosters = listOf(
@@ -112,10 +116,24 @@ object MockData {
     )
 
     val guessSongs = listOf(
-        demoSong("xihai", "西海情歌", "刀郎", Color(0xFF73598C), tag = "热歌TOP", duration = 346),
-        demoSong("hongyan", "鸿雁", "呼斯楞", Color(0xFF4D6680), tag = "歌星热歌"),
-        demoSong("fenmo", "粉墨人生", "李玉刚", Color(0xFF8C664D), tag = "新歌速递"),
-        demoSong("qinghuaci", "青花瓷", "周杰伦", Color(0xFF406680), tag = "热歌TOP"),
+        demoSong("xihai", "西海情歌", "刀郎", Color(0xFF73598C), genres = listOf("民谣", "西部"), tag = "热歌TOP", duration = 346, hotScore = 90),
+        demoSong("hongyan", "鸿雁", "呼斯楞", Color(0xFF4D6680), genres = listOf("民歌", "草原"), tag = "歌星热歌", hotScore = 70),
+        demoSong("fenmo", "粉墨人生", "李玉刚", Color(0xFF8C664D), genres = listOf("戏曲", "古风"), tag = "新歌速递", hotScore = 45),
+        demoSong("qinghuaci", "青花瓷", "周杰伦", Color(0xFF406680), genres = listOf("流行", "中国风"), tag = "热歌TOP", hotScore = 95),
+    )
+
+    /** 扩充曲库，便于常唱偏好排序有区分度。 */
+    val moreSongs = listOf(
+        demoSong("daoxiang", "稻香", "周杰伦", Color(0xFF557799), genres = listOf("流行", "中国风"), hotScore = 88),
+        demoSong("dongfengpo", "东风破", "周杰伦", Color(0xFF668866), genres = listOf("流行", "中国风"), hotScore = 82),
+        demoSong("2002", "2002年的第一场雪", "刀郎", Color(0xFF886655), genres = listOf("民谣", "西部"), hotScore = 75),
+        demoSong("luhua", "冲动的惩罚", "刀郎", Color(0xFF775544), genres = listOf("民谣", "西部"), hotScore = 68),
+        demoSong("zui", "最炫民族风", "凤凰传奇", Color(0xFFCC5566), genres = listOf("民族", "劲歌"), tag = "热歌TOP", hotScore = 92),
+        demoSong("lang", "自由飞翔", "凤凰传奇", Color(0xFFAA4455), genres = listOf("民族", "劲歌"), hotScore = 78),
+        demoSong("gufeng2", "梨花香", "七朵组合", Color(0xFFDDAA66), genres = listOf("古风", "女声"), hotScore = 50),
+        demoSong("minyao2", "奇妙能力歌", "陈粒", Color(0xFF997788), genres = listOf("民谣", "独立"), hotScore = 48),
+        demoSong("liuxing1", "晴天", "周杰伦", Color(0xFF6699AA), genres = listOf("流行", "抒情"), hotScore = 93),
+        demoSong("caoyuan", "父亲的草原母亲的河", "德德玛", Color(0xFF558877), genres = listOf("民歌", "草原"), hotScore = 60),
     )
 
     val playlists = listOf(
@@ -124,8 +142,14 @@ object MockData {
         PlaylistCard("p3", "怀旧金曲", badge = "经典", tint = Color(0xFF59664D)),
     )
 
-    val catalog: List<Song> = (aiSongs + guessSongs).distinctBy { it.id }
+    val catalog: List<Song> = (aiSongs + guessSongs + moreSongs).distinctBy { it.id }
 
-    val nowPlaying = demoSong("xihai", "西海情歌", "刀郎", Color(0xFF73598C), duration = 346)
-    val nextSong = demoSong("hongyan", "鸿雁", "呼斯楞", Color(0xFF4D6680))
+    val nowPlaying = demoSong(
+        "xihai", "西海情歌", "刀郎", Color(0xFF73598C),
+        genres = listOf("民谣", "西部"), duration = 346, hotScore = 90,
+    )
+    val nextSong = demoSong(
+        "hongyan", "鸿雁", "呼斯楞", Color(0xFF4D6680),
+        genres = listOf("民歌", "草原"), hotScore = 70,
+    )
 }

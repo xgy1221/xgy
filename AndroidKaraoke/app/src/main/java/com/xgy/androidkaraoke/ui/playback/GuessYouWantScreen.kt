@@ -43,18 +43,24 @@ fun GuessYouWantScreen(vm: AppViewModel) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Column(modifier = Modifier.padding(horizontal = 48.dp)) {
-                ShelfHeader("猜你想唱", "正在播放：${vm.nowPlaying?.title ?: "—"}")
+                ShelfHeader("猜你想唱", "按你常唱的歌星与曲风 · 非当前这首关联")
             }
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 48.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                items(MockData.guessSongs, key = { it.id }) { song ->
+                items(vm.guessYouWantRecommendations, key = { it.id }) { song ->
                     PosterCard(
                         title = song.title,
-                        subtitle = song.artist,
+                        subtitle = buildString {
+                            append(song.artist)
+                            if (song.styleTags.isNotEmpty()) {
+                                append(" · ")
+                                append(song.styleTags.take(2).joinToString("/"))
+                            }
+                        },
                         tint = song.coverColor,
-                        badge = song.tag,
+                        badge = song.tag ?: song.genres.firstOrNull(),
                         onClick = {
                             vm.addToQueue(song)
                         },

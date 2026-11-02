@@ -24,6 +24,8 @@ data class Song(
     val isHd: Boolean = false,
     val durationSec: Long = 240,
     val tag: String? = null,
+    /** 曲风 / 风格标签，用于「常唱」偏好推荐。 */
+    val genres: List<String> = emptyList(),
     val coverColor: Color = Color(0xFF3A5A8C),
     val coverUrl: String? = null,
     val source: MediaSource = MediaSource.Nas,
@@ -31,12 +33,17 @@ data class Song(
     val mvUrl: String? = null,
     val originalUrl: String? = null,
     val accompanimentUrl: String? = null,
+    /** 热门兜底权重（越大越偏热门）。 */
+    val hotScore: Int = 0,
 ) {
     val displayTitle: String get() = if (isHd) "$title(HD)" else title
 
     val hasMv: Boolean get() = !mvUrl.isNullOrBlank()
     val hasOriginal: Boolean get() = !originalUrl.isNullOrBlank()
     val hasAccompaniment: Boolean get() = !accompanimentUrl.isNullOrBlank()
+
+    val styleTags: List<String>
+        get() = (genres + listOfNotNull(tag)).map { it.trim() }.filter { it.isNotEmpty() }.distinct()
 
     fun audioUrl(mode: VocalMode): String? = when (mode) {
         VocalMode.Original -> originalUrl ?: accompanimentUrl ?: mvUrl

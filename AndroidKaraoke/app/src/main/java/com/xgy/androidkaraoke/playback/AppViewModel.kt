@@ -20,6 +20,7 @@ import com.xgy.androidkaraoke.nas.NasConfig
 import com.xgy.androidkaraoke.nas.NasEntry
 import com.xgy.androidkaraoke.nas.NasEntryKind
 import com.xgy.androidkaraoke.nas.NasError
+import com.xgy.androidkaraoke.recommend.RecommendationEngine
 import com.xgy.androidkaraoke.remote.PhoneRequestServer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -29,6 +30,7 @@ import kotlinx.coroutines.withContext
 
 class AppViewModel(private val container: AppContainer) : ViewModel() {
     private val player get() = container.player
+    private val listeningPrefs get() = container.listeningPrefs
 
     var selectedTab by mutableStateOf(MainTab.FreeSing)
         private set
@@ -55,8 +57,41 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         private set
     val queue = mutableStateListOf<Song>()
 
+    /** 偏好变更计数，驱动推荐列表重组。 */
+    var prefsEpoch by mutableStateOf(0)
+        private set
+
     /** 手机点歌与推荐可用的曲目目录（mock ∪ NAS 已加载）。 */
     val catalog = mutableStateListOf<Song>().also { it.addAll(MockData.catalog) }
+
+    /** 「为你推荐」：常唱偏好（歌手/曲风），当前播放不作为主信号。 */
+    val forYouRecommendations: List<Song>
+        get() {
+            prefsEpoch // read for recomposition
+            return RecommendationEngine.rank(
+                candidates = catalog.toList(),
+                artistWeights = listeningPrefs.artistWeights(),
+                genreWeights = listeningPrefs.genreWeights(),
+                excludeIds = emptySet(),
+                nowPlayingId = nowPlaying?.id,
+                limit = 8,
+            )
+        }
+
+    /** 「猜你想唱」：同上，排除队列中已有；当前曲仅弱降权。 */
+    val guessYouWantRecommendations: List<Song>
+        get() {
+            prefsEpoch
+            val exclude = queue.map { it.id }.toSet() + setOfNotNull(nowPlaying?.id)
+            return RecommendationEngine.rank(
+                candidates = catalog.toList(),
+                artistWeights = listeningPrefs.artistWeights(),
+                genreWeights = listeningPrefs.genreWeights(),
+                excludeIds = exclude,
+                nowPlayingId = nowPlaying?.id,
+                limit = 10,
+            )
+        }
 
     var nasPath by mutableStateOf(container.nasConfigStore.load().normalizedPath)
         private set
@@ -100,13 +135,19 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (playbackState == Player.STATE_ENDED) {
-                nextTrack()
+                completeCurrentAndNext()
             }
         }
     }
 
     init {
-        queue.addAll(MockData.aiSongs.take(4))
+        val seed = MockData.aiSongs.take(4)
+        queue.addAll(seed)
+        // 用已点种子建立初始「常唱」画像（演示：民谣/古风/民族等）
+        seed.forEach { song ->
+            listeningPrefs.recordQueued(song.artist, song.styleTags, song.id)
+        }
+        bumpPrefs()
         player.addListener(playerListener)
         startPhoneServer()
         startTicker()
@@ -178,6 +219,8 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             queue.add(song)
         }
         mergeCatalog(listOf(song))
+        listeningPrefs.recordQueued(song.artist, song.styleTags, song.id)
+        bumpPrefs()
         if (nextSong == null) nextSong = song
         showToast(if (fromPhone) "手机点歌：${song.title}" else "已加入点唱：${song.title}")
     }
@@ -189,6 +232,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     fun play(song: Song) {
         nowPlaying = song
+        isFavorite = listeningPrefs.isFavorite(song.id)
         player.play(song, vocalMode, autoPlay = true)
         isPlaying = true
         durationSec = song.durationSec
@@ -201,16 +245,34 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun nextTrack() {
+        // 主动切歌：若已听过大半，记为播完偏好；否则不记完成。
+        val current = nowPlaying
+        if (current != null && durationSec > 0 && currentTimeSec >= durationSec * 0.6) {
+            listeningPrefs.recordPlayCompleted(current.artist, current.styleTags, current.id)
+            bumpPrefs()
+        }
+        advanceToNext()
+    }
+
+    private fun completeCurrentAndNext() {
+        nowPlaying?.let { song ->
+            listeningPrefs.recordPlayCompleted(song.artist, song.styleTags, song.id)
+            bumpPrefs()
+        }
+        advanceToNext()
+    }
+
+    private fun advanceToNext() {
         val upcoming = when {
             queue.isNotEmpty() -> queue.removeAt(0)
             nextSong != null -> nextSong
-            else -> catalog.randomOrNull()
+            else -> forYouRecommendations.firstOrNull { it.id != nowPlaying?.id }
+                ?: catalog.randomOrNull()
         } ?: return
-        nextSong = queue.firstOrNull() ?: catalog.filter { it.id != upcoming.id }.randomOrNull()
+        nextSong = queue.firstOrNull()
+            ?: forYouRecommendations.firstOrNull { it.id != upcoming.id }
+            ?: catalog.filter { it.id != upcoming.id }.randomOrNull()
         play(upcoming)
-        if (overlay == Overlay.None) {
-            // keep playing in background UI; user can open playback
-        }
     }
 
     fun replay() {
@@ -247,8 +309,15 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun toggleFavorite() {
+        val song = nowPlaying ?: return
         isFavorite = !isFavorite
+        listeningPrefs.recordFavorite(song.artist, song.styleTags, song.id, isFavorite)
+        bumpPrefs()
         showToast(if (isFavorite) "已收藏" else "已取消收藏")
+    }
+
+    private fun bumpPrefs() {
+        prefsEpoch += 1
     }
 
     fun formatTime(sec: Long): String {

@@ -19,6 +19,7 @@ class AppContainer(app: Application) {
     val nasSource = com.xgy.androidkaraoke.nas.HttpsNasMediaSource(nasConfigStore, credentialStore)
     val microphone = com.xgy.androidkaraoke.audio.StubMicrophoneInput()
     val player = KaraokePlayer(app)
+    val listeningPrefs = com.xgy.androidkaraoke.recommend.ListeningPreferenceStore(app)
     val phoneOrderHtml: String = runCatching {
         app.assets.open("phone_order.html").bufferedReader(Charsets.UTF_8).use { it.readText() }
     }.getOrElse {

@@ -45,12 +45,12 @@ fun HotScreen(vm: AppViewModel) {
                 .background(KaraokeColors.surface)
                 .padding(16.dp),
         ) {
-            ShelfHeader("为你推荐")
+            ShelfHeader("为你推荐", "按常唱歌星与曲风")
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(top = 12.dp),
             ) {
-                items(MockData.aiSongs, key = { it.id }) { song ->
+                items(vm.forYouRecommendations, key = { it.id }) { song ->
                     FocusSurface(onClick = {
                         vm.addToQueue(song)
                         vm.openPlayback(song)
@@ -65,7 +65,17 @@ fun HotScreen(vm: AppViewModel) {
                                 .padding(12.dp),
                         ) {
                             Text(song.displayTitle, color = KaraokeColors.textPrimary, fontSize = 18.sp)
-                            Text(song.artist, color = KaraokeColors.textSecondary, fontSize = 14.sp)
+                            Text(
+                                buildString {
+                                    append(song.artist)
+                                    if (song.styleTags.isNotEmpty()) {
+                                        append(" · ")
+                                        append(song.styleTags.take(2).joinToString("/"))
+                                    }
+                                },
+                                color = KaraokeColors.textSecondary,
+                                fontSize = 14.sp,
+                            )
                         }
                     }
                 }
