@@ -41,26 +41,26 @@ fun SettingsScreen(vm: AppViewModel) {
     ) {
         Column(
             modifier = Modifier
-                .width(720.dp)
+                .width(760.dp)
                 .background(KaraokeColors.backgroundElevated, RoundedCornerShape(24.dp))
                 .padding(32.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            ShelfHeader("设置", "NAS 音源 · ${BrandConfig.appDisplayName}")
+            ShelfHeader("设置", "NAS 曲库 · 无需登录 · ${BrandConfig.appDisplayName}")
             Text(
-                "账号密码仅保存在本机加密存储，不会写入安装包或源码。",
+                "账号密码仅保存在本机加密存储。曲库入口在此，不占用顶部分类。",
                 color = KaraokeColors.textTertiary,
                 fontSize = 14.sp,
             )
             SettingField("Base URL", vm.settingsBaseUrl, singleLine = true) { vm.settingsBaseUrl = it }
             SettingField("曲库路径", vm.settingsPath, singleLine = true) { vm.settingsPath = it }
-            SettingField("用户名", vm.settingsUsername, singleLine = true) { vm.settingsUsername = it }
+            SettingField("用户名（可选）", vm.settingsUsername, singleLine = true) { vm.settingsUsername = it }
             SettingField(
-                "密码",
+                "密码（可选）",
                 vm.settingsPassword,
                 singleLine = true,
                 isPassword = true,
-                placeholder = if (vm.settingsUsername.isNotEmpty()) "••••••••（留空则保留原密码需重填）" else "输入密码",
+                placeholder = if (vm.settingsUsername.isNotEmpty()) "••••••••（留空保留原密码）" else "如需 Basic 认证再填写",
             ) { vm.settingsPassword = it }
 
             vm.settingsMessage?.let { msg ->
@@ -94,6 +94,14 @@ fun SettingsScreen(vm: AppViewModel) {
                         fontSize = 17.sp,
                     )
                 }
+                FocusSurface(onClick = { vm.openNasLibrary() }, corner = 12.dp) {
+                    Text(
+                        "浏览曲库",
+                        color = KaraokeColors.textPrimary,
+                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp),
+                        fontSize = 17.sp,
+                    )
+                }
                 FocusSurface(onClick = { vm.dismissOverlay() }, corner = 12.dp) {
                     Text(
                         "关闭",
@@ -106,7 +114,7 @@ fun SettingsScreen(vm: AppViewModel) {
 
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                "目标机：Sony KD-65A9F · Android 10。蓝牙麦需实机测试。",
+                "目标机：Sony KD-65A9F · Android 10。library.json 可写 mv / original / accompaniment。",
                 color = KaraokeColors.textTertiary,
                 fontSize = 13.sp,
             )

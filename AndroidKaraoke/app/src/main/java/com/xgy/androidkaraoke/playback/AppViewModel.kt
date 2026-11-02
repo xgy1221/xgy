@@ -1,7 +1,6 @@
 package com.xgy.androidkaraoke.playback
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -9,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.Player
 import com.xgy.androidkaraoke.AppContainer
 import com.xgy.androidkaraoke.data.MockData
 import com.xgy.androidkaraoke.model.MainTab
@@ -18,12 +18,18 @@ import com.xgy.androidkaraoke.model.Song
 import com.xgy.androidkaraoke.model.VocalMode
 import com.xgy.androidkaraoke.nas.NasConfig
 import com.xgy.androidkaraoke.nas.NasEntry
+import com.xgy.androidkaraoke.nas.NasEntryKind
 import com.xgy.androidkaraoke.nas.NasError
+import com.xgy.androidkaraoke.remote.PhoneRequestServer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AppViewModel(private val container: AppContainer) : ViewModel() {
+    private val player get() = container.player
+
     var selectedTab by mutableStateOf(MainTab.FreeSing)
         private set
     var overlay by mutableStateOf(Overlay.None)
@@ -39,13 +45,18 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         private set
     var currentTimeSec by mutableLongStateOf(0L)
         private set
+    var durationSec by mutableLongStateOf(240L)
+        private set
     var vocalMode by mutableStateOf(VocalMode.Accompaniment)
         private set
     var orderMode by mutableStateOf(PlayOrderMode.Sequential)
         private set
     var isFavorite by mutableStateOf(false)
         private set
-    val queue = mutableStateListOf<Song>().also { it.addAll(MockData.aiSongs.take(4)) }
+    val queue = mutableStateListOf<Song>()
+
+    /** 手机点歌与推荐可用的曲目目录（mock ∪ NAS 已加载）。 */
+    val catalog = mutableStateListOf<Song>().also { it.addAll(MockData.catalog) }
 
     var nasPath by mutableStateOf(container.nasConfigStore.load().normalizedPath)
         private set
@@ -67,14 +78,39 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     var settingsIsError by mutableStateOf(false)
         private set
 
+    var phoneOrderUrl by mutableStateOf<String?>(null)
+        private set
+    var phoneServerRunning by mutableStateOf(false)
+        private set
+
     val progress: Float
         get() {
-            val total = (nowPlaying?.durationSec ?: 1).coerceAtLeast(1)
+            val total = durationSec.coerceAtLeast(1)
             return (currentTimeSec.toFloat() / total).coerceIn(0f, 1f)
         }
 
     private var toastJob: Job? = null
     private var tickJob: Job? = null
+    private var phoneServer: PhoneRequestServer? = null
+
+    private val playerListener = object : Player.Listener {
+        override fun onIsPlayingChanged(playing: Boolean) {
+            isPlaying = player.isPlaying()
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_ENDED) {
+                nextTrack()
+            }
+        }
+    }
+
+    init {
+        queue.addAll(MockData.aiSongs.take(4))
+        player.addListener(playerListener)
+        startPhoneServer()
+        startTicker()
+    }
 
     fun selectTab(tab: MainTab) {
         if (!tab.implemented) {
@@ -82,9 +118,6 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             return
         }
         selectedTab = tab
-        if (tab == MainTab.NasLibrary) {
-            refreshNas(nasPath)
-        }
     }
 
     fun openSettings() {
@@ -97,8 +130,22 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         overlay = Overlay.Settings
     }
 
+    fun openNasLibrary() {
+        overlay = Overlay.NasLibrary
+        refreshNas(nasPath)
+    }
+
     fun openQueue() {
         overlay = Overlay.Queue
+    }
+
+    fun openPhoneOrder() {
+        startPhoneServer()
+        phoneOrderUrl = phoneServer?.publicBaseUrl()
+        overlay = Overlay.PhoneOrder
+        if (phoneOrderUrl == null) {
+            showToast("无法获取电视局域网 IP，请确认已连 Wi‑Fi")
+        }
     }
 
     fun openPlayback(song: Song? = null) {
@@ -107,6 +154,8 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         } else if (nowPlaying == null) {
             play(MockData.nowPlaying)
             nextSong = MockData.nextSong
+        } else {
+            player.resume()
         }
         overlay = Overlay.Playback
     }
@@ -118,15 +167,19 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     fun dismissOverlay() {
         overlay = when (overlay) {
             Overlay.Guess -> Overlay.Playback
-            Overlay.Playback, Overlay.Queue, Overlay.Settings -> Overlay.None
+            Overlay.NasLibrary -> Overlay.Settings
+            Overlay.Playback, Overlay.Queue, Overlay.Settings, Overlay.PhoneOrder -> Overlay.None
             Overlay.None -> Overlay.None
         }
     }
 
-    fun addToQueue(song: Song) {
-        queue.add(song)
+    fun addToQueue(song: Song, fromPhone: Boolean = false) {
+        if (queue.none { it.id == song.id }) {
+            queue.add(song)
+        }
+        mergeCatalog(listOf(song))
         if (nextSong == null) nextSong = song
-        showToast("已加入点唱：${song.title}")
+        showToast(if (fromPhone) "手机点歌：${song.title}" else "已加入点唱：${song.title}")
     }
 
     fun removeFromQueue(song: Song) {
@@ -136,41 +189,45 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     fun play(song: Song) {
         nowPlaying = song
+        player.play(song, vocalMode, autoPlay = true)
         isPlaying = true
-        currentTimeSec = (song.durationSec * 0.1).toLong().coerceAtMost(30)
-        startTicker()
+        durationSec = song.durationSec
+        currentTimeSec = 0
     }
 
     fun togglePlayPause() {
-        isPlaying = !isPlaying
-        if (isPlaying) startTicker() else tickJob?.cancel()
+        player.togglePlayPause()
+        isPlaying = player.isPlaying()
     }
 
     fun nextTrack() {
-        val upcoming = nextSong ?: queue.firstOrNull() ?: return
-        if (queue.isNotEmpty() && queue.first().id == upcoming.id) {
-            queue.removeAt(0)
+        val upcoming = when {
+            queue.isNotEmpty() -> queue.removeAt(0)
+            nextSong != null -> nextSong
+            else -> catalog.randomOrNull()
+        } ?: return
+        nextSong = queue.firstOrNull() ?: catalog.filter { it.id != upcoming.id }.randomOrNull()
+        play(upcoming)
+        if (overlay == Overlay.None) {
+            // keep playing in background UI; user can open playback
         }
-        nowPlaying = upcoming
-        nextSong = queue.firstOrNull() ?: MockData.aiSongs.random()
-        currentTimeSec = 0
-        isPlaying = true
-        startTicker()
     }
 
     fun replay() {
+        player.seekTo(0)
+        player.resume()
         currentTimeSec = 0
         isPlaying = true
-        startTicker()
     }
 
     fun skipPrelude() {
-        val total = nowPlaying?.durationSec ?: 300
-        currentTimeSec = (currentTimeSec + 30).coerceAtMost(total - 1)
+        player.skipForward(30_000)
+        currentTimeSec = (player.currentPositionMs() / 1000)
     }
 
     fun toggleVocal() {
         vocalMode = if (vocalMode == VocalMode.Accompaniment) VocalMode.Original else VocalMode.Accompaniment
+        player.switchVocalMode(vocalMode)
         showToast(if (vocalMode == VocalMode.Accompaniment) "伴唱" else "原唱")
     }
 
@@ -210,6 +267,15 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 val entries = container.nasSource.listDirectory(path)
                 nasEntries.clear()
                 nasEntries.addAll(entries)
+                runCatching {
+                    val fromJson = container.nasSource.loadLibraryJson(path)
+                    if (fromJson.isNotEmpty()) {
+                        mergeCatalog(fromJson)
+                    } else {
+                        val songs = container.nasSource.listSongs(path)
+                        if (songs.isNotEmpty()) mergeCatalog(songs)
+                    }
+                }
             } catch (e: Exception) {
                 nasEntries.clear()
                 nasError = (e as? NasError)?.message ?: (e.message ?: "无法连接 NAS")
@@ -220,22 +286,36 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun openNasEntry(entry: NasEntry) {
-        when (entry.kind) {
-            com.xgy.androidkaraoke.nas.NasEntryKind.Folder -> refreshNas(entry.path)
-            com.xgy.androidkaraoke.nas.NasEntryKind.Audio,
-            com.xgy.androidkaraoke.nas.NasEntryKind.Video,
-            -> {
-                val song = Song(
-                    id = entry.id,
-                    title = entry.name.substringBeforeLast('.'),
-                    artist = "NAS",
-                    mediaUrl = entry.absoluteUrl,
-                    relativePath = entry.path,
-                )
-                addToQueue(song)
-                openPlayback(song)
+        viewModelScope.launch {
+            when (entry.kind) {
+                NasEntryKind.Folder -> {
+                    val bundled = runCatching {
+                        container.nasSource.songFromFolder(entry.path, entry.name)
+                    }.getOrNull()
+                    if (bundled != null && bundled.anyPlayableUrl() != null) {
+                        mergeCatalog(listOf(bundled))
+                        addToQueue(bundled)
+                        openPlayback(bundled)
+                    } else {
+                        refreshNas(entry.path)
+                    }
+                }
+                NasEntryKind.Audio, NasEntryKind.Video -> {
+                    val song = Song(
+                        id = entry.id,
+                        title = entry.name.substringBeforeLast('.'),
+                        artist = "NAS",
+                        relativePath = entry.path,
+                        mvUrl = if (entry.kind == NasEntryKind.Video) entry.absoluteUrl else null,
+                        originalUrl = if (entry.kind == NasEntryKind.Audio) entry.absoluteUrl else null,
+                        accompanimentUrl = null,
+                    )
+                    addToQueue(song)
+                    openPlayback(song)
+                }
+                NasEntryKind.Manifest -> showToast("请在设置中配置 library.json 清单")
+                else -> showToast("暂不支持打开：${entry.name}")
             }
-            else -> showToast("暂不支持打开：${entry.name}")
         }
     }
 
@@ -256,7 +336,6 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 )
                 container.nasConfigStore.save(cfg)
                 val passToStore = settingsPassword.ifEmpty {
-                    // 留空表示不改密；重新填密码才会覆盖。
                     container.credentialStore.password()
                 }
                 container.credentialStore.save(settingsUsername.trim(), passToStore)
@@ -281,17 +360,45 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
+    private fun mergeCatalog(songs: List<Song>) {
+        songs.forEach { song ->
+            val idx = catalog.indexOfFirst { it.id == song.id }
+            if (idx >= 0) catalog[idx] = song else catalog.add(song)
+        }
+    }
+
+    private fun startPhoneServer() {
+        if (phoneServer?.isRunning == true) {
+            phoneServerRunning = true
+            phoneOrderUrl = phoneServer?.publicBaseUrl()
+            return
+        }
+        val server = PhoneRequestServer(
+            indexHtml = container.phoneOrderHtml,
+            catalogProvider = { catalog.toList() },
+            queueProvider = { queue.toList() },
+            onAddSong = { song ->
+                viewModelScope.launch {
+                    addToQueue(song, fromPhone = true)
+                    if (nowPlaying == null) openPlayback(song)
+                }
+            },
+        )
+        phoneServer = server
+        server.start()
+        phoneServerRunning = true
+        phoneOrderUrl = server.publicBaseUrl()
+    }
+
     private fun startTicker() {
         tickJob?.cancel()
         tickJob = viewModelScope.launch {
-            while (isPlaying) {
-                delay(1000)
-                val total = nowPlaying?.durationSec ?: return@launch
-                if (currentTimeSec < total) {
-                    currentTimeSec += 1
-                } else {
-                    nextTrack()
-                }
+            while (true) {
+                delay(500)
+                val dur = player.durationMs()
+                if (dur > 0) durationSec = (dur / 1000).coerceAtLeast(1)
+                currentTimeSec = (player.currentPositionMs() / 1000).coerceAtLeast(0)
+                isPlaying = player.isPlaying()
             }
         }
     }
@@ -303,6 +410,13 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             delay(1800)
             if (toastMessage == message) toastMessage = null
         }
+    }
+
+    override fun onCleared() {
+        phoneServer?.stop()
+        player.removeListener(playerListener)
+        tickJob?.cancel()
+        super.onCleared()
     }
 }
 

@@ -7,13 +7,16 @@ enum class MainTab(val title: String, val implemented: Boolean = true) {
     Singers("歌星"),
     Hot("热门"),
     Kids("儿童"),
-    NasLibrary("NAS曲库"),
     Ranking("排行榜", implemented = false),
     Features("玩法", implemented = false),
 }
 
 enum class MediaSource { Mock, Nas, RemoteHttp }
 
+/**
+ * 一首歌 = MV + 原唱 + 伴唱（任一轨可缺，播放器按可用轨降级）。
+ * 不强制账号登录。
+ */
 data class Song(
     val id: String,
     val title: String,
@@ -22,12 +25,25 @@ data class Song(
     val durationSec: Long = 240,
     val tag: String? = null,
     val coverColor: Color = Color(0xFF3A5A8C),
-    val mediaUrl: String? = null,
     val coverUrl: String? = null,
     val source: MediaSource = MediaSource.Nas,
     val relativePath: String? = null,
+    val mvUrl: String? = null,
+    val originalUrl: String? = null,
+    val accompanimentUrl: String? = null,
 ) {
     val displayTitle: String get() = if (isHd) "$title(HD)" else title
+
+    val hasMv: Boolean get() = !mvUrl.isNullOrBlank()
+    val hasOriginal: Boolean get() = !originalUrl.isNullOrBlank()
+    val hasAccompaniment: Boolean get() = !accompanimentUrl.isNullOrBlank()
+
+    fun audioUrl(mode: VocalMode): String? = when (mode) {
+        VocalMode.Original -> originalUrl ?: accompanimentUrl ?: mvUrl
+        VocalMode.Accompaniment -> accompanimentUrl ?: originalUrl ?: mvUrl
+    }
+
+    fun anyPlayableUrl(): String? = mvUrl ?: accompanimentUrl ?: originalUrl
 }
 
 data class Singer(
@@ -63,4 +79,6 @@ data class PlaylistCard(
 enum class VocalMode { Accompaniment, Original }
 enum class PlayOrderMode { Sequential, Shuffle, Loop }
 
-enum class Overlay { None, Playback, Guess, Queue, Settings }
+enum class Overlay {
+    None, Playback, Guess, Queue, Settings, NasLibrary, PhoneOrder,
+}

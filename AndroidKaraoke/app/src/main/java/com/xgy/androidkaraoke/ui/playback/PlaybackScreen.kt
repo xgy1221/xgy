@@ -1,5 +1,7 @@
 package com.xgy.androidkaraoke.ui.playback
 
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,26 +18,30 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.FastForward
-import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.ui.PlayerView
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
+import com.xgy.androidkaraoke.KaraokeApp
 import com.xgy.androidkaraoke.model.VocalMode
 import com.xgy.androidkaraoke.playback.AppViewModel
 import com.xgy.androidkaraoke.theme.KaraokeColors
@@ -45,23 +51,49 @@ import com.xgy.androidkaraoke.ui.components.FocusSurface
 @Composable
 fun PlaybackScreen(vm: AppViewModel) {
     val song = vm.nowPlaying
+    val app = LocalContext.current.applicationContext as KaraokeApp
+    val player = remember { app.container.player }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.92f)),
+            .background(Color.Black),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            (song?.coverColor ?: Color(0xFF334455)).copy(alpha = 0.45f),
-                            Color.Black,
-                        ),
-                    ),
-                ),
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    useController = false
+                    layoutParams = FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
+                    this.player = player.videoPlayer
+                }
+            },
+            update = { it.player = player.videoPlayer },
+            modifier = Modifier.fillMaxSize(),
         )
+
+        DisposableEffect(Unit) {
+            onDispose { /* player owned by app container */ }
+        }
+
+        if (song?.hasMv != true) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background((song?.coverColor ?: Color(0xFF334455)).copy(alpha = 0.55f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = song?.displayTitle ?: "准备播放",
+                    color = KaraokeColors.textPrimary,
+                    fontSize = 42.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -73,6 +105,17 @@ fun PlaybackScreen(vm: AppViewModel) {
                 color = KaraokeColors.textPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = buildString {
+                    append(if (song?.hasMv == true) "MV " else "无MV ")
+                    append("· ")
+                    append(if (vm.vocalMode == VocalMode.Accompaniment) "伴唱" else "原唱")
+                    if (song?.hasOriginal == true) append(" · 有原唱")
+                    if (song?.hasAccompaniment == true) append(" · 有伴唱")
+                },
+                color = KaraokeColors.textSecondary,
+                fontSize = 15.sp,
             )
         }
 
@@ -93,21 +136,16 @@ fun PlaybackScreen(vm: AppViewModel) {
                         .weight(1f)
                         .padding(horizontal = 16.dp)
                         .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(Color.White.copy(alpha = 0.15f)),
+                        .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(2.dp)),
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(vm.progress)
                             .height(4.dp)
-                            .background(Color.White.copy(alpha = 0.85f)),
+                            .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(2.dp)),
                     )
                 }
-                Text(
-                    vm.formatTime(song?.durationSec ?: 0),
-                    color = KaraokeColors.textSecondary,
-                    fontSize = 14.sp,
-                )
+                Text(vm.formatTime(vm.durationSec), color = KaraokeColors.textSecondary, fontSize = 14.sp)
             }
             Spacer(modifier = Modifier.height(18.dp))
             Row(
@@ -162,13 +200,13 @@ private fun ControlBtn(
             Box(
                 modifier = Modifier
                     .size(if (prominent) 56.dp else 44.dp)
-                    .clip(CircleShape)
                     .background(
                         when {
                             focused -> Color.White.copy(alpha = 0.22f)
                             prominent -> Color.White.copy(alpha = 0.12f)
                             else -> Color.Transparent
                         },
+                        CircleShape,
                     ),
                 contentAlignment = Alignment.Center,
             ) {

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>电视点歌</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+         background:#0b0b0b; color:#f2f2f2; }
+  header { padding:16px 18px 8px; position:sticky; top:0; background:#0b0b0bcc; backdrop-filter:blur(8px); }
+  h1 { font-size:20px; margin:0 0 8px; font-weight:650; }
+  input { width:100%; box-sizing:border-box; padding:12px 14px; border-radius:12px;
+          border:1px solid #333; background:#171717; color:#fff; font-size:16px; }
+  #status { margin:10px 18px; color:#8fd0ff; font-size:14px; min-height:1.2em; }
+  .song { display:flex; gap:12px; align-items:center; justify-content:space-between;
+          margin:10px 14px; padding:14px; border-radius:14px; background:#161616; }
+  .meta { min-width:0; }
+  .title { font-size:16px; font-weight:600; }
+  .artist { font-size:13px; color:#999; margin-top:4px; }
+  button { border:0; border-radius:999px; padding:10px 16px; background:#fff; color:#111;
+           font-weight:600; font-size:14px; }
+  button:active { opacity:.85; }
+  .queue { margin:18px 14px 40px; }
+  .q-item { padding:8px 0; border-bottom:1px solid #222; color:#bbb; font-size:14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>手机点歌</h1>
+  <input id="q" placeholder="搜索歌名 / 歌星" oninput="render()"/>
+</header>
+<div id="status"></div>
+<div id="list"></div>
+<div class="queue">
+  <h1 style="font-size:16px;margin:0 0 8px 4px">电视已点</h1>
+  <div id="queue"></div>
+</div>
+<script>
+let songs = [];
+async function load() {
+  try {
+    const c = await fetch('/api/catalog').then(r => r.json());
+    songs = c.songs || [];
+    render();
+    refreshQueue();
+  } catch (e) {
+    document.getElementById('status').textContent = '无法连接电视，请确认同一 Wi-Fi';
+  }
+}
+function render() {
+  const q = (document.getElementById('q').value || '').trim().toLowerCase();
+  const list = document.getElementById('list');
+  const filtered = songs.filter(s => !q || (s.title+s.artist).toLowerCase().includes(q));
+  list.innerHTML = filtered.map(s => `
+    <div class="song">
+      <div class="meta">
+        <div class="title">${escapeHtml(s.title)}</div>
+        <div class="artist">${escapeHtml(s.artist)}</div>
+      </div>
+      <button onclick="addSong('${s.id}')">点歌</button>
+    </div>`).join('') || '<div style="padding:18px;color:#777">没有匹配歌曲</div>';
+}
+async function addSong(id) {
+  const res = await fetch('/api/queue', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({id})
+  }).then(r => r.json()).catch(() => ({ok:false,message:'网络错误'}));
+  document.getElementById('status').textContent = res.message || (res.ok ? '已点歌' : '失败');
+  refreshQueue();
+}
+async function refreshQueue() {
+  try {
+    const q = await fetch('/api/queue').then(r => r.json());
+    document.getElementById('queue').innerHTML = (q.queue||[]).map((s,i)=>
+      `<div class="q-item">${i+1}. ${escapeHtml(s.title)} · ${escapeHtml(s.artist)}</div>`
+    ).join('') || '<div class="q-item">暂无已点</div>';
+  } catch (_) {}
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+load();
+setInterval(refreshQueue, 3000);
+</script>
+</body>
+</html>

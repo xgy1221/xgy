@@ -1,21 +1,17 @@
 # AndroidKaraoke
 
-面向 **Sony KD-65A9F（Android 10 / API 29）** 的苹果风 Android TV 点歌壳。
+面向 **Sony KD-65A9F（Android 10 / API 29）** 的苹果风 Android TV 点歌 App。
 
-- Kotlin + Jetpack Compose + `androidx.tv:tv-material:1.0.0`
-- `minSdk 28` / `targetSdk 34`
-- NAS 预填 `https://nas.xgy1221.top` + `/volume1/music`；账号密码仅 EncryptedSharedPreferences
-- 麦克风为 stub（A9F 蓝牙麦需实机测）
+- `minSdk 28` / Compose for TV `tv-material:1.0.0`
+- **无强制登录**；曲库在**设置**（无 NAS 顶栏 Tab）
+- 曲目三件套：MV + 原唱 + 伴唱；播放器可切换
+- 扫码点歌：电视局域网 HTTP `:8765`，手机浏览器点歌入队
+- NAS 预填 `https://nas.xgy1221.top` + `/volume1/music`
 
 ## 构建
 
 ```bash
 ./gradlew :app:assembleDebug
-# app/build/outputs/apk/debug/app-debug.apk
 ```
 
-安装说明见仓库 [`docs/install-android-tv.md`](../docs/install-android-tv.md)。
-
-## 说明
-
-旧 tvOS 目录 `LeiShiKaraoke/`（若存在）仅作参考，本目录为当前主交付。
+可下载副本见仓库根 `dist/androidkaraoke-debug.apk`。安装说明：`docs/install-android-tv.md`。

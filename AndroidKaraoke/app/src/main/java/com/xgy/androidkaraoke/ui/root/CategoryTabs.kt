@@ -25,11 +25,19 @@ fun CategoryTabs(
     selected: MainTab,
     onSelect: (MainTab) -> Unit,
 ) {
+    val tabs = listOf(
+        MainTab.FreeSing,
+        MainTab.Singers,
+        MainTab.Hot,
+        MainTab.Kids,
+        MainTab.Ranking,
+        MainTab.Features,
+    )
     LazyRow(
         contentPadding = PaddingValues(horizontal = 40.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(MainTab.entries.filter { it.implemented || it == MainTab.Ranking || it == MainTab.Features }) { tab ->
+        items(tabs) { tab ->
             val active = tab == selected
             FocusSurface(onClick = { onSelect(tab) }, corner = 10.dp) { focused ->
                 Box(

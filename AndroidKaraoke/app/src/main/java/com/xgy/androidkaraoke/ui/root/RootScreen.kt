@@ -28,6 +28,7 @@ import com.xgy.androidkaraoke.ui.nas.NasLibraryScreen
 import com.xgy.androidkaraoke.ui.playback.GuessYouWantScreen
 import com.xgy.androidkaraoke.ui.playback.PlaybackScreen
 import com.xgy.androidkaraoke.ui.queue.QueueScreen
+import com.xgy.androidkaraoke.ui.remote.PhoneOrderScreen
 import com.xgy.androidkaraoke.ui.settings.SettingsScreen
 import com.xgy.androidkaraoke.ui.singers.SingersScreen
 
@@ -43,10 +44,10 @@ fun RootScreen(vm: AppViewModel) {
         Column(modifier = Modifier.fillMaxSize()) {
             TopBar(
                 queueCount = vm.queue.size,
-                onSearch = { vm.showToast("搜索即将推出") },
+                onSearch = { vm.showToast("搜索即将推出，可用手机扫码点歌") },
                 onQueue = { vm.openQueue() },
-                onWechat = { vm.showToast("微信点歌即将推出") },
-                onProfile = { vm.showToast("「我的」即将推出") },
+                onWechat = { vm.openPhoneOrder() },
+                onProfile = { vm.showToast("无需登录，直接点歌即可") },
                 onSettings = { vm.openSettings() },
             )
             CategoryTabs(
@@ -60,7 +61,6 @@ fun RootScreen(vm: AppViewModel) {
                     MainTab.Singers -> SingersScreen(vm)
                     MainTab.Hot -> HotScreen(vm)
                     MainTab.Kids -> KidsScreen(vm)
-                    MainTab.NasLibrary -> NasLibraryScreen(vm)
                     else -> HomeScreen(vm)
                 }
             }
@@ -71,6 +71,8 @@ fun RootScreen(vm: AppViewModel) {
             Overlay.Guess -> GuessYouWantScreen(vm)
             Overlay.Queue -> QueueScreen(vm)
             Overlay.Settings -> SettingsScreen(vm)
+            Overlay.NasLibrary -> NasLibraryScreen(vm)
+            Overlay.PhoneOrder -> PhoneOrderScreen(vm)
             Overlay.None -> Unit
         }
 

@@ -59,7 +59,7 @@ fun TopBar(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             TopAction("搜索", Icons.Outlined.Search, onSearch)
             TopAction("已点${if (queueCount > 0) " · $queueCount" else ""}", Icons.Outlined.QueueMusic, onQueue)
-            TopAction("微信点歌", Icons.Outlined.PhoneAndroid, onWechat)
+            TopAction("扫码点歌", Icons.Outlined.PhoneAndroid, onWechat)
             TopAction("我的", Icons.Outlined.Person, onProfile)
             TopAction("设置", Icons.Outlined.Settings, onSettings)
         }

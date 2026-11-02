@@ -40,7 +40,7 @@ fun NasLibraryScreen(vm: AppViewModel) {
             .fillMaxSize()
             .padding(horizontal = 40.dp, vertical = 8.dp),
     ) {
-        ShelfHeader("NAS 曲库", vm.nasPath)
+        ShelfHeader("曲库（设置）", vm.nasPath)
         Row(
             modifier = Modifier.padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),

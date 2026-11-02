@@ -9,6 +9,15 @@ import com.xgy.androidkaraoke.model.Singer
 import com.xgy.androidkaraoke.model.Song
 
 object MockData {
+    /**
+     * 公开样例媒体，便于无 NAS 时验证 MV/播放控制。
+     * 正式曲库来自 NAS library.json（mv / original / accompaniment）。
+     */
+    private const val SAMPLE_MV =
+        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+    private const val SAMPLE_AUDIO =
+        "https://storage.googleapis.com/exoplayer-test-media-0/play.mp3"
+
     val homeTiles = listOf(
         HomeTile("daily", HomeTileKind.Daily, "每日推荐", Color(0xFF267A66), isWide = true),
         HomeTile("song", HomeTileKind.SongOrder, "歌曲点歌", Color(0xFF3373F2)),
@@ -43,13 +52,14 @@ object MockData {
         PlaylistCard("intl", "国外歌手", tint = Color(0xFF33A659)),
     )
 
-    private fun nasSong(
+    private fun demoSong(
         id: String,
         title: String,
         artist: String,
         color: Color,
         hd: Boolean = false,
         tag: String? = null,
+        duration: Long = 240,
     ) = Song(
         id = id,
         title = title,
@@ -57,17 +67,20 @@ object MockData {
         isHd = hd,
         tag = tag,
         coverColor = color,
-        mediaUrl = "nas://mock/$id.mp3",
-        source = MediaSource.Nas,
-        relativePath = "/volume1/music/mock/$id.mp3",
+        durationSec = duration,
+        source = MediaSource.Mock,
+        relativePath = "/demo/$id",
+        mvUrl = SAMPLE_MV,
+        originalUrl = SAMPLE_AUDIO,
+        accompanimentUrl = SAMPLE_AUDIO,
     )
 
     val aiSongs = listOf(
-        nasSong("xiaoban", "小半", "陈粒", Color(0xFF8C5973)),
-        nasSong("chahua", "茶花开了", "王睿卓", Color(0xFFB26659), hd = true),
-        nasSong("yongchun", "咏春", "七朵组合", Color(0xFFD98C4D), hd = true),
-        nasSong("shimian", "失眠", "Suki刘舒妤", Color(0xFF596699)),
-        nasSong("shexiang", "奢香夫人", "凤凰传奇", Color(0xFFBF4D59)),
+        demoSong("xiaoban", "小半", "陈粒", Color(0xFF8C5973)),
+        demoSong("chahua", "茶花开了", "王睿卓", Color(0xFFB26659), hd = true),
+        demoSong("yongchun", "咏春", "七朵组合", Color(0xFFD98C4D), hd = true),
+        demoSong("shimian", "失眠", "Suki刘舒妤", Color(0xFF596699)),
+        demoSong("shexiang", "奢香夫人", "凤凰传奇", Color(0xFFBF4D59)),
     )
 
     val hotPosters = listOf(
@@ -99,10 +112,10 @@ object MockData {
     )
 
     val guessSongs = listOf(
-        nasSong("xihai", "西海情歌", "刀郎", Color(0xFF73598C), tag = "热歌TOP"),
-        nasSong("hongyan", "鸿雁", "呼斯楞", Color(0xFF4D6680), tag = "歌星热歌"),
-        nasSong("fenmo", "粉墨人生", "李玉刚", Color(0xFF8C664D), tag = "新歌速递"),
-        nasSong("qinghuaci", "青花瓷", "周杰伦", Color(0xFF406680), tag = "热歌TOP"),
+        demoSong("xihai", "西海情歌", "刀郎", Color(0xFF73598C), tag = "热歌TOP", duration = 346),
+        demoSong("hongyan", "鸿雁", "呼斯楞", Color(0xFF4D6680), tag = "歌星热歌"),
+        demoSong("fenmo", "粉墨人生", "李玉刚", Color(0xFF8C664D), tag = "新歌速递"),
+        demoSong("qinghuaci", "青花瓷", "周杰伦", Color(0xFF406680), tag = "热歌TOP"),
     )
 
     val playlists = listOf(
@@ -111,6 +124,8 @@ object MockData {
         PlaylistCard("p3", "怀旧金曲", badge = "经典", tint = Color(0xFF59664D)),
     )
 
-    val nowPlaying = nasSong("xihai", "西海情歌", "刀郎", Color(0xFF73598C)).copy(durationSec = 346)
-    val nextSong = nasSong("hongyan", "鸿雁", "呼斯楞", Color(0xFF4D6680))
+    val catalog: List<Song> = (aiSongs + guessSongs).distinctBy { it.id }
+
+    val nowPlaying = demoSong("xihai", "西海情歌", "刀郎", Color(0xFF73598C), duration = 346)
+    val nextSong = demoSong("hongyan", "鸿雁", "呼斯楞", Color(0xFF4D6680))
 }

@@ -72,18 +72,85 @@ class HttpsNasMediaSource(
             }
         }
 
+    /** 优先读取曲库根目录 library.json（含 mv/original/accompaniment）。 */
+    suspend fun loadLibraryJson(atPath: String = config.normalizedPath): List<Song> =
+        withContext(Dispatchers.IO) {
+            val candidates = listOf(
+                "${normalizePath(atPath).trimEnd('/')}/library.json",
+                "${normalizePath(atPath).trimEnd('/')}/songs.json",
+            )
+            var lastError: Exception? = null
+            for (rel in candidates) {
+                try {
+                    val url = makeUrl(rel, directory = false)
+                    val body = fetchText(url)
+                    val songs = decodeJsonManifest(body)
+                    if (!songs.isNullOrEmpty()) return@withContext songs
+                } catch (e: Exception) {
+                    lastError = e
+                }
+            }
+            // 若目录页本身就是 JSON 清单
+            try {
+                val url = makeUrl(atPath, directory = true)
+                val body = fetchText(url)
+                decodeJsonManifest(body)?.takeIf { it.isNotEmpty() }?.let { return@withContext it }
+            } catch (e: Exception) {
+                lastError = e
+            }
+            emptyList()
+        }
+
     private fun songFrom(entry: NasEntry): Song {
         val baseName = entry.name.substringBeforeLast('.')
         val parts = baseName.split('-', limit = 2).map { it.trim() }
         val title = parts.firstOrNull().orEmpty().ifEmpty { baseName }
         val artist = if (parts.size > 1) parts[1] else "未知歌手"
+        val url = entry.absoluteUrl
+        val lower = entry.name.lowercase()
+        val isMv = entry.kind == NasEntryKind.Video || lower.contains("mv")
+        val isOriginal = lower.contains("original") || lower.contains("原唱")
+        val isAcc = lower.contains("accompaniment") || lower.contains("伴唱") || lower.contains("inst")
         return Song(
             id = entry.id,
             title = title,
             artist = artist,
-            mediaUrl = entry.absoluteUrl,
             source = MediaSource.Nas,
             relativePath = entry.path,
+            mvUrl = if (isMv || (!isOriginal && !isAcc && entry.kind == NasEntryKind.Video)) url else null,
+            originalUrl = if (isOriginal) url else if (!isMv && !isAcc) url else null,
+            accompanimentUrl = if (isAcc) url else null,
+        )
+    }
+
+    /** 将同目录下的 mv / 原唱 / 伴唱文件合成一首歌。 */
+    suspend fun songFromFolder(folderPath: String, folderName: String): Song? {
+        val entries = listDirectory(folderPath)
+        var mv: String? = null
+        var original: String? = null
+        var acc: String? = null
+        for (e in entries) {
+            val lower = e.name.lowercase()
+            val url = e.absoluteUrl ?: continue
+            when {
+                lower.startsWith("mv") || lower.contains(".mv.") ||
+                    (e.kind == NasEntryKind.Video && mv == null) -> mv = url
+                lower.contains("original") || lower.contains("原唱") || lower.startsWith("voc") ->
+                    original = url
+                lower.contains("accompaniment") || lower.contains("伴唱") ||
+                    lower.contains("inst") || lower.startsWith("acc") -> acc = url
+            }
+        }
+        if (mv == null && original == null && acc == null) return null
+        return Song(
+            id = folderPath,
+            title = folderName.trim('/'),
+            artist = "NAS",
+            source = MediaSource.Nas,
+            relativePath = folderPath,
+            mvUrl = mv,
+            originalUrl = original,
+            accompanimentUrl = acc,
         )
     }
 
@@ -157,7 +224,7 @@ class HttpsNasMediaSource(
                     name = it.title,
                     path = it.relativePath ?: parentPath,
                     kind = NasEntryKind.Audio,
-                    absoluteUrl = it.mediaUrl,
+                    absoluteUrl = it.anyPlayableUrl(),
                 )
             }
         }
@@ -233,17 +300,25 @@ class HttpsNasMediaSource(
                     val title = item.optString("title").ifBlank { return@buildList }
                     val artist = item.optString("artist", "未知歌手")
                     val rel = item.optString("path").takeIf { it.isNotBlank() }
-                    val media = item.optString("url").takeIf { it.isNotBlank() }
-                        ?: rel?.let { config.urlForRelativePath(it) }
+                    fun abs(key: String): String? {
+                        val raw = item.optString(key).takeIf { it.isNotBlank() } ?: return null
+                        return if (raw.startsWith("http")) raw else config.urlForRelativePath(raw)
+                    }
+                    val mv = abs("mv") ?: abs("mvUrl") ?: abs("video")
+                    val original = abs("original") ?: abs("originalUrl") ?: abs("vocal")
+                    val acc = abs("accompaniment") ?: abs("accompanimentUrl") ?: abs("instrumental")
+                    val legacy = abs("url") ?: rel?.let { config.urlForRelativePath(it) }
                     add(
                         Song(
                             id = item.optString("id").ifBlank { "manifest-$i-$title" },
                             title = title,
                             artist = artist,
                             durationSec = item.optLong("duration", 240),
-                            mediaUrl = media,
                             source = MediaSource.Nas,
                             relativePath = rel,
+                            mvUrl = mv ?: if (legacy != null && legacy.contains(".mp4")) legacy else null,
+                            originalUrl = original ?: legacy,
+                            accompanimentUrl = acc,
                         ),
                     )
                 }
