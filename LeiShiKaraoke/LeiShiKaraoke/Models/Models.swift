@@ -3,15 +3,15 @@ import SwiftUI
 enum MainTab: String, CaseIterable, Identifiable {
     case freeSing = "随心唱"
     case ott
-    case features = "特色玩法"
     case singers = "歌星"
     case hot = "热门"
     case ranking = "排行榜"
     case kids = "儿童"
-    case era = "年代·秀"
+    case nasLibrary = "NAS曲库"
+    case features = "玩法"
+    case era = "年代"
     case dance = "舞蹈"
     case opera = "戏曲"
-    case nasLibrary = "NAS曲库"
 
     var id: String { title }
 

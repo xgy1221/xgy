@@ -15,115 +15,92 @@ struct PlaybackControlsBar: View {
                 Button {
                     store.isGuessPresented = true
                 } label: {
-                    Text("按【下键】查看推荐")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(AppTheme.accentRed, in: Capsule())
+                    Text("按下键查看推荐")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
+                        .background(AppTheme.surfaceStrong, in: Capsule())
                 }
                 .buttonStyle(.plain)
-                .padding(.trailing, 48)
+                .padding(.trailing, 56)
             }
 
-            VStack(spacing: 18) {
+            VStack(spacing: 20) {
                 progressRow
                 controlGroups
             }
-            .padding(.horizontal, 40)
-            .padding(.vertical, 22)
-            .background(.ultraThinMaterial.opacity(0.9), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .padding(.horizontal, 48)
+            .padding(.horizontal, 44)
+            .padding(.vertical, 24)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .padding(.horizontal, 56)
         }
-        .onAppear {
-            focusedAction = .play
-        }
+        .onAppear { focusedAction = .play }
     }
 
     private var progressRow: some View {
         HStack(spacing: 16) {
             Text(store.playback.formatTime(store.playback.currentTime))
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(AppTheme.accentRed)
-                .frame(width: 80, alignment: .leading)
+                .font(.system(size: 20, weight: .medium).monospacedDigit())
+                .foregroundStyle(AppTheme.textSecondary)
+                .frame(width: 72, alignment: .leading)
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.25)).frame(height: 6)
+                    Capsule().fill(Color.white.opacity(0.18)).frame(height: 5)
                     Capsule()
-                        .fill(AppTheme.accentRed)
-                        .frame(width: max(8, geo.size.width * store.playback.progress), height: 6)
-                    Circle()
                         .fill(Color.white)
-                        .frame(width: 18, height: 18)
-                        .offset(x: max(0, geo.size.width * store.playback.progress - 9))
+                        .frame(width: max(6, geo.size.width * store.playback.progress), height: 5)
                 }
                 .frame(maxHeight: .infinity)
             }
-            .frame(height: 24)
+            .frame(height: 20)
 
             Text(store.playback.formatTime(store.playback.nowPlaying?.duration ?? 346))
-                .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(.white)
-                .frame(width: 80, alignment: .trailing)
+                .font(.system(size: 20, weight: .medium).monospacedDigit())
+                .foregroundStyle(AppTheme.textSecondary)
+                .frame(width: 72, alignment: .trailing)
         }
     }
 
-    /// 分组：核心演唱 | 队列收藏 | 其他 —— 优化焦点路径
     private var controlGroups: some View {
-        HStack(spacing: 36) {
+        HStack(spacing: 32) {
             group {
                 actionButton(.skipPrelude, title: "跳过前奏", system: "forward.end.alt")
                 actionButton(.order, title: store.playback.orderMode.rawValue, system: "arrow.left.arrow.right")
             }
-            group(emphasized: true) {
+            group {
                 actionButton(.replay, title: "重唱", system: "arrow.counterclockwise")
-                actionButton(.play, title: store.playback.isPlaying ? "播放" : "播放", system: store.playback.isPlaying ? "pause.fill" : "play.fill")
-                actionButton(.vocal, title: store.playback.vocalMode.rawValue, system: "person.wave.2.fill")
+                actionButton(.play, title: store.playback.isPlaying ? "暂停" : "播放", system: store.playback.isPlaying ? "pause.fill" : "play.fill")
+                actionButton(.vocal, title: store.playback.vocalMode.rawValue, system: "person.wave.2")
                 actionButton(.next, title: "切歌", system: "forward.end.fill")
             }
             group {
                 actionButton(.favorite, title: "收藏", system: store.playback.isFavorite ? "heart.fill" : "heart")
-                actionButton(.effects, title: "音效", system: "slider.vertical.3")
+                actionButton(.effects, title: "音效", system: "slider.horizontal.3")
                 actionButton(.dislike, title: "不喜欢", system: "hand.thumbsdown")
             }
         }
         .frame(maxWidth: .infinity)
     }
 
-    private func group<Content: View>(emphasized: Bool = false, @ViewBuilder content: () -> Content) -> some View {
-        HStack(spacing: 18) {
-            content()
-        }
-        .padding(.horizontal, emphasized ? 12 : 0)
-        .padding(.vertical, emphasized ? 6 : 0)
-        .background {
-            if emphasized {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
-            }
-        }
-        .focusSection()
+    private func group<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 14) { content() }
+            .focusSection()
     }
 
     private func actionButton(_ action: PlaybackAction, title: String, system: String) -> some View {
-        Button {
-            handle(action)
-        } label: {
-            VStack(spacing: 8) {
+        Button { handle(action) } label: {
+            VStack(spacing: 10) {
                 Image(systemName: system)
-                    .font(.system(size: 28, weight: .semibold))
+                    .font(.system(size: 26, weight: .semibold))
                 Text(title)
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: 18, weight: .medium))
             }
-            .foregroundStyle(.white)
-            .frame(width: 110, height: 90)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(focusedAction == action ? AppTheme.focusOrange : Color.clear)
-            )
+            .foregroundStyle(AppTheme.textPrimary)
+            .frame(width: 118, height: 88)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.card)
         .focused($focusedAction, equals: action)
     }
 

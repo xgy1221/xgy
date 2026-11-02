@@ -1,30 +1,28 @@
-# 雷石K歌·专业版（tvOS 壳）
+# 雷石K歌（tvOS）
 
-原生 **SwiftUI tvOS** 点歌 App 骨架：视觉跟参考截图，交互做了已点队列 / 播放控件分组 / NAS·麦克风模块预留等优化。
+Apple TV / tvOS 原生点歌壳：**视觉跟 tvOS HIG**，信息架构参考点歌场景。音源默认连你的 NAS。
 
-## 在 Xcode 打开
+## 打开工程
 
-1. macOS 安装 Xcode 16+（tvOS 17 SDK）
-2. 打开 `LeiShiKaraoke.xcodeproj`
-3. 选 Apple TV 模拟器或真机 → Run
-4. Archive：Product → Archive（先填 Signing Team；`PRODUCT_BUNDLE_IDENTIFIER` 默认 `com.example.leishikaraoke`）
+需要 **Xcode 的是 CI 的 macOS runner**，不是你必须买 Mac。  
+本地若有 Mac：打开 `LeiShiKaraoke.xcodeproj` → Apple TV 模拟器。
 
-云端 Linux **无法**编译本工程。
+## 无 Mac：装到 Apple TV
 
-## 品牌改名
+见项目文档 `docs/install-apple-tv.md`（Agent Store）：
 
-编辑 `LeiShiKaraoke/Brand/BrandConfig.swift`。
+1. 加入 Apple Developer Program  
+2. **把 Team ID 发给我们** → 配置 GitHub Secrets  
+3. Actions 归档 → TestFlight → Apple TV 安装  
 
-## 模块边界
+工作流：`.github/workflows/tvos-build.yml`
 
-| 模块 | 路径 | 状态 |
-|------|------|------|
-| UI 壳 | `Views/` | 已实现 mock 屏 |
-| 曲库协议 | `Services/CatalogProviding.swift` | Mock |
-| NAS | `NAS/NASMediaSource.swift` | Stub（HTTP/WebDAV 优先） |
-| 麦克风 | `Audio/MicrophoneInput.swift` | Stub + 伴侣/系统预留 |
-| 播放 | `Services/AppStore.swift` | 状态机，未接 AVPlayer |
+## NAS
 
-## 参考方案
+- 默认 Base URL：`https://nas.xgy1221.top`  
+- 默认路径：`/volume1/music`  
+- **账号密码只在 App「设置」里输入**，存 Keychain，禁止写进仓库  
 
-项目 Agent Store：`docs/ui-plan.md`、`docs/project-context.md`
+## 品牌
+
+`LeiShiKaraoke/Brand/BrandConfig.swift`

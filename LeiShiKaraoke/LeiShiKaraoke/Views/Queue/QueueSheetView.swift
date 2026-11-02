@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// 已点队列：相对参考图的优化 —— 顶栏一键可达。
 struct QueueSheetView: View {
     @Environment(AppStore.self) private var store
 
@@ -9,53 +8,52 @@ struct QueueSheetView: View {
             Color.black.opacity(0.55).ignoresSafeArea()
             VStack(alignment: .leading, spacing: 20) {
                 HStack {
-                    Text("已点列表")
+                    Text("已点")
                         .font(.system(size: 36, weight: .bold))
-                        .foregroundStyle(.white)
                     Text("\(store.playback.queueCount)")
-                        .font(.system(size: 24, weight: .bold))
+                        .font(.system(size: 22, weight: .semibold))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
-                        .background(AppTheme.accentRed, in: Capsule())
-                        .foregroundStyle(.white)
+                        .background(AppTheme.surfaceStrong, in: Capsule())
                     Spacer()
                     Button("关闭") { store.isQueuePresented = false }
                         .buttonStyle(.card)
                 }
+                .foregroundStyle(AppTheme.textPrimary)
 
                 if let now = store.playback.nowPlaying {
-                    labeledRow(title: "正在播放", song: now, tint: AppTheme.focusOrange)
+                    row(label: "正在播放", song: now)
                 }
                 if let next = store.playback.nextSong {
-                    labeledRow(title: "下一首", song: next, tint: Color.white.opacity(0.2))
+                    row(label: "下一首", song: next)
                 }
 
                 Text("排队中")
                     .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(AppTheme.textSecondary)
 
                 if store.playback.queue.isEmpty {
-                    Text("还没有已点歌曲，去宫格点一首吧")
+                    Text("还没有已点歌曲")
                         .font(.system(size: 24))
-                        .foregroundStyle(.white.opacity(0.55))
-                        .frame(maxWidth: .infinity, minHeight: 120)
+                        .foregroundStyle(AppTheme.textTertiary)
+                        .frame(maxWidth: .infinity, minHeight: 140)
                 } else {
                     List {
                         ForEach(store.playback.queue) { song in
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(song.displayTitle)
-                                        .font(.system(size: 26, weight: .semibold))
+                                        .font(.system(size: 24, weight: .semibold))
                                     Text(song.artist)
-                                        .font(.system(size: 20))
+                                        .font(.system(size: 18))
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Text(song.source == .nas ? "NAS" : "本地")
-                                    .font(.system(size: 16, weight: .medium))
+                                Text(song.source == .nas ? "NAS" : "示例")
+                                    .font(.system(size: 15, weight: .medium))
                                     .foregroundStyle(.secondary)
                             }
-                            .padding(.vertical, 6)
+                            .padding(.vertical, 4)
                         }
                     }
                     .frame(minHeight: 280)
@@ -63,26 +61,23 @@ struct QueueSheetView: View {
             }
             .padding(40)
             .frame(width: 900, height: 680)
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color(red: 0.10, green: 0.11, blue: 0.18))
-            )
+            .background(AppTheme.backgroundElevated, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         }
         .onExitCommand { store.isQueuePresented = false }
     }
 
-    private func labeledRow(title: String, song: Song, tint: Color) -> some View {
+    private func row(label: String, song: Song) -> some View {
         HStack {
-            Text(title)
-                .font(.system(size: 20, weight: .medium))
-                .foregroundStyle(.white.opacity(0.7))
+            Text(label)
+                .font(.system(size: 18))
+                .foregroundStyle(AppTheme.textSecondary)
                 .frame(width: 100, alignment: .leading)
             Text("\(song.displayTitle) — \(song.artist)")
-                .font(.system(size: 26, weight: .semibold))
-                .foregroundStyle(.white)
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(AppTheme.textPrimary)
             Spacer()
         }
         .padding(16)
-        .background(tint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }

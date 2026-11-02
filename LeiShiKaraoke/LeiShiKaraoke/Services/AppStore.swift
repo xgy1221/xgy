@@ -8,17 +8,18 @@ final class AppStore {
     var isPlaybackPresented = false
     var isGuessPresented = false
     var isQueuePresented = false
+    var isSettingsPresented = false
     var toastMessage: String?
 
     let catalog: CatalogProviding
     let playback: PlaybackStore
-    let nas: StubNASMediaSource
+    let nas: HTTPSNASMediaSource
     let microphone: StubMicrophoneInput
 
     init(
         catalog: CatalogProviding = MockCatalogService(),
         playback: PlaybackStore = PlaybackStore(),
-        nas: StubNASMediaSource = StubNASMediaSource(),
+        nas: HTTPSNASMediaSource = HTTPSNASMediaSource(),
         microphone: StubMicrophoneInput = StubMicrophoneInput()
     ) {
         self.catalog = catalog
@@ -43,11 +44,6 @@ final class AppStore {
         isPlaybackPresented = false
     }
 
-    func toggleGuessFromRemote() {
-        guard isPlaybackPresented else { return }
-        isGuessPresented.toggle()
-    }
-
     func addToQueue(_ song: Song) {
         playback.enqueue(song)
         showToast("已加入点唱：\(song.title)")
@@ -61,6 +57,10 @@ final class AppStore {
                 toastMessage = nil
             }
         }
+    }
+
+    func reloadNASConfigFromStore() {
+        nas.config = NASConfigStore.load()
     }
 }
 
@@ -80,7 +80,7 @@ final class PlaybackStore: MediaPlaybackControlling {
     func play(_ song: Song) {
         nowPlaying = song
         isPlaying = true
-        currentTime = min(334, max(0, song.duration * 0.95))
+        currentTime = min(30, max(0, song.duration * 0.1))
     }
 
     func enqueue(_ song: Song) {
@@ -95,9 +95,7 @@ final class PlaybackStore: MediaPlaybackControlling {
     func next() {
         if let next = nextSong {
             nowPlaying = next
-            if !queue.isEmpty {
-                queue.removeFirst()
-            }
+            if !queue.isEmpty { queue.removeFirst() }
             nextSong = queue.first ?? MockData.aiSongs.randomElement()
             currentTime = 0
             isPlaying = true

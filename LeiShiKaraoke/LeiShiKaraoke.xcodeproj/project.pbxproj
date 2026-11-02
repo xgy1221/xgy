@@ -10,9 +10,22 @@
 		A10000000000000000000001 /* LeiShiKaraoke.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LeiShiKaraoke.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A10000000000000000000011 /* Exceptions for "LeiShiKaraoke" folder in "LeiShiKaraoke" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A10000000000000000000050 /* LeiShiKaraoke */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A10000000000000000000010 /* LeiShiKaraoke */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A10000000000000000000011 /* Exceptions for "LeiShiKaraoke" folder in "LeiShiKaraoke" target */,
+			);
 			path = LeiShiKaraoke;
 			sourceTree = "<group>";
 		};
@@ -172,7 +185,8 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "雷石K歌·专业版";
+				INFOPLIST_FILE = LeiShiKaraoke/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "雷石K歌";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -202,7 +216,8 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "雷石K歌·专业版";
+				INFOPLIST_FILE = LeiShiKaraoke/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "雷石K歌";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
 				LD_RUNPATH_SEARCH_PATHS = (

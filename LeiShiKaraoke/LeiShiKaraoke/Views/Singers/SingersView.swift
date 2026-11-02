@@ -4,121 +4,112 @@ struct SingersView: View {
     @Environment(AppStore.self) private var store
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack(spacing: 20) {
-                searchTile
-                ForEach(MockData.featuredSingers) { singer in
-                    featuredSingerCard(singer)
-                }
-            }
-            .frame(height: 200)
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: AppTheme.shelfSpacing) {
+                ShelfHeader(title: "歌星", subtitle: "从歌手找到想唱的歌")
 
-            HStack(spacing: 18) {
-                ForEach(MockData.singerGrid) { singer in
-                    singerCard(singer)
-                }
-                hotSingersCard
-            }
-            .frame(height: 170)
-
-            HStack(spacing: 18) {
-                ForEach(MockData.singerRegions) { region in
+                HStack(spacing: 22) {
                     Button {
-                        store.showToast("\(region.title) · 曲库后置")
+                        store.showToast("歌星搜索 · 占位")
                     } label: {
-                        Text(region.title)
-                            .font(.system(size: 26, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(region.tint, in: RoundedRectangle(cornerRadius: AppTheme.cardRadius, style: .continuous))
+                        PosterPlaceholder(symbol: "magnifyingglass", title: "搜索歌星", subtitle: "首拼 / 全名", hue: 0.60)
+                            .frame(width: 260, height: 200)
                     }
                     .buttonStyle(.card)
+
+                    ForEach(Array(MockData.featuredSingers.enumerated()), id: \.element.id) { idx, singer in
+                        Button { store.openPlayback() } label: {
+                            PosterPlaceholder(
+                                symbol: "person.fill",
+                                title: singer.name,
+                                subtitle: "精选",
+                                hue: 0.70 + Double(idx) * 0.08
+                            )
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 200)
+                        }
+                        .buttonStyle(.card)
+                    }
+                }
+
+                Text("热门歌星")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 18) {
+                        ForEach(MockData.singerGrid) { singer in
+                            Button { store.openPlayback() } label: {
+                                VStack(spacing: 14) {
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [singer.coverColor.opacity(0.8), Color.black.opacity(0.6)],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            )
+                                        )
+                                        .frame(width: 120, height: 120)
+                                        .overlay {
+                                            Image(systemName: "person.fill")
+                                                .font(.system(size: 40))
+                                                .foregroundStyle(.white.opacity(0.7))
+                                        }
+                                    Text(singer.name)
+                                        .font(.system(size: 22, weight: .medium))
+                                        .foregroundStyle(AppTheme.textPrimary)
+                                }
+                                .frame(width: 140)
+                            }
+                            .buttonStyle(.card)
+                        }
+                        Button { store.showToast("更多歌星") } label: {
+                            VStack(spacing: 14) {
+                                Circle()
+                                    .fill(AppTheme.surface)
+                                    .frame(width: 120, height: 120)
+                                    .overlay {
+                                        Image(systemName: "ellipsis")
+                                            .font(.system(size: 32))
+                                            .foregroundStyle(AppTheme.textSecondary)
+                                    }
+                                Text("更多")
+                                    .font(.system(size: 22, weight: .medium))
+                                    .foregroundStyle(AppTheme.textPrimary)
+                            }
+                            .frame(width: 140)
+                        }
+                        .buttonStyle(.card)
+                    }
+                }
+
+                Text("按地区")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 16)], spacing: 16) {
+                    ForEach(MockData.singerRegions) { region in
+                        Button {
+                            store.showToast("\(region.title) · 曲库后置")
+                        } label: {
+                            HStack {
+                                Text(region.title)
+                                    .font(.system(size: 22, weight: .semibold))
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(AppTheme.textTertiary)
+                            }
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .padding(20)
+                            .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                        .buttonStyle(.card)
+                    }
                 }
             }
-            .frame(height: 120)
-
-            Spacer(minLength: 0)
+            .padding(.horizontal, AppTheme.contentPadding)
+            .padding(.bottom, 40)
         }
-        .padding(.horizontal, AppTheme.contentPadding)
-        .padding(.bottom, 28)
         .focusSection()
-    }
-
-    private var searchTile: some View {
-        Button {
-            store.showToast("歌星搜索 / 首拼 · 占位")
-        } label: {
-            ZStack {
-                RoundedRectangle(cornerRadius: AppTheme.cardRadius, style: .continuous)
-                    .fill(Color(red: 0.22, green: 0.45, blue: 0.85))
-                VStack(spacing: 14) {
-                    Image(systemName: "person.crop.circle.badge.magnifyingglass")
-                        .font(.system(size: 48))
-                    Text("歌星搜索")
-                        .font(.system(size: 28, weight: .bold))
-                }
-                .foregroundStyle(.white)
-            }
-            .frame(width: 220)
-        }
-        .buttonStyle(.card)
-    }
-
-    private func featuredSingerCard(_ singer: Singer) -> some View {
-        Button {
-            store.openPlayback()
-        } label: {
-            ZStack(alignment: .bottomLeading) {
-                RoundedRectangle(cornerRadius: AppTheme.cardRadius, style: .continuous)
-                    .fill(singer.coverColor.gradient)
-                Text(singer.name)
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundStyle(singer.name == "陈奕迅" ? Color.black.opacity(0.85) : .white)
-                    .padding(20)
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.card)
-    }
-
-    private func singerCard(_ singer: Singer) -> some View {
-        Button {
-            store.openPlayback()
-        } label: {
-            ZStack(alignment: .bottom) {
-                RoundedRectangle(cornerRadius: AppTheme.cardRadius, style: .continuous)
-                    .fill(singer.coverColor)
-                Circle()
-                    .fill(Color.black.opacity(0.35))
-                    .frame(width: 70, height: 70)
-                    .offset(x: 48, y: -40)
-                Text(singer.name)
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.bottom, 14)
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.card)
-    }
-
-    private var hotSingersCard: some View {
-        Button {
-            store.showToast("热门歌星 · 占位")
-        } label: {
-            ZStack {
-                RoundedRectangle(cornerRadius: AppTheme.cardRadius, style: .continuous)
-                    .fill(Color(red: 0.25, green: 0.28, blue: 0.40))
-                VStack(spacing: 10) {
-                    Image(systemName: "person.3.fill")
-                        .font(.system(size: 36))
-                    Text("热门歌星")
-                        .font(.system(size: 24, weight: .bold))
-                }
-                .foregroundStyle(.white)
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.card)
     }
 }

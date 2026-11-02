@@ -2,142 +2,89 @@ import SwiftUI
 
 struct HomeGridView: View {
     @Environment(AppStore.self) private var store
-    private let tiles = MockData.homeTiles
+
+    private let entries: [(title: String, subtitle: String, symbol: String, hue: Double, action: HomeAction)] = [
+        ("每日推荐", "今日精选一首", "sparkles", 0.58, .play),
+        ("歌曲点歌", "按歌名找歌", "music.note", 0.62, .hot),
+        ("歌手点歌", "按歌星浏览", "person.wave.2", 0.72, .singers),
+        ("分类点歌", "风格与场景", "square.grid.2x2", 0.48, .hot),
+        ("我的点唱", "查看已点队列", "list.bullet", 0.08, .queue),
+        ("收藏", "喜欢的歌", "heart", 0.92, .toast("收藏 · 占位")),
+        ("K歌推荐", "适合麦霸", "mic", 0.55, .play),
+        ("排行榜", "热门榜单", "chart.bar", 0.45, .ranking),
+    ]
+
+    private enum HomeAction {
+        case play, queue, singers, hot, ranking, toast(String)
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            HStack(alignment: .top, spacing: 20) {
-                dailyTile
-                ForEach(tiles.filter { !$0.isWide && $0.kind != .freeZone && row1Kinds.contains($0.kind) }) { tile in
-                    HomeTileButton(tile: tile) { handle(tile) }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 260)
-                }
-            }
-            .frame(height: 260)
+        VStack(alignment: .leading, spacing: AppTheme.shelfSpacing) {
+            ShelfHeader(title: "随心唱", subtitle: "选一首，立刻开唱")
 
-            HStack(spacing: 20) {
-                ForEach(tiles.filter { row2Kinds.contains($0.kind) }) { tile in
-                    HomeTileButton(tile: tile) { handle(tile) }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 160)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 22) {
+                    ForEach(Array(entries.enumerated()), id: \.offset) { index, item in
+                        Button {
+                            handle(item.action)
+                        } label: {
+                            PosterPlaceholder(
+                                symbol: item.symbol,
+                                title: item.title,
+                                subtitle: item.subtitle,
+                                hue: item.hue
+                            )
+                            .frame(width: index == 0 ? 420 : 240, height: index == 0 ? 280 : 280)
+                        }
+                        .buttonStyle(.card)
+                    }
                 }
             }
+
+            ShelfHeader(title: "继续点歌", subtitle: "快捷入口")
+            HStack(spacing: 20) {
+                quickChip(title: "已点 \(store.playback.queueCount)", system: "list.bullet") {
+                    store.isQueuePresented = true
+                }
+                quickChip(title: "NAS 曲库", system: "externaldrive") {
+                    store.selectedTab = .nasLibrary
+                }
+                quickChip(title: "设置 NAS", system: "gearshape") {
+                    store.isSettingsPresented = true
+                }
+                Spacer()
+            }
+
             Spacer(minLength: 0)
         }
         .padding(.horizontal, AppTheme.contentPadding)
-        .padding(.bottom, 32)
+        .padding(.bottom, 36)
         .focusSection()
     }
 
-    private var row1Kinds: Set<HomeTile.Kind> { [.songOrder, .singerOrder, .categoryOrder] }
-    private var row2Kinds: Set<HomeTile.Kind> { [.freeZone, .myQueue, .favorites, .kRecommend, .ranking] }
-
-    private var dailyTile: some View {
-        Button {
-            store.openPlayback(starting: MockData.nowPlaying)
-        } label: {
-            ZStack(alignment: .bottomLeading) {
-                RoundedRectangle(cornerRadius: AppTheme.cardRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.12, green: 0.35, blue: 0.40),
-                                Color(red: 0.08, green: 0.15, blue: 0.28),
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Capsule()
-                            .fill(Color.green)
-                            .frame(width: 6, height: 22)
-                            .shadow(color: .green.opacity(0.8), radius: 6)
-                        Text("每日推荐")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-                    Text("点击开唱 · mock MV")
-                        .font(.system(size: 20))
-                        .foregroundStyle(.white.opacity(0.75))
-                    Spacer()
-                    Text("♪ 西海情歌 — 刀郎")
-                        .font(.system(size: 18))
-                        .foregroundStyle(.cyan.opacity(0.9))
-                        .padding(.bottom, 8)
-                }
-                .padding(24)
-            }
-            .frame(width: 520, height: 260)
-        }
-        .buttonStyle(.card)
-    }
-
-    private func handle(_ tile: HomeTile) {
-        switch tile.kind {
-        case .myQueue:
-            store.isQueuePresented = true
-        case .daily, .kRecommend, .freeZone:
-            store.openPlayback()
-        case .songOrder, .singerOrder, .categoryOrder:
-            store.selectedTab = tile.kind == .singerOrder ? .singers : .hot
-        case .favorites:
-            store.showToast("收藏歌曲 · 占位")
-        case .ranking:
-            store.selectedTab = .ranking
-        }
-    }
-}
-
-struct HomeTileButton: View {
-    let tile: HomeTile
-    let action: () -> Void
-
-    var body: some View {
+    private func quickChip(title: String, system: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            ZStack(alignment: .topTrailing) {
-                RoundedRectangle(cornerRadius: AppTheme.cardRadius, style: .continuous)
-                    .fill(tile.tint.gradient)
-                VStack(spacing: 16) {
-                    Image(systemName: symbol)
-                        .font(.system(size: 44, weight: .semibold))
-                        .symbolRenderingMode(.hierarchical)
-                    Text(tile.title)
-                        .font(.system(size: 26, weight: .bold))
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                }
-                .foregroundStyle(.white)
-                .padding(16)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                if let badge = tile.badgeCount {
-                    Text("\(badge)")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(AppTheme.accentRed, in: Capsule())
-                        .offset(x: -12, y: 12)
-                }
+            HStack(spacing: 10) {
+                Image(systemName: system)
+                Text(title)
             }
+            .font(.system(size: 22, weight: .medium))
+            .foregroundStyle(AppTheme.textPrimary)
+            .padding(.horizontal, 22)
+            .padding(.vertical, 16)
+            .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.card)
     }
 
-    private var symbol: String {
-        switch tile.kind {
-        case .daily: return "sparkles"
-        case .songOrder: return "music.note"
-        case .singerOrder: return "person.crop.circle.badge.magnifyingglass"
-        case .categoryOrder: return "opticaldisc"
-        case .freeZone: return "gift.fill"
-        case .myQueue: return "mic.fill"
-        case .favorites: return "music.note.list"
-        case .kRecommend: return "list.bullet.rectangle"
-        case .ranking: return "chart.bar.fill"
+    private func handle(_ action: HomeAction) {
+        switch action {
+        case .play: store.openPlayback()
+        case .queue: store.isQueuePresented = true
+        case .singers: store.selectedTab = .singers
+        case .hot: store.selectedTab = .hot
+        case .ranking: store.selectedTab = .ranking
+        case .toast(let msg): store.showToast(msg)
         }
     }
 }
