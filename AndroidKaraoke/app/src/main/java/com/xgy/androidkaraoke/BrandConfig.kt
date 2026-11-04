@@ -8,5 +8,6 @@ object BrandConfig {
     const val applicationId = "com.xgy.androidkaraoke"
 
     const val defaultNasBaseUrl = "https://nas.xgy1221.top:9527"
-    const val defaultNasLibraryPath = "/volume1/music"
+    /** 群晖 File Station 共享路径（不是 /volume1/music 磁盘路径） */
+    const val defaultNasLibraryPath = "/music"
 }

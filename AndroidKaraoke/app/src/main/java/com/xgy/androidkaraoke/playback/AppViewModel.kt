@@ -26,6 +26,7 @@ import com.xgy.androidkaraoke.model.VocalMode
 import com.xgy.androidkaraoke.nas.NasConfig
 import com.xgy.androidkaraoke.nas.NasEntryKind
 import com.xgy.androidkaraoke.nas.NasError
+import com.xgy.androidkaraoke.nas.SynologyFileStation
 import com.xgy.androidkaraoke.recommend.RecommendationEngine
 import com.xgy.androidkaraoke.remote.PhoneRequestServer
 import com.xgy.androidkaraoke.search.SongSearch
@@ -232,8 +233,34 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     private fun migrateLegacyNasIfNeeded() {
         val existing = sourceStore.load()
-        if (existing.any { it.kind == LibrarySourceKind.Nas }) return
+        // 把旧的 /volume1/music 映射为共享路径 /music
+        var changed = false
+        val migrated = existing.map { src ->
+            if (src.kind != LibrarySourceKind.Nas) return@map src
+            val mapped = SynologyFileStation.normalizeLibraryPathForSave(
+                src.nasLibraryPath ?: BrandConfig.defaultNasLibraryPath,
+            )
+            if (mapped != src.nasLibraryPath) {
+                changed = true
+                src.copy(nasLibraryPath = mapped)
+            } else {
+                src
+            }
+        }
+        if (changed) {
+            sourceStore.save(migrated)
+            migrated.firstOrNull { it.kind == LibrarySourceKind.Nas }?.let { nas ->
+                container.nasConfigStore.save(
+                    NasConfig(
+                        baseUrlString = nas.nasBaseUrl ?: BrandConfig.defaultNasBaseUrl,
+                        libraryPath = nas.nasLibraryPath ?: BrandConfig.defaultNasLibraryPath,
+                    ),
+                )
+            }
+        }
+        if (sourceStore.load().any { it.kind == LibrarySourceKind.Nas }) return
         val cfg = container.nasConfigStore.load()
+        val path = SynologyFileStation.normalizeLibraryPathForSave(cfg.normalizedPath)
         sourceStore.upsert(
             LibrarySource(
                 id = "nas-default",
@@ -241,9 +268,12 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 displayName = "NAS 默认",
                 enabled = true,
                 nasBaseUrl = cfg.normalizedBaseUrl,
-                nasLibraryPath = cfg.normalizedPath,
+                nasLibraryPath = path,
             ),
         )
+        if (path != cfg.normalizedPath) {
+            container.nasConfigStore.save(cfg.copy(libraryPath = path))
+        }
     }
 
     fun reloadSources(scanUsb: Boolean = true, announceUsb: Boolean = false) {
@@ -375,18 +405,13 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 container.credentialStore.save(settingsUsername.trim(), passToStore)
                 container.nasSource.reloadConfig()
                 val msg = container.nasSource.probeConnection("/")
-                settingsMessage = msg
-                settingsIsError = false
                 showToast(msg)
+                // 进入目录选择后清掉连接成功文案，避免与列目录错误叠在一起
+                settingsMessage = null
+                settingsIsError = false
                 nasWizardStep = NasWizardStep.PickDirectory
-                // 群晖：优先从 /volume1 或曲库默认父目录开始选
-                val start = listOf(
-                    BrandConfig.defaultNasLibraryPath.trimEnd('/')
-                        .substringBeforeLast('/', missingDelimiterValue = "/"),
-                    "/volume1",
-                    "/",
-                ).first { it.isNotBlank() }
-                refreshDirPicker(start)
+                // 群晖：从共享列表根开始（/ → list_share），不要进 /volume1
+                refreshDirPicker("/")
             } catch (e: Exception) {
                 settingsIsError = true
                 settingsMessage = (e as? NasError)?.message ?: (e.message ?: "连接失败")
@@ -400,11 +425,17 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             dirPickLoading = true
             dirPickError = null
+            settingsMessage = null
             try {
-                dirPickPath = path
-                val folders = container.nasSource.listFolders(path)
+                val normalized = SynologyFileStation.normalizeLibraryPathForSave(path)
+                dirPickPath = if (normalized == "/" || path == "/") "/" else normalized
+                // 若用户残留 /volume1/music，映射为 /music 再列
+                val folders = container.nasSource.listFolders(dirPickPath)
                 dirPickFolders.clear()
                 dirPickFolders.addAll(folders)
+                if (folders.isEmpty() && dirPickPath != "/") {
+                    dirPickError = null // 空目录允许「选为曲库根」
+                }
             } catch (e: Exception) {
                 dirPickFolders.clear()
                 dirPickError = (e as? NasError)?.message ?: (e.message ?: "无法列出目录")
@@ -415,21 +446,32 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun dirPickerGoUp() {
+        if (dirPickPath == "/" || dirPickPath.isBlank()) {
+            showToast("已在共享列表根")
+            return
+        }
         val parent = dirPickPath.trimEnd('/').substringBeforeLast('/', missingDelimiterValue = "/")
         refreshDirPicker(if (parent.isEmpty()) "/" else parent)
     }
 
     fun dirPickerEnter(folderPath: String) {
-        refreshDirPicker(folderPath)
+        refreshDirPicker(SynologyFileStation.normalizeLibraryPathForSave(folderPath))
     }
 
     /** 步骤 2：确认当前浏览路径为曲库根目录并保存来源。 */
     fun confirmNasLibraryDirectory() {
         viewModelScope.launch {
             settingsBusy = true
+            settingsMessage = null
             try {
-                val path = dirPickPath.ifBlank { "/" }
+                var path = SynologyFileStation.normalizeLibraryPathForSave(dirPickPath.ifBlank { "/" })
+                if (path == "/" || path.isBlank()) {
+                    settingsIsError = true
+                    dirPickError = "请先进入一个共享文件夹（如 music → 路径 /music）再选为曲库根"
+                    return@launch
+                }
                 settingsPath = path
+                dirPickPath = path
                 val id = editingSourceId ?: ("nas-" + UUID.randomUUID().toString().take(8))
                 val source = LibrarySource(
                     id = id,
@@ -455,6 +497,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 settingsEditorKind = null
                 nasWizardStep = NasWizardStep.Connect
                 settingsMessage = null
+                dirPickError = null
             } catch (e: Exception) {
                 settingsIsError = true
                 settingsMessage = e.message ?: "保存失败"
@@ -849,16 +892,32 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 }
                 LibraryEntryKind.Audio, LibraryEntryKind.Video -> {
                     val uri = entry.playableUri
-                    val song = Song(
-                        id = entry.id,
-                        title = entry.name.substringBeforeLast('.'),
-                        artist = source.displayName,
-                        relativePath = entry.path,
-                        source = if (source.kind == LibrarySourceKind.Usb) MediaSource.Usb else MediaSource.Nas,
-                        mvUrl = if (entry.kind == LibraryEntryKind.Video) uri else null,
-                        originalUrl = if (entry.kind == LibraryEntryKind.Audio) uri else null,
-                        accompanimentUrl = null,
-                    )
+                    val (title, artist) = com.xgy.androidkaraoke.nas.KaraokeFileNames.parseTitleArtist(entry.name)
+                    val media = if (source.kind == LibrarySourceKind.Usb) MediaSource.Usb else MediaSource.Nas
+                    // 扁平原 MP4：同轨占位 MV/原唱/伴奏
+                    val song = if (entry.kind == LibraryEntryKind.Video && uri != null) {
+                        Song(
+                            id = entry.id,
+                            title = title,
+                            artist = artist,
+                            relativePath = entry.path,
+                            source = media,
+                            mvUrl = uri,
+                            originalUrl = uri,
+                            accompanimentUrl = uri,
+                        )
+                    } else {
+                        Song(
+                            id = entry.id,
+                            title = title,
+                            artist = artist,
+                            relativePath = entry.path,
+                            source = media,
+                            mvUrl = null,
+                            originalUrl = uri,
+                            accompanimentUrl = uri,
+                        )
+                    }
                     addToQueue(song)
                     openPlayback(song)
                 }

@@ -20,7 +20,7 @@ sealed class NasError(message: String) : Exception(message) {
     data object Unauthorized : NasError("认证失败：请在设置中填写正确的账号和密码")
     data object Forbidden : NasError("没有权限访问该目录")
     data object NotFound : NasError(
-        "找不到该路径。若 Base URL 是群晖 DSM（如 :9527），请用 File Station 路径如 /volume1/music，并填写账号密码；直链 HTTP 目录请改用 WebDAV/文件服务地址。",
+        "找不到该路径。群晖请用共享路径如 /music（不要用 /volume1/music）；并确认账号密码正确。",
     )
     data object Timeout : NasError("连接超时，请检查网络或 NAS 是否在线")
     class Server(code: Int, msg: String) : NasError("服务器错误（$code）：$msg")
@@ -63,19 +63,21 @@ class HttpsNasMediaSource(
         "已连接，共 ${entries.size} 项"
     }
 
-    /** 仅验证 URL/认证可达；目录空也算成功（用于「先连接再选目录」）。 */
+    /** 仅验证登录可达（群晖：登录 + 列共享）。 */
     suspend fun probeConnection(atPath: String = "/"): String = withContext(Dispatchers.IO) {
         ensureBackend()
         if (synologyMode.get() == true) {
             fs().ensureSession()
-            // 再尝试列一下目标路径（空也算通）
-            try {
-                listDirectory(atPath)
+            val shares = try {
+                fs().listShares()
             } catch (_: NasError.EmptyListing) {
-            } catch (_: NasError.NotFound) {
-                // 根可能不可列，登录成功即可
+                emptyList()
             }
-            return@withContext "已连接群晖 File Station"
+            return@withContext if (shares.isEmpty()) {
+                "已连接群晖 File Station（暂无共享文件夹）"
+            } else {
+                "已连接群晖 · ${shares.size} 个共享"
+            }
         }
         val url = makeHttpUrl(atPath, directory = true)
         try {
@@ -88,16 +90,33 @@ class HttpsNasMediaSource(
         }
     }
 
-    suspend fun listFolders(atPath: String): List<NasEntry> = try {
-        listDirectory(atPath).filter { it.kind == NasEntryKind.Folder }
-    } catch (_: NasError.EmptyListing) {
-        emptyList()
+    /** 目录选择器用：群晖根下列共享；其余列子文件夹。 */
+    suspend fun listFolders(atPath: String): List<NasEntry> {
+        ensureBackend()
+        if (synologyMode.get() == true) {
+            val mapped = fs().toSharePath(atPath)
+            return if (mapped == "/" || mapped.isBlank()) {
+                fs().listShares()
+            } else {
+                try {
+                    fs().list(mapped).filter { it.kind == NasEntryKind.Folder }
+                } catch (_: NasError.EmptyListing) {
+                    emptyList()
+                }
+            }
+        }
+        return try {
+            listDirectory(atPath).filter { it.kind == NasEntryKind.Folder }
+        } catch (_: NasError.EmptyListing) {
+            emptyList()
+        }
     }
 
     suspend fun listDirectory(atPath: String): List<NasEntry> = withContext(Dispatchers.IO) {
         ensureBackend()
         if (synologyMode.get() == true) {
-            return@withContext fs().list(atPath).sortedWith(
+            val mapped = fs().toSharePath(atPath)
+            return@withContext fs().list(mapped).sortedWith(
                 compareBy<NasEntry> { it.kind != NasEntryKind.Folder }
                     .thenBy { it.name.lowercase() },
             )
@@ -108,7 +127,8 @@ class HttpsNasMediaSource(
         if (looksLikeDsmHtml(data)) {
             synologyMode.set(true)
             rebuildFileStation()
-            return@withContext fs().list(atPath).sortedWith(
+            val mapped = fs().toSharePath(atPath)
+            return@withContext fs().list(mapped).sortedWith(
                 compareBy<NasEntry> { it.kind != NasEntryKind.Folder }
                     .thenBy { it.name.lowercase() },
             )
@@ -134,8 +154,7 @@ class HttpsNasMediaSource(
         withContext(Dispatchers.IO) {
             ensureBackend()
             if (synologyMode.get() == true) {
-                // File Station：尝试下载 library.json / songs.json
-                val dir = SynologyFileStation.normalizeFsPath(atPath)
+                val dir = fs().toSharePath(atPath)
                 for (name in listOf("library.json", "songs.json")) {
                     val filePath = "$dir/$name"
                     try {
@@ -170,24 +189,35 @@ class HttpsNasMediaSource(
         }
 
     private fun songFrom(entry: NasEntry): Song {
-        val baseName = entry.name.substringBeforeLast('.')
-        val parts = baseName.split('-', limit = 2).map { it.trim() }
-        val title = parts.firstOrNull().orEmpty().ifEmpty { baseName }
-        val artist = if (parts.size > 1) parts[1] else "未知歌手"
+        val parsed = KaraokeFileNames.parseTitleArtist(entry.name)
         val url = entry.absoluteUrl
         val lower = entry.name.lowercase()
-        val isMv = entry.kind == NasEntryKind.Video || lower.contains("mv")
-        val isOriginal = lower.contains("original") || lower.contains("原唱")
-        val isAcc = lower.contains("accompaniment") || lower.contains("伴唱") || lower.contains("inst")
+        val isExplicitOriginal = lower.contains("original") || lower.contains("原唱") || lower.startsWith("voc")
+        val isExplicitAcc = lower.contains("accompaniment") || lower.contains("伴唱") ||
+            lower.contains("inst") || lower.startsWith("acc")
+        val isExplicitMv = lower.startsWith("mv") || lower.contains(".mv.")
+        // 扁平原 MP4：同一文件同时作为 MV / 原唱 / 伴奏占位，可唱可切
+        val flatKaraokeVideo = entry.kind == NasEntryKind.Video &&
+            !isExplicitOriginal && !isExplicitAcc && url != null
         return Song(
             id = entry.id,
-            title = title,
-            artist = artist,
+            title = parsed.first,
+            artist = parsed.second,
             source = MediaSource.Nas,
             relativePath = entry.path,
-            mvUrl = if (isMv || (!isOriginal && !isAcc && entry.kind == NasEntryKind.Video)) url else null,
-            originalUrl = if (isOriginal) url else if (!isMv && !isAcc) url else null,
-            accompanimentUrl = if (isAcc) url else null,
+            mvUrl = when {
+                flatKaraokeVideo || isExplicitMv || entry.kind == NasEntryKind.Video -> url
+                else -> null
+            },
+            originalUrl = when {
+                flatKaraokeVideo || isExplicitOriginal -> url
+                entry.kind == NasEntryKind.Audio && !isExplicitAcc -> url
+                else -> null
+            },
+            accompanimentUrl = when {
+                flatKaraokeVideo || isExplicitAcc -> url
+                else -> null
+            },
         )
     }
 

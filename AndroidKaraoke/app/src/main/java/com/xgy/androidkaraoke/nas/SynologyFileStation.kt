@@ -13,8 +13,9 @@ import java.nio.charset.StandardCharsets
 
 /**
  * Synology DSM File Station WebAPI。
- * Base URL 形如 `https://nas.xgy1221.top:9527`（DSM 入口，不是目录直链）。
- * 曲库路径为 File Station 路径，如 `/volume1/music`（不是 HTTP path 拼在 URL 后）。
+ *
+ * Base URL 形如 `https://nas.xgy1221.top:9527`（DSM 入口）。
+ * **folder_path 必须用共享路径**，如 `/music`，不是 Linux 绝对路径 `/volume1/music`。
  */
 class SynologyFileStation(
     private val baseUrl: String,
@@ -23,6 +24,9 @@ class SynologyFileStation(
 ) {
     @Volatile
     private var sid: String? = null
+
+    /** real_path(`/volume1/music`) → share path(`/music`) */
+    private val realPathToShare = mutableMapOf<String, String>()
 
     suspend fun ensureSession(): String = withContext(Dispatchers.IO) {
         sid?.let { return@withContext it }
@@ -45,7 +49,7 @@ class SynologyFileStation(
             val code = json.optJSONObject("error")?.optInt("code") ?: -1
             throw when (code) {
                 400, 401, 407, 408, 409, 410 -> NasError.Unauthorized
-                else -> NasError.Server(code, "DSM 登录失败（$code）")
+                else -> NasError.Server(code, "DSM 登录失败（错误码 $code）")
             }
         }
         val newSid = json.optJSONObject("data")?.optString("sid").orEmpty()
@@ -58,35 +62,70 @@ class SynologyFileStation(
         sid = null
     }
 
+    /**
+     * 列出共享文件夹（连接成功后的第一步）。
+     * 返回 path 形如 `/music`，并缓存 real_path 映射。
+     */
+    suspend fun listShares(): List<NasEntry> = withContext(Dispatchers.IO) {
+        val session = ensureSession()
+        val params = linkedMapOf(
+            "api" to "SYNO.FileStation.List",
+            "version" to "2",
+            "method" to "list_share",
+            "additional" to "[\"real_path\",\"owner\",\"time\",\"perm\"]",
+            "_sid" to session,
+        )
+        val json = requestWithRetry(params)
+        if (!json.optBoolean("success")) {
+            throw mapListError(json, context = "列出共享文件夹")
+        }
+        val shares = json.optJSONObject("data")?.optJSONArray("shares")
+            ?: throw NasError.EmptyListing
+        if (shares.length() == 0) throw NasError.EmptyListing
+        realPathToShare.clear()
+        buildList {
+            for (i in 0 until shares.length()) {
+                val s = shares.getJSONObject(i)
+                val name = s.optString("name")
+                if (name.isBlank()) continue
+                val sharePath = normalizeFsPath(s.optString("path").ifBlank { "/$name" })
+                val real = s.optJSONObject("additional")?.optString("real_path").orEmpty()
+                if (real.isNotBlank()) {
+                    realPathToShare[normalizeFsPath(real)] = sharePath
+                }
+                // 也登记裸卷路径前缀映射：/volume1/music → /music
+                add(
+                    NasEntry(
+                        id = sharePath,
+                        name = name,
+                        path = sharePath,
+                        kind = NasEntryKind.Folder,
+                        absoluteUrl = null,
+                    ),
+                )
+            }
+        }.sortedBy { it.name.lowercase() }
+    }
+
     suspend fun list(folderPath: String): List<NasEntry> = withContext(Dispatchers.IO) {
-        val path = normalizeFsPath(folderPath)
+        val mapped = toSharePath(folderPath)
+        // 根 / 或空：列共享，不要对 /volume1 调 list
+        if (mapped == "/" || mapped.isBlank()) {
+            return@withContext listShares()
+        }
         val session = ensureSession()
         val params = linkedMapOf(
             "api" to "SYNO.FileStation.List",
             "version" to "2",
             "method" to "list",
-            "folder_path" to path,
-            "additional" to "[\"type\",\"size\",\"time\"]",
+            "folder_path" to mapped,
+            "additional" to "[\"type\",\"size\",\"time\",\"real_path\"]",
             "_sid" to session,
         )
-        var json = getJson("$base/webapi/entry.cgi", params)
-        if (isSessionExpired(json)) {
-            invalidateSession()
-            params["_sid"] = login()
-            json = getJson("$base/webapi/entry.cgi", params)
-        }
+        val json = requestWithRetry(params)
         if (!json.optBoolean("success")) {
-            val code = json.optJSONObject("error")?.optInt("code") ?: -1
-            throw when (code) {
-                408, 119 -> {
-                    invalidateSession()
-                    NasError.Unauthorized
-                }
-                400, 401 -> NasError.Unauthorized
-                402, 403 -> NasError.Forbidden
-                404, 414, 418 -> NasError.NotFound
-                else -> NasError.Server(code, "无法列出目录（File Station $code）")
-            }
+            // 若仍是 volume 路径失败，尝试再映射一次后报真实错误码
+            throw mapListError(json, context = "列出 $mapped")
         }
         val files = json.optJSONObject("data")?.optJSONArray("files")
             ?: throw NasError.EmptyListing
@@ -95,7 +134,8 @@ class SynologyFileStation(
             for (i in 0 until files.length()) {
                 val f = files.getJSONObject(i)
                 val name = f.optString("name")
-                val fp = f.optString("path").ifBlank { "$path/$name" }
+                if (name == "#recycle" || name.startsWith(".")) continue
+                val fp = normalizeFsPath(f.optString("path").ifBlank { "$mapped/$name" })
                 val isDir = f.optBoolean("isdir")
                 val kind = when {
                     isDir -> NasEntryKind.Folder
@@ -114,15 +154,44 @@ class SynologyFileStation(
         }
     }
 
+    /**
+     * 把 `/volume1/music` 或 `/volume2/foo/bar` 映射为共享路径 `/music`、`/foo/bar`。
+     * 已是 `/music` 则原样返回。
+     */
+    fun toSharePath(raw: String): String {
+        val path = normalizeFsPath(raw)
+        if (path == "/") return "/"
+        // 裸卷路径 /volume1 → 共享列表根
+        if (BARE_VOLUME.matches(path)) return "/"
+        realPathToShare[path]?.let { return it }
+        // /volume1/music/subdir → 找最长 real_path 前缀
+        realPathToShare.entries
+            .filter { path == it.key || path.startsWith(it.key + "/") }
+            .maxByOrNull { it.key.length }
+            ?.let { (real, share) ->
+                val rest = path.removePrefix(real)
+                return normalizeFsPath(share + rest)
+            }
+        // 无缓存时：剥离 /volumeN 前缀（群晖惯例）/volume1/music → /music
+        val stripped = VOLUME_PREFIX.matchEntire(path)?.groupValues?.getOrNull(1)
+        if (stripped != null) {
+            return normalizeFsPath(stripped)
+        }
+        return path
+    }
+
     fun downloadUrl(filePath: String): String {
         val session = sid.orEmpty()
-        val enc = URLEncoder.encode(normalizeFsPath(filePath), "UTF-8")
+        val sharePath = toSharePath(filePath)
+        val enc = URLEncoder.encode(sharePath, "UTF-8")
         return "$base/webapi/entry.cgi?api=SYNO.FileStation.Download" +
             "&version=2&method=download&mode=open&path=$enc&_sid=$session"
     }
 
     companion object {
-        /** 探测该 Base URL 是否为 Synology DSM（公开，无需账号）。 */
+        private val VOLUME_PREFIX = Regex("^/volume\\d+(/.*)$")
+        private val BARE_VOLUME = Regex("^/volume\\d+$")
+
         suspend fun isSynologyDsm(baseUrl: String): Boolean = withContext(Dispatchers.IO) {
             try {
                 val base = baseUrl.trim().trimEnd('/')
@@ -145,6 +214,13 @@ class SynologyFileStation(
             }
         }
 
+        /** 保存前规范化：volume 绝对路径 → 共享路径。 */
+        fun normalizeLibraryPathForSave(raw: String): String {
+            val path = normalizeFsPath(raw)
+            val stripped = VOLUME_PREFIX.matchEntire(path)?.groupValues?.getOrNull(1)
+            return if (stripped != null) normalizeFsPath(stripped) else path
+        }
+
         fun normalizeFsPath(path: String): String {
             var p = path.trim().ifEmpty { "/" }
             if (!p.startsWith("/")) p = "/$p"
@@ -152,7 +228,7 @@ class SynologyFileStation(
             return p
         }
 
-        private fun classifyFile(name: String): NasEntryKind {
+        fun classifyFile(name: String): NasEntryKind {
             val lower = name.lowercase()
             if (lower.endsWith(".json") || lower.endsWith(".m3u") || lower.endsWith(".m3u8")) {
                 return NasEntryKind.Manifest
@@ -167,6 +243,33 @@ class SynologyFileStation(
     }
 
     private val base get() = baseUrl.trim().trimEnd('/')
+
+    private suspend fun requestWithRetry(params: MutableMap<String, String>): JSONObject {
+        var json = getJson("$base/webapi/entry.cgi", params)
+        if (isSessionExpired(json)) {
+            invalidateSession()
+            params["_sid"] = login()
+            json = getJson("$base/webapi/entry.cgi", params)
+        }
+        return json
+    }
+
+    private fun mapListError(json: JSONObject, context: String): NasError {
+        val code = json.optJSONObject("error")?.optInt("code") ?: -1
+        return when (code) {
+            408, 119 -> {
+                invalidateSession()
+                NasError.Unauthorized
+            }
+            400, 401 -> NasError.Unauthorized
+            402, 403 -> NasError.Forbidden
+            404, 414, 418 -> NasError.Server(
+                code,
+                "$context 失败（错误码 $code）：路径不是共享路径。请选共享如 /music，不要用 /volume1/…",
+            )
+            else -> NasError.Server(code, "$context 失败（File Station 错误码 $code）")
+        }
+    }
 
     private fun isSessionExpired(json: JSONObject): Boolean {
         if (json.optBoolean("success")) return false

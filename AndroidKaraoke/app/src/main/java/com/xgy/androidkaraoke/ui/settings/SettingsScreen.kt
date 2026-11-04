@@ -197,7 +197,7 @@ private fun SourceRow(vm: AppViewModel, source: LibrarySource) {
 private fun NasConnectPane(vm: AppViewModel) {
     ShelfHeader(
         if (vm.editingSourceId == null) "添加曲库 · 连接 NAS" else "编辑 NAS · 重新连接",
-        "群晖 DSM（如 :9527）请填账号密码；连接后选 File Station 目录（如 /volume1/music）",
+        "群晖请填账号密码；连接后选共享文件夹（如 music → 路径 /music，不要用 /volume1/…）",
     )
     SettingField("显示名称", vm.settingsDisplayName, singleLine = true) { vm.settingsDisplayName = it }
     SettingField("Base URL", vm.settingsBaseUrl, singleLine = true) { vm.settingsBaseUrl = it }
@@ -244,9 +244,13 @@ private fun NasConnectPane(vm: AppViewModel) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun NasDirPickerPane(vm: AppViewModel) {
-    ShelfHeader("选择曲库目录", "当前：${vm.dirPickPath}")
+    ShelfHeader(
+        "选择曲库目录",
+        if (vm.dirPickPath == "/") "当前：共享列表（点进 music 等共享）"
+        else "当前：${vm.dirPickPath}",
+    )
     Text(
-        "进入文件夹浏览，确认后将该路径设为曲库根（MV / 原唱 / 伴唱）。",
+        "群晖请选共享路径如 /music。扁平原 MP4 也可直接当曲库（歌名-歌手.mp4）。",
         color = KaraokeColors.textTertiary,
         fontSize = 14.sp,
     )
