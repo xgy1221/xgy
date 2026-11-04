@@ -53,9 +53,9 @@ fun HotScreen(vm: AppViewModel) {
                     fontSize = 15.sp,
                     modifier = Modifier.padding(top = 16.dp),
                 )
-                FocusSurface(onClick = { vm.openSettings() }, corner = 10.dp) {
+                FocusSurface(onClick = { vm.openSettingsLibrary() }, corner = 10.dp) {
                     Text(
-                        "去添加曲库",
+                        "去添加媒体库",
                         color = KaraokeColors.textPrimary,
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                         fontSize = 14.sp,

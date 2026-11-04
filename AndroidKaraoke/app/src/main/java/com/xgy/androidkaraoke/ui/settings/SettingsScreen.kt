@@ -15,11 +15,15 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LibraryAdd
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -28,6 +32,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import com.xgy.androidkaraoke.BrandConfig
+import com.xgy.androidkaraoke.BuildConfig
 import com.xgy.androidkaraoke.library.LibrarySource
 import com.xgy.androidkaraoke.library.LibrarySourceKind
 import com.xgy.androidkaraoke.playback.AppViewModel
@@ -54,13 +59,15 @@ fun SettingsScreen(vm: AppViewModel) {
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                when (vm.settingsEditorKind) {
-                    null -> SourceListPane(vm)
-                    LibrarySourceKind.Nas -> when (vm.nasWizardStep) {
+                when {
+                    vm.settingsEditorKind == LibrarySourceKind.Nas -> when (vm.nasWizardStep) {
                         AppViewModel.NasWizardStep.Connect -> NasConnectPane(vm)
                         AppViewModel.NasWizardStep.PickDirectory -> NasDirPickerPane(vm)
                     }
-                    LibrarySourceKind.Usb -> UsbEditorPane(vm)
+                    vm.settingsEditorKind == LibrarySourceKind.Usb -> UsbEditorPane(vm)
+                    vm.settingsSection == AppViewModel.SettingsSection.Library -> LibraryPane(vm)
+                    vm.settingsSection == AppViewModel.SettingsSection.About -> AboutPane(vm)
+                    else -> SettingsRootPane(vm)
                 }
             }
         }
@@ -69,15 +76,112 @@ fun SettingsScreen(vm: AppViewModel) {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun SourceListPane(vm: AppViewModel) {
-    ShelfHeader("设置", "添加曲库 · NAS / U 盘 · ${BrandConfig.appDisplayName}")
+private fun SettingsRootPane(vm: AppViewModel) {
+    ShelfHeader("设置", BrandConfig.tagline)
     Text(
-        "版本 ${com.xgy.androidkaraoke.BuildConfig.VERSION_NAME}（${com.xgy.androidkaraoke.BuildConfig.VERSION_CODE}）· 曲库已索引 ${vm.libraryCatalog.size} 首",
-        color = KaraokeColors.accentSoft,
+        "选择一项继续",
+        color = KaraokeColors.textTertiary,
         fontSize = 14.sp,
     )
+
+    SettingsMenuRow(
+        title = "添加媒体库",
+        subtitle = "NAS / U 盘曲库 · 已索引 ${vm.libraryCatalog.size} 首",
+        icon = Icons.Outlined.LibraryAdd,
+        onClick = { vm.openSettingsLibrary() },
+    )
+    SettingsMenuRow(
+        title = "关于",
+        subtitle = "查看应用版本与安装信息",
+        icon = Icons.Outlined.Info,
+        onClick = { vm.openSettingsAbout() },
+    )
+
+    FocusSurface(onClick = { vm.dismissOverlay() }, corner = 12.dp) {
+        Text(
+            "关闭",
+            color = KaraokeColors.textSecondary,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            fontSize = 16.sp,
+        )
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun SettingsMenuRow(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    FocusSurface(onClick = onClick, corner = 14.dp) { focused ->
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    if (focused) KaraokeColors.surfaceStrong else KaraokeColors.surface,
+                    RoundedCornerShape(14.dp),
+                )
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Icon(icon, contentDescription = null, tint = KaraokeColors.accentSoft)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, color = KaraokeColors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, color = KaraokeColors.textSecondary, fontSize = 14.sp)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun AboutPane(vm: AppViewModel) {
+    ShelfHeader("关于", BrandConfig.appDisplayName)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(KaraokeColors.surface, RoundedCornerShape(14.dp))
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(BrandConfig.logoTitle, color = KaraokeColors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text(BrandConfig.tagline, color = KaraokeColors.textSecondary, fontSize = 16.sp)
+        Text(
+            "版本 ${BuildConfig.VERSION_NAME}",
+            color = KaraokeColors.accentSoft,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            "versionCode ${BuildConfig.VERSION_CODE}",
+            color = KaraokeColors.textTertiary,
+            fontSize = 14.sp,
+        )
+        Text(
+            "目标设备 Sony KD-65A9F · Android TV",
+            color = KaraokeColors.textTertiary,
+            fontSize = 14.sp,
+        )
+    }
+    FocusSurface(onClick = { vm.backToSettingsRoot() }, corner = 12.dp) {
+        Text(
+            "返回设置",
+            color = KaraokeColors.textSecondary,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            fontSize = 16.sp,
+        )
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun LibraryPane(vm: AppViewModel) {
+    ShelfHeader("添加媒体库", "NAS / U 盘 · 连接后选择曲库目录")
     Text(
-        "先连接 NAS，再浏览目录选择曲库根；也可扫描已插入的 U 盘。",
+        "先连接 NAS，再浏览目录选择曲库根；也可扫描已插入的 U 盘。已索引 ${vm.libraryCatalog.size} 首。",
         color = KaraokeColors.textTertiary,
         fontSize = 14.sp,
     )
@@ -87,13 +191,13 @@ private fun SourceListPane(vm: AppViewModel) {
     }
 
     if (vm.librarySources.isEmpty()) {
-        Text("暂无曲库，请添加 NAS 或扫描 U 盘。", color = KaraokeColors.textSecondary, fontSize = 16.sp)
+        Text("暂无媒体库，请添加 NAS 或扫描 U 盘。", color = KaraokeColors.textSecondary, fontSize = 16.sp)
     }
 
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         FocusSurface(onClick = { vm.beginAddNas() }, corner = 12.dp) {
             Text(
-                "添加曲库（NAS）",
+                "添加 NAS",
                 color = KaraokeColors.textPrimary,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                 fontSize = 16.sp,
@@ -107,9 +211,9 @@ private fun SourceListPane(vm: AppViewModel) {
                 fontSize = 16.sp,
             )
         }
-        FocusSurface(onClick = { vm.dismissOverlay() }, corner = 12.dp) {
+        FocusSurface(onClick = { vm.backToSettingsRoot() }, corner = 12.dp) {
             Text(
-                "关闭",
+                "返回设置",
                 color = KaraokeColors.textSecondary,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                 fontSize = 16.sp,
@@ -201,7 +305,7 @@ private fun SourceRow(vm: AppViewModel, source: LibrarySource) {
 @Composable
 private fun NasConnectPane(vm: AppViewModel) {
     ShelfHeader(
-        if (vm.editingSourceId == null) "添加曲库 · 连接 NAS" else "编辑 NAS · 重新连接",
+        if (vm.editingSourceId == null) "添加媒体库 · 连接 NAS" else "编辑 NAS · 重新连接",
         "群晖请填账号密码；连接后选共享文件夹（如 music → 路径 /music，不要用 /volume1/…）",
     )
     SettingField("显示名称", vm.settingsDisplayName, singleLine = true) { vm.settingsDisplayName = it }
@@ -237,7 +341,7 @@ private fun NasConnectPane(vm: AppViewModel) {
         }
         FocusSurface(onClick = { vm.cancelSourceEditor() }, corner = 12.dp) {
             Text(
-                "返回列表",
+                "返回媒体库",
                 color = KaraokeColors.textSecondary,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                 fontSize = 16.sp,
@@ -377,7 +481,7 @@ private fun UsbEditorPane(vm: AppViewModel) {
         }
         FocusSurface(onClick = { vm.cancelSourceEditor() }, corner = 12.dp) {
             Text(
-                "返回列表",
+                "返回媒体库",
                 color = KaraokeColors.textSecondary,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                 fontSize = 16.sp,

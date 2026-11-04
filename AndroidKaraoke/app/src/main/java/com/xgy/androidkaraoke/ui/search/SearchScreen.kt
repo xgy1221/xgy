@@ -90,9 +90,9 @@ fun SearchScreen(vm: AppViewModel) {
                         )
                     }
                     if (vm.shouldShowLibraryGuide) {
-                        FocusSurface(onClick = { vm.openSettings() }, corner = 10.dp) {
+                        FocusSurface(onClick = { vm.openSettingsLibrary() }, corner = 10.dp) {
                             Text(
-                                "去添加曲库",
+                                "去添加媒体库",
                                 color = KaraokeColors.textPrimary,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 fontSize = 15.sp,
@@ -115,9 +115,9 @@ fun SearchScreen(vm: AppViewModel) {
                                 color = KaraokeColors.textTertiary,
                                 fontSize = 14.sp,
                             )
-                            FocusSurface(onClick = { vm.openSettings() }, corner = 10.dp) {
+                            FocusSurface(onClick = { vm.openSettingsLibrary() }, corner = 10.dp) {
                                 Text(
-                                    "去添加曲库",
+                                    "去添加媒体库",
                                     color = KaraokeColors.textPrimary,
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                     fontSize = 15.sp,

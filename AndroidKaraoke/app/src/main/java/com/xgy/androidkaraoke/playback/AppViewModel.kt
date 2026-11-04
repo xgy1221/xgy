@@ -143,8 +143,13 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         private set
     var settingsIsError by mutableStateOf(false)
         private set
-    /** null = 列表；Nas = 编辑 NAS；Usb = 编辑 U 盘子路径 */
+    /** null = 未在编辑；Nas = 编辑 NAS；Usb = 编辑 U 盘子路径 */
     var settingsEditorKind by mutableStateOf<LibrarySourceKind?>(null)
+        private set
+
+    /** 设置主菜单分区：根菜单 / 添加媒体库 / 关于 */
+    enum class SettingsSection { Root, Library, About }
+    var settingsSection by mutableStateOf(SettingsSection.Root)
         private set
 
     /** NAS 添加向导：先连接，再选目录 */
@@ -425,7 +430,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         selectedTab = tab
     }
 
-    fun openSettings() {
+    fun openSettings(section: SettingsSection = SettingsSection.Root) {
         reloadSources(scanUsb = true, announceUsb = false)
         settingsEditorKind = null
         editingSourceId = null
@@ -433,10 +438,25 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         nasWizardStep = NasWizardStep.Connect
         settingsUsername = container.credentialStore.username()
         settingsPassword = ""
+        settingsSection = section
         overlay = Overlay.Settings
     }
 
+    fun openSettingsLibrary() = openSettings(SettingsSection.Library)
+
+    fun openSettingsAbout() {
+        settingsSection = SettingsSection.About
+        settingsEditorKind = null
+        settingsMessage = null
+    }
+
+    fun backToSettingsRoot() {
+        cancelSourceEditor()
+        settingsSection = SettingsSection.Root
+    }
+
     fun beginAddNas() {
+        settingsSection = SettingsSection.Library
         editingSourceId = null
         settingsEditorKind = LibrarySourceKind.Nas
         nasWizardStep = NasWizardStep.Connect
@@ -682,8 +702,8 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     fun openArtistSearch() {
         if (libraryCatalog.isEmpty()) {
-            showToast("请先添加曲库")
-            openSettings()
+            showToast("请先添加媒体库")
+            openSettingsLibrary()
             return
         }
         artistSearchQuery = ""
@@ -766,7 +786,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         val song = continueSingSong
         if (song == null) {
             showToast("还没有唱过的曲库歌曲")
-            if (libraryCatalog.isEmpty()) openSettings() else openSearch()
+            if (libraryCatalog.isEmpty()) openSettingsLibrary() else openSearch()
             return
         }
         openPlayback(song)
@@ -798,6 +818,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                         settingsMessage = null
                     }
                     settingsEditorKind != null -> cancelSourceEditor()
+                    settingsSection != SettingsSection.Root -> settingsSection = SettingsSection.Root
                     else -> overlay = Overlay.None
                 }
             }
