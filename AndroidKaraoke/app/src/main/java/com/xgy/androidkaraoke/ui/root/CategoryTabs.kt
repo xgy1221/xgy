@@ -25,8 +25,8 @@ fun CategoryTabs(
     selected: MainTab,
     onSelect: (MainTab) -> Unit,
 ) {
-    // 仅保留：随心唱 / 歌星 / 热门（去掉儿童、排行榜、玩法）
-    val tabs = listOf(MainTab.FreeSing, MainTab.Singers, MainTab.Hot)
+    // 仅保留：随心唱 / 歌星
+    val tabs = listOf(MainTab.FreeSing, MainTab.Singers)
     LazyRow(
         contentPadding = PaddingValues(horizontal = 40.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

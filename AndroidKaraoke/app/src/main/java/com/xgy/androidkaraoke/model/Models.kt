@@ -5,8 +5,8 @@ import androidx.compose.ui.graphics.Color
 enum class MainTab(val title: String, val implemented: Boolean = true) {
     FreeSing("随心唱"),
     Singers("歌星"),
-    Hot("热门"),
-    // 儿童 / 排行榜 / 玩法 已从顶部分类移除（雷电反馈）
+    // 热门 / 儿童 / 排行榜 / 玩法 已从顶部分类移除
+    Hot("热门", implemented = false),
     Kids("儿童", implemented = false),
     Ranking("排行榜", implemented = false),
     Features("玩法", implemented = false),

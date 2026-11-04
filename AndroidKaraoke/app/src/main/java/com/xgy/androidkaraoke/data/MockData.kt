@@ -22,7 +22,7 @@ object MockData {
         // 首页英雄位是 MiniNowPlayingCard，禁止再放「每日推荐」星标瓷砖
         HomeTile("song", HomeTileKind.SongOrder, "歌曲点歌", Color(0xFF3373F2)),
         HomeTile("singer", HomeTileKind.SingerOrder, "歌手点歌", Color(0xFFD93347)),
-        HomeTile("category", HomeTileKind.CategoryOrder, "分类点歌", Color(0xFF2647B8)),
+        // 「分类点歌」曾跳转热门 Tab，热门已移除
         HomeTile("queue", HomeTileKind.MyQueue, "我的点唱", Color(0xFFE85A8C)),
         HomeTile("fav", HomeTileKind.Favorites, "收藏歌曲", Color(0xFFEBB847)),
         HomeTile("krec", HomeTileKind.KRecommend, "K歌推荐", Color(0xFF73B2F2)),

@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.PersonSearch
@@ -44,7 +43,6 @@ fun HomeScreen(vm: AppViewModel) {
         it.kind in setOf(
             HomeTileKind.SongOrder,
             HomeTileKind.SingerOrder,
-            HomeTileKind.CategoryOrder,
         )
     }
     val bottom = MockData.homeTiles.filter {
@@ -191,7 +189,7 @@ private fun onTile(vm: AppViewModel, kind: HomeTileKind) {
         HomeTileKind.Daily -> vm.openContinueSinging()
         HomeTileKind.SongOrder -> vm.openSearch()
         HomeTileKind.SingerOrder -> vm.selectTab(com.xgy.androidkaraoke.model.MainTab.Singers)
-        HomeTileKind.CategoryOrder -> vm.selectTab(com.xgy.androidkaraoke.model.MainTab.Hot)
+        HomeTileKind.CategoryOrder -> vm.openSearch()
         HomeTileKind.FreeZone -> vm.openSearch()
         HomeTileKind.MyQueue -> vm.openQueue()
         HomeTileKind.Favorites -> {
@@ -207,7 +205,6 @@ private fun onTile(vm: AppViewModel, kind: HomeTileKind) {
 private fun iconFor(kind: HomeTileKind): ImageVector = when (kind) {
     HomeTileKind.SongOrder -> Icons.Outlined.MusicNote
     HomeTileKind.SingerOrder -> Icons.Outlined.PersonSearch
-    HomeTileKind.CategoryOrder -> Icons.Outlined.Category
     HomeTileKind.MyQueue -> Icons.Outlined.QueueMusic
     HomeTileKind.Favorites -> Icons.Outlined.FavoriteBorder
     HomeTileKind.KRecommend -> Icons.Outlined.Recommend

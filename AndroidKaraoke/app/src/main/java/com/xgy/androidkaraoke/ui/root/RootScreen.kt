@@ -24,7 +24,6 @@ import com.xgy.androidkaraoke.playback.AppViewModel
 import com.xgy.androidkaraoke.theme.AmbientBackground
 import com.xgy.androidkaraoke.theme.KaraokeColors
 import com.xgy.androidkaraoke.ui.home.HomeScreen
-import com.xgy.androidkaraoke.ui.hot.HotScreen
 import com.xgy.androidkaraoke.ui.nas.NasLibraryScreen
 import com.xgy.androidkaraoke.ui.playback.GuessYouWantScreen
 import com.xgy.androidkaraoke.ui.playback.PlaybackScreen
@@ -81,7 +80,6 @@ fun RootScreen(vm: AppViewModel) {
                     when (vm.selectedTab) {
                         MainTab.FreeSing -> HomeScreen(vm)
                         MainTab.Singers -> SingersScreen(vm)
-                        MainTab.Hot -> HotScreen(vm)
                         else -> HomeScreen(vm)
                     }
                 }
