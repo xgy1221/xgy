@@ -98,7 +98,7 @@ fun PhoneOrderScreen(vm: AppViewModel) {
                                 vm.phoneServerRunning -> "已开启"
                                 else -> "未开启"
                             }
-                        } · 曲库 ${vm.catalog.size} 首" +
+                        } · 曲库 ${vm.libraryCatalog.size} 首" +
                             if (vm.phoneOrderCandidates.isNotEmpty()) {
                                 " · 候选 ${vm.phoneOrderCandidates.size} 个地址"
                             } else {

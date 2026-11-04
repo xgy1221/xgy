@@ -182,8 +182,9 @@ fun HomeScreen(vm: AppViewModel) {
 private fun onTile(vm: AppViewModel, kind: HomeTileKind) {
     when (kind) {
         HomeTileKind.Daily -> {
-            val song = vm.forYouRecommendations.firstOrNull() ?: MockData.nowPlaying
-            vm.openPlayback(song)
+            val song = vm.forYouRecommendations.firstOrNull()
+            if (song != null) vm.openPlayback(song)
+            else vm.showToast("请先添加曲库")
         }
         HomeTileKind.SongOrder -> vm.openSearch()
         HomeTileKind.SingerOrder -> vm.selectTab(com.xgy.androidkaraoke.model.MainTab.Singers)

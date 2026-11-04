@@ -51,6 +51,10 @@ async function load() {
 function render() {
   const q = (document.getElementById('q').value || '').trim().toLowerCase().replace(/\s+/g,'');
   const list = document.getElementById('list');
+  if (!songs.length) {
+    list.innerHTML = '<div style="padding:18px;color:#777">电视曲库为空。请先在电视「设置」添加 NAS / U 盘曲库（不含演示歌）。</div>';
+    return;
+  }
   const filtered = songs.filter(s => {
     if (!q) return true;
     const hay = ((s.title||'')+(s.artist||'')).toLowerCase();
@@ -64,7 +68,7 @@ function render() {
         <div class="artist">${escapeHtml(s.artist)}</div>
       </div>
       <button onclick="addSong('${s.id}')">点歌</button>
-    </div>`).join('') || '<div style="padding:18px;color:#777">没有匹配歌曲</div>';
+    </div>`).join('') || '<div style="padding:18px;color:#777">曲库里没有匹配歌曲</div>';
 }
 async function addSong(id) {
   const res = await fetch('/api/queue', {

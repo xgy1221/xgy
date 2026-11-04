@@ -11,7 +11,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
 import com.xgy.androidkaraoke.AppContainer
 import com.xgy.androidkaraoke.BrandConfig
-import com.xgy.androidkaraoke.data.MockData
 import com.xgy.androidkaraoke.library.LibraryEntry
 import com.xgy.androidkaraoke.library.LibraryEntryKind
 import com.xgy.androidkaraoke.library.LibrarySource
@@ -73,14 +72,17 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     var prefsEpoch by mutableStateOf(0)
         private set
 
-    /** 手机点歌与推荐可用的曲目目录（mock ∪ 已加载曲库）。 */
-    val catalog = mutableStateListOf<Song>().also { it.addAll(MockData.catalog) }
+    /**
+     * 已索引曲库（仅 USB/NAS/远程真实曲目）。
+     * 不再混入 MockData 演示歌；点歌 / 搜索 / 手机页一律只看这里。
+     */
+    val catalog = mutableStateListOf<Song>()
 
     val forYouRecommendations: List<Song>
         get() {
             prefsEpoch
             return RecommendationEngine.rank(
-                candidates = catalog.toList(),
+                candidates = libraryCatalog,
                 artistWeights = listeningPrefs.artistWeights(),
                 genreWeights = listeningPrefs.genreWeights(),
                 excludeIds = emptySet(),
@@ -94,7 +96,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             prefsEpoch
             val exclude = queue.map { it.id }.toSet() + setOfNotNull(nowPlaying?.id)
             return RecommendationEngine.rank(
-                candidates = catalog.toList(),
+                candidates = libraryCatalog,
                 artistWeights = listeningPrefs.artistWeights(),
                 genreWeights = listeningPrefs.genreWeights(),
                 excludeIds = exclude,
@@ -171,8 +173,25 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     // ——— 搜索 ———
     var searchQuery by mutableStateOf("")
         private set
+    /** 空关键词：最近唱过 + 习惯推荐 + 曲库浏览；有关键词：仅匹配真实曲库。 */
     val searchResults: List<Song>
-        get() = SongSearch.filter(catalog.toList(), searchQuery)
+        get() {
+            prefsEpoch
+            val lib = libraryCatalog
+            if (lib.isEmpty()) return emptyList()
+            val q = searchQuery.trim()
+            if (q.isNotEmpty()) return SongSearch.filter(lib, q)
+            val recent = recentSongs
+            val ranked = RecommendationEngine.rank(
+                candidates = lib,
+                artistWeights = listeningPrefs.artistWeights(),
+                genreWeights = listeningPrefs.genreWeights(),
+                excludeIds = recent.map { it.id }.toSet(),
+                nowPlayingId = nowPlaying?.id,
+                limit = 60,
+            )
+            return (recent + ranked).distinctBy { it.id }.take(80)
+        }
 
     var playbackError by mutableStateOf<String?>(null)
         private set
@@ -180,15 +199,15 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     var libraryGuideDismissed by mutableStateOf(sourceStore.isLibraryGuideDismissed())
         private set
 
-    /** 尚无非 Mock 曲库且用户未关掉引导 */
+    /** 尚无真实曲库且用户未关掉引导 */
     val shouldShowLibraryGuide: Boolean
-        get() = !libraryGuideDismissed && catalog.none { it.source != MediaSource.Mock }
+        get() = !libraryGuideDismissed && libraryCatalog.isEmpty()
 
     val recentSongs: List<Song>
         get() {
             prefsEpoch
             return listeningPrefs.historySongIds().mapNotNull { id ->
-                catalog.firstOrNull { it.id == id }
+                libraryCatalog.firstOrNull { it.id == id }
             }.take(12)
         }
 
@@ -196,11 +215,11 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         get() {
             prefsEpoch
             return listeningPrefs.favoriteIds().mapNotNull { id ->
-                catalog.firstOrNull { it.id == id }
+                libraryCatalog.firstOrNull { it.id == id }
             }
         }
 
-    /** 真实曲库（NAS/USB）；无真实曲目时为空，歌星页显示空态。 */
+    /** 真实曲库（NAS/USB/远程）；演示 Mock 一律排除。 */
     val libraryCatalog: List<Song>
         get() = catalog.filter { it.source != MediaSource.Mock }
 
@@ -707,7 +726,6 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             queue.isNotEmpty() -> play(queue.removeAt(0))
             else -> {
                 val fallback = libraryCatalog.firstOrNull()
-                    ?: catalog.firstOrNull()
                 if (fallback != null) play(fallback)
                 else {
                     showToast("没有可播放的歌曲，请先添加曲库")
@@ -753,6 +771,15 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun addToQueue(song: Song, fromPhone: Boolean = false) {
+        if (song.source == MediaSource.Mock) {
+            showToast("演示歌曲不可点，请使用自己的曲库")
+            return
+        }
+        if (song.anyPlayableUrl().isNullOrBlank()) {
+            showToast("无法点歌「${song.title}」：缺少可播放文件")
+            return
+        }
+        // 仅收纳真实曲库曲目
         mergeCatalog(listOf(song))
         listeningPrefs.recordQueued(song.artist, song.styleTags, song.id)
         bumpPrefs()
@@ -769,6 +796,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         if (nowPlaying == null) {
             // 空闲时直接开唱；不把「正在播」留在已点列表里
             play(song)
+            if (playbackError != null) return
             showToast(
                 if (fromPhone) "手机点歌开始：${song.title}"
                 else "开始播放：${song.title}",
@@ -804,6 +832,11 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun play(song: Song) {
+        if (song.source == MediaSource.Mock) {
+            playbackError = "演示歌曲不可播放，请使用自己的曲库"
+            showToast(playbackError!!)
+            return
+        }
         if (song.anyPlayableUrl().isNullOrBlank()) {
             playbackError = "无法播放「${song.title}」：缺少 MV / 原唱 / 伴唱"
             showToast(playbackError!!)
@@ -1198,6 +1231,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     private fun mergeCatalog(songs: List<Song>) {
         songs.forEach { song ->
+            if (song.source == MediaSource.Mock) return@forEach
             val idx = catalog.indexOfFirst { it.id == song.id }
             if (idx >= 0) catalog[idx] = song else catalog.add(song)
         }
@@ -1229,7 +1263,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         phoneServerError = null
         val server = PhoneRequestServer(
             indexHtml = container.phoneOrderHtml,
-            catalogProvider = { catalog.toList() },
+            catalogProvider = { libraryCatalog },
             queueProvider = { queue.toList() },
             onAddSong = { song ->
                 viewModelScope.launch {

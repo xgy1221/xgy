@@ -65,7 +65,7 @@ fun SearchScreen(vm: AppViewModel) {
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                     ) {
                         if (vm.searchQuery.isEmpty()) {
-                            Text("输入关键词，如 小半 / 刀郎 / xb", color = KaraokeColors.textTertiary, fontSize = 17.sp)
+                            Text("搜索曲库歌名 / 歌星 / 首拼", color = KaraokeColors.textTertiary, fontSize = 17.sp)
                         }
                         BasicTextField(
                             value = vm.searchQuery,
@@ -103,11 +103,33 @@ fun SearchScreen(vm: AppViewModel) {
 
                 val results = vm.searchResults
                 when {
+                    vm.libraryCatalog.isEmpty() -> {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(
+                                "曲库还没有歌曲",
+                                color = KaraokeColors.textSecondary,
+                                fontSize = 16.sp,
+                            )
+                            Text(
+                                "演示歌不会出现在这里。请先添加 NAS / U 盘曲库后再点歌。",
+                                color = KaraokeColors.textTertiary,
+                                fontSize = 14.sp,
+                            )
+                            FocusSurface(onClick = { vm.openSettings() }, corner = 10.dp) {
+                                Text(
+                                    "去添加曲库",
+                                    color = KaraokeColors.textPrimary,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    fontSize = 15.sp,
+                                )
+                            }
+                        }
+                    }
                     results.isEmpty() && vm.searchQuery.isNotBlank() -> {
-                        Text("没有匹配歌曲，换个词试试", color = KaraokeColors.textSecondary, fontSize = 16.sp)
+                        Text("曲库里没有匹配歌曲，换个词试试", color = KaraokeColors.textSecondary, fontSize = 16.sp)
                     }
                     results.isEmpty() -> {
-                        Text("输入后显示结果；也可浏览下方热门", color = KaraokeColors.textSecondary, fontSize = 16.sp)
+                        Text("曲库为空或暂无推荐", color = KaraokeColors.textSecondary, fontSize = 16.sp)
                     }
                     else -> {
                         LazyColumn(
