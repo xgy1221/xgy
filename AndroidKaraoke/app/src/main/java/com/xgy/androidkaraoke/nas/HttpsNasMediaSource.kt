@@ -1,5 +1,6 @@
 package com.xgy.androidkaraoke.nas
 
+import com.xgy.androidkaraoke.lyrics.LyricsFiles
 import com.xgy.androidkaraoke.model.MediaSource
 import com.xgy.androidkaraoke.model.Song
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +33,7 @@ sealed class NasError(message: String) : Exception(message) {
     )
 }
 
-enum class NasEntryKind { Folder, Audio, Video, Manifest, Other }
+enum class NasEntryKind { Folder, Audio, Video, Manifest, Lyrics, Other }
 
 data class NasEntry(
     val id: String,
@@ -141,14 +142,45 @@ class HttpsNasMediaSource(
         )
     }
 
-    suspend fun listSongs(under: String): List<Song> =
-        listDirectory(under).mapNotNull { entry ->
-            if (entry.kind == NasEntryKind.Audio || entry.kind == NasEntryKind.Video) {
-                songFrom(entry)
-            } else {
-                null
+    suspend fun listSongs(under: String): List<Song> {
+        val entries = listDirectory(under)
+        val songs = mutableListOf<Song>()
+        for (entry in entries) {
+            when (entry.kind) {
+                NasEntryKind.Audio, NasEntryKind.Video -> {
+                    songs += songFrom(entry, siblingLyricsUrl(entries, entry))
+                }
+                NasEntryKind.Folder -> {
+                    // 双轨曲包：子文件夹含 mv/original/accompaniment[/lyrics.lrc]
+                    runCatching { songFromFolder(entry.path, entry.name) }
+                        .getOrNull()
+                        ?.takeIf { it.anyPlayableUrl() != null }
+                        ?.let { songs += it }
+                }
+                else -> Unit
             }
         }
+        return songs
+    }
+
+    /** 读取外挂 LRC 文本（播放前调用）。 */
+    suspend fun loadLyricsText(song: Song): String? = withContext(Dispatchers.IO) {
+        val rawUrl = song.lyricsUrl ?: return@withContext null
+        ensureBackend()
+        val url = if (synologyMode.get() == true) {
+            fs().ensureSession()
+            val path = SynologyFileStation.extractDownloadPath(rawUrl)
+                ?: rawUrl.takeIf { it.startsWith("/") && !it.startsWith("http") }
+            if (path != null) fs().downloadUrl(path) else rawUrl
+        } else {
+            rawUrl
+        }
+        try {
+            fetchText(url, allowRedirect = true)
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     suspend fun loadLibraryJson(atPath: String = config.normalizedPath): List<Song> =
         withContext(Dispatchers.IO) {
@@ -188,7 +220,7 @@ class HttpsNasMediaSource(
             emptyList()
         }
 
-    private fun songFrom(entry: NasEntry): Song {
+    private fun songFrom(entry: NasEntry, lyricsUrl: String? = null): Song {
         val parsed = KaraokeFileNames.parseTitleArtist(entry.name)
         val url = entry.absoluteUrl
         val lower = entry.name.lowercase()
@@ -218,7 +250,19 @@ class HttpsNasMediaSource(
                 isExplicitAcc -> url
                 else -> null
             },
+            lyricsUrl = lyricsUrl,
         )
+    }
+
+    private fun siblingLyricsUrl(entries: List<NasEntry>, media: NasEntry): String? {
+        val parsed = KaraokeFileNames.parseTitleArtist(media.name)
+        val prefer = LyricsFiles.preferredNames(
+            title = parsed.first,
+            artist = parsed.second,
+            folderOrBase = media.name,
+        )
+        val name = LyricsFiles.pickLyricsName(entries.map { it.name }, prefer) ?: return null
+        return entries.firstOrNull { it.name.equals(name, ignoreCase = true) }?.absoluteUrl
     }
 
     suspend fun songFromFolder(folderPath: String, folderName: String): Song? {
@@ -230,6 +274,7 @@ class HttpsNasMediaSource(
             val lower = e.name.lowercase()
             val url = e.absoluteUrl ?: continue
             when {
+                e.kind == NasEntryKind.Lyrics || lower.endsWith(".lrc") -> Unit
                 lower.startsWith("mv") || lower.contains(".mv.") ||
                     (e.kind == NasEntryKind.Video && mv == null &&
                         !lower.contains("original") && !lower.contains("原唱") &&
@@ -244,15 +289,24 @@ class HttpsNasMediaSource(
         // 同一 URL 不重复挂到多轨，避免 UI 误报「有原唱/有伴唱」
         if (original != null && original == mv) original = null
         if (acc != null && (acc == mv || acc == original)) acc = null
+        val parsed = KaraokeFileNames.parseTitleArtist("$folderName.mp4")
+        val prefer = LyricsFiles.preferredNames(
+            title = parsed.first.takeIf { it != folderName || parsed.second != "NAS" } ?: folderName,
+            artist = parsed.second.takeIf { it != "NAS" },
+            folderOrBase = folderName,
+        )
+        val lyricsName = LyricsFiles.pickLyricsName(entries.map { it.name }, prefer)
+        val lyricsUrl = entries.firstOrNull { it.name.equals(lyricsName, ignoreCase = true) }?.absoluteUrl
         return Song(
             id = folderPath,
-            title = folderName.trim('/'),
-            artist = "NAS",
+            title = if (parsed.second != "NAS") parsed.first else folderName.trim('/'),
+            artist = if (parsed.second != "NAS") parsed.second else "NAS",
             source = MediaSource.Nas,
             relativePath = folderPath,
             mvUrl = mv,
             originalUrl = original,
             accompanimentUrl = acc,
+            lyricsUrl = lyricsUrl,
         )
     }
 
@@ -275,7 +329,7 @@ class HttpsNasMediaSource(
         val pathHint = song.relativePath?.takeIf {
             it.startsWith("/") && !it.startsWith("http")
         }
-        // 扁平单文件：只用 relativePath 重建 MV
+        // 扁平单文件：只用 relativePath 重建 MV（保留歌词 URL 刷新）
         if (pathHint != null &&
             song.originalUrl.isNullOrBlank() &&
             song.accompanimentUrl.isNullOrBlank()
@@ -284,12 +338,14 @@ class HttpsNasMediaSource(
                 mvUrl = station.downloadUrl(pathHint),
                 originalUrl = null,
                 accompanimentUrl = null,
+                lyricsUrl = refresh(song.lyricsUrl),
             )
         }
         song.copy(
             mvUrl = refresh(song.mvUrl) ?: pathHint?.let { station.downloadUrl(it) },
             originalUrl = refresh(song.originalUrl),
             accompanimentUrl = refresh(song.accompanimentUrl),
+            lyricsUrl = refresh(song.lyricsUrl),
         )
     }
 
@@ -469,6 +525,7 @@ class HttpsNasMediaSource(
         if (lower.endsWith(".json") || lower == "library.json" || lower.endsWith(".m3u") || lower.endsWith(".m3u8")) {
             return NasEntryKind.Manifest
         }
+        if (lower.endsWith(".lrc")) return NasEntryKind.Lyrics
         val ext = lower.substringAfterLast('.', missingDelimiterValue = "")
         if (ext in config.audioExtensions) {
             return if (ext in listOf("mp4", "m4v", "mov", "mkv")) NasEntryKind.Video else NasEntryKind.Audio
@@ -497,6 +554,7 @@ class HttpsNasMediaSource(
                     val mv = abs("mv") ?: abs("mvUrl") ?: abs("video")
                     val original = abs("original") ?: abs("originalUrl") ?: abs("vocal")
                     val acc = abs("accompaniment") ?: abs("accompanimentUrl") ?: abs("instrumental")
+                    val lyrics = abs("lyrics") ?: abs("lyricsUrl") ?: abs("lrc")
                     val legacy = abs("url") ?: rel?.let { config.urlForRelativePath(it) }
                     add(
                         Song(
@@ -509,6 +567,7 @@ class HttpsNasMediaSource(
                             mvUrl = mv ?: if (legacy != null && legacy.contains(".mp4")) legacy else null,
                             originalUrl = original ?: legacy,
                             accompanimentUrl = acc,
+                            lyricsUrl = lyrics,
                         ),
                     )
                 }

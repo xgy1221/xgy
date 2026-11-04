@@ -266,6 +266,7 @@ class SynologyFileStation(
             return when (ext) {
                 "mp4", "m4v", "mov", "mkv", "webm" -> NasEntryKind.Video
                 "mp3", "m4a", "aac", "flac", "wav", "aiff", "alac", "ogg" -> NasEntryKind.Audio
+                "lrc" -> NasEntryKind.Lyrics
                 else -> NasEntryKind.Other
             }
         }

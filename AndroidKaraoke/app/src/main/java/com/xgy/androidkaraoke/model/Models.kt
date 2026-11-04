@@ -34,6 +34,8 @@ data class Song(
     val mvUrl: String? = null,
     val originalUrl: String? = null,
     val accompanimentUrl: String? = null,
+    /** 外挂 LRC 地址（file:// 或群晖 Download URL）。 */
+    val lyricsUrl: String? = null,
     /** 热门兜底权重（越大越偏热门）。 */
     val hotScore: Int = 0,
 ) {
@@ -48,6 +50,7 @@ data class Song(
         get() = !accompanimentUrl.isNullOrBlank() &&
             accompanimentUrl != mvUrl &&
             accompanimentUrl != originalUrl
+    val hasLyrics: Boolean get() = !lyricsUrl.isNullOrBlank()
 
     val styleTags: List<String>
         get() = (genres + listOfNotNull(tag)).map { it.trim() }.filter { it.isNotEmpty() }.distinct()
@@ -62,7 +65,7 @@ data class Song(
     /** 仅保留 MV（或唯一可播轨），用于伴唱轨失败时降级。 */
     fun mvOnlyFallback(): Song {
         val sole = mvUrl ?: originalUrl ?: accompanimentUrl
-        return copy(mvUrl = sole, originalUrl = null, accompanimentUrl = null)
+        return copy(mvUrl = sole, originalUrl = null, accompanimentUrl = null, lyricsUrl = lyricsUrl)
     }
 }
 

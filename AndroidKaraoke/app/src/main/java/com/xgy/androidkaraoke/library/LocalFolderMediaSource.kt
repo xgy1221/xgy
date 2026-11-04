@@ -1,15 +1,18 @@
 package com.xgy.androidkaraoke.library
 
+import com.xgy.androidkaraoke.lyrics.LyricsFiles
 import com.xgy.androidkaraoke.model.MediaSource
 import com.xgy.androidkaraoke.model.Song
+import com.xgy.androidkaraoke.nas.KaraokeFileNames
 import com.xgy.androidkaraoke.nas.NasConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
+import java.net.URI
 
 /**
- * 本地/U 盘目录浏览：与 NAS 相同的文件夹三轨约定 + library.json。
+ * 本地/U 盘目录浏览：与 NAS 相同的文件夹三轨约定 + library.json + `.lrc`。
  */
 class LocalFolderMediaSource {
     private val audioExt = NasConfig.defaultAudioExtensions.toSet()
@@ -33,6 +36,8 @@ class LocalFolderMediaSource {
                         kind = kind,
                         playableUri = if (kind == LibraryEntryKind.Audio || kind == LibraryEntryKind.Video) {
                             file.toURI().toString()
+                        } else if (kind == LibraryEntryKind.Lyrics) {
+                            file.toURI().toString()
                         } else {
                             null
                         },
@@ -52,12 +57,13 @@ class LocalFolderMediaSource {
             var mv: String? = null
             var original: String? = null
             var acc: String? = null
-            dir.listFiles()?.forEach { f ->
-                if (!f.isFile) return@forEach
+            val files = dir.listFiles()?.filter { it.isFile } ?: emptyList()
+            files.forEach { f ->
                 val lower = f.name.lowercase()
                 val ext = f.extension.lowercase()
                 val uri = f.toURI().toString()
                 when {
+                    lower.endsWith(".lrc") -> Unit
                     lower.startsWith("mv") || lower.contains(".mv.") ||
                         (ext in videoExt && mv == null &&
                             !lower.contains("original") && !lower.contains("伴唱") &&
@@ -71,15 +77,27 @@ class LocalFolderMediaSource {
                 }
             }
             if (mv == null && original == null && acc == null) return@withContext null
+            if (original != null && original == mv) original = null
+            if (acc != null && (acc == mv || acc == original)) acc = null
+            val parsed = KaraokeFileNames.parseTitleArtist("$folderName.mp4")
+            val prefer = LyricsFiles.preferredNames(
+                title = if (parsed.second != "NAS") parsed.first else folderName,
+                artist = parsed.second.takeIf { it != "NAS" },
+                folderOrBase = folderName,
+            )
+            val lyricsName = LyricsFiles.pickLyricsName(files.map { it.name }, prefer)
+            val lyricsUrl = files.firstOrNull { it.name.equals(lyricsName, ignoreCase = true) }
+                ?.toURI()?.toString()
             Song(
                 id = folderPath,
-                title = folderName.trim('/'),
-                artist = "U盘",
+                title = if (parsed.second != "NAS") parsed.first else folderName.trim('/'),
+                artist = if (parsed.second != "NAS") parsed.second else "U盘",
                 source = MediaSource.Usb,
                 relativePath = folderPath,
                 mvUrl = mv,
                 originalUrl = original,
                 accompanimentUrl = acc,
+                lyricsUrl = lyricsUrl,
             )
         }
 
@@ -96,26 +114,53 @@ class LocalFolderMediaSource {
 
     suspend fun listSongs(dirPath: String): List<Song> = withContext(Dispatchers.IO) {
         val dir = File(dirPath)
-        dir.listFiles()
-            ?.filter { it.isFile && classify(it) in setOf(LibraryEntryKind.Audio, LibraryEntryKind.Video) }
-            ?.map { file ->
-                val lower = file.name.lowercase()
-                val uri = file.toURI().toString()
-                val isMv = classify(file) == LibraryEntryKind.Video || lower.contains("mv")
-                val isOriginal = lower.contains("original") || lower.contains("原唱")
-                val isAcc = lower.contains("accompaniment") || lower.contains("伴唱")
-                Song(
-                    id = file.absolutePath,
-                    title = file.nameWithoutExtension,
-                    artist = "U盘",
-                    source = MediaSource.Usb,
-                    relativePath = file.absolutePath,
-                    mvUrl = if (isMv) uri else null,
-                    originalUrl = if (isOriginal || (!isMv && !isAcc)) uri else null,
-                    accompanimentUrl = if (isAcc) uri else null,
-                )
+        val children = dir.listFiles()?.filter { !it.name.startsWith(".") } ?: return@withContext emptyList()
+        val songs = mutableListOf<Song>()
+        val files = children.filter { it.isFile }
+        for (file in files) {
+            val kind = classify(file)
+            if (kind !in setOf(LibraryEntryKind.Audio, LibraryEntryKind.Video)) continue
+            val lower = file.name.lowercase()
+            val uri = file.toURI().toString()
+            val isMv = kind == LibraryEntryKind.Video || lower.contains("mv")
+            val isOriginal = lower.contains("original") || lower.contains("原唱")
+            val isAcc = lower.contains("accompaniment") || lower.contains("伴唱")
+            val parsed = KaraokeFileNames.parseTitleArtist(file.name)
+            val prefer = LyricsFiles.preferredNames(parsed.first, parsed.second, file.name)
+            val lyricsName = LyricsFiles.pickLyricsName(files.map { it.name }, prefer)
+            val lyricsUrl = files.firstOrNull { it.name.equals(lyricsName, ignoreCase = true) }
+                ?.toURI()?.toString()
+            songs += Song(
+                id = file.absolutePath,
+                title = parsed.first,
+                artist = if (parsed.second != "NAS") parsed.second else "U盘",
+                source = MediaSource.Usb,
+                relativePath = file.absolutePath,
+                mvUrl = if (isMv) uri else null,
+                originalUrl = if (isOriginal || (!isMv && !isAcc)) uri else null,
+                accompanimentUrl = if (isAcc) uri else null,
+                lyricsUrl = lyricsUrl,
+            )
+        }
+        for (sub in children.filter { it.isDirectory }) {
+            songFromFolder(sub.absolutePath, sub.name)
+                ?.takeIf { it.anyPlayableUrl() != null }
+                ?.let { songs += it }
+        }
+        songs
+    }
+
+    suspend fun loadLyricsText(song: Song): String? = withContext(Dispatchers.IO) {
+        val url = song.lyricsUrl ?: return@withContext null
+        try {
+            when {
+                url.startsWith("file:") -> File(URI(url)).takeIf { it.isFile }?.readText(Charsets.UTF_8)
+                url.startsWith("/") -> File(url).takeIf { it.isFile }?.readText(Charsets.UTF_8)
+                else -> null
             }
-            .orEmpty()
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun resolveDir(rootPath: String, relativeOrAbs: String): File? {
@@ -133,6 +178,7 @@ class LocalFolderMediaSource {
         if (lower.endsWith(".json") || lower.endsWith(".m3u") || lower.endsWith(".m3u8")) {
             return LibraryEntryKind.Manifest
         }
+        if (lower.endsWith(".lrc")) return LibraryEntryKind.Lyrics
         val ext = file.extension.lowercase()
         if (ext in audioExt) {
             return if (ext in listOf("mp4", "m4v", "mov", "mkv")) LibraryEntryKind.Video
@@ -170,6 +216,7 @@ class LocalFolderMediaSource {
                             mvUrl = abs("mv") ?: abs("mvUrl"),
                             originalUrl = abs("original") ?: abs("originalUrl") ?: abs("url"),
                             accompanimentUrl = abs("accompaniment") ?: abs("accompanimentUrl"),
+                            lyricsUrl = abs("lyrics") ?: abs("lyricsUrl") ?: abs("lrc"),
                         ),
                     )
                 }

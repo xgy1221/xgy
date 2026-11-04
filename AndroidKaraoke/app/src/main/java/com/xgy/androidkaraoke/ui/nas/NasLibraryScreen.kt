@@ -191,10 +191,11 @@ fun NasLibraryScreen(vm: AppViewModel) {
                                     Text(entry.name, color = KaraokeColors.textPrimary, fontSize = 18.sp)
                                     Text(
                                         when (entry.kind) {
-                                            LibraryEntryKind.Folder -> "文件夹（可含 MV/原唱/伴唱）"
+                                            LibraryEntryKind.Folder -> "文件夹（可含 MV/原唱/伴唱/歌词）"
                                             LibraryEntryKind.Audio -> "音频"
                                             LibraryEntryKind.Video -> "视频"
                                             LibraryEntryKind.Manifest -> "清单"
+                                            LibraryEntryKind.Lyrics -> "歌词 LRC"
                                             LibraryEntryKind.Other -> "文件"
                                         },
                                         color = KaraokeColors.textTertiary,

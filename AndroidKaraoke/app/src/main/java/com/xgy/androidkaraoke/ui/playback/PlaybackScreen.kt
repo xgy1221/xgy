@@ -133,6 +133,19 @@ fun PlaybackScreen(vm: AppViewModel) {
             }
         }
 
+        // 同步歌词（有 .lrc 才显示；无则保持干净，不放假词）
+        vm.lyricsDoc?.takeUnless { it.isEmpty }?.let { doc ->
+            LyricsOverlay(
+                doc = doc,
+                currentIndex = vm.lyricLineIndex,
+                lineProgress = vm.lyricLineProgress,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth()
+                    .padding(bottom = 120.dp),
+            )
+        }
+
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)

@@ -39,6 +39,22 @@ class KaraokePlayer(context: Context) {
 
     private var usingSeparateAudio: Boolean = false
 
+    /**
+     * 无外挂 LRC 时启用内嵌/软字幕；有 LRC 时关掉，避免叠两层字。
+     */
+    fun setPreferEmbeddedSubtitles(enabled: Boolean) {
+        val params = videoPlayer.trackSelectionParameters
+            .buildUpon()
+            .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, !enabled)
+            .setSelectUndeterminedTextLanguage(enabled)
+            .build()
+        videoPlayer.trackSelectionParameters = params
+        audioPlayer.trackSelectionParameters = audioPlayer.trackSelectionParameters
+            .buildUpon()
+            .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, true)
+            .build()
+    }
+
     fun play(song: Song, mode: VocalMode = vocalMode, autoPlay: Boolean = true) {
         this.song = song
         this.vocalMode = mode

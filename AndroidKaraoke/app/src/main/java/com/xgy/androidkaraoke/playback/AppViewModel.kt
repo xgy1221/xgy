@@ -24,6 +24,8 @@ import com.xgy.androidkaraoke.model.Overlay
 import com.xgy.androidkaraoke.model.PlayOrderMode
 import com.xgy.androidkaraoke.model.Song
 import com.xgy.androidkaraoke.model.VocalMode
+import com.xgy.androidkaraoke.lyrics.LrcParser
+import com.xgy.androidkaraoke.lyrics.LyricsDocument
 import com.xgy.androidkaraoke.nas.NasConfig
 import com.xgy.androidkaraoke.nas.NasEntryKind
 import com.xgy.androidkaraoke.nas.NasError
@@ -33,6 +35,8 @@ import com.xgy.androidkaraoke.remote.LanAddresses
 import com.xgy.androidkaraoke.remote.PhoneRequestServer
 import com.xgy.androidkaraoke.search.SongSearch
 import android.util.Log
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -201,6 +205,16 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     var playbackError by mutableStateOf<String?>(null)
         private set
+
+    /** 当前曲目已解析的 LRC；无歌词时为 null（不展示假歌词）。 */
+    var lyricsDoc by mutableStateOf<LyricsDocument?>(null)
+        private set
+    var lyricLineIndex by mutableIntStateOf(-1)
+        private set
+    /** 当前行「唱到哪」进度 0..1 */
+    var lyricLineProgress by mutableFloatStateOf(0f)
+        private set
+    private var lyricsJob: Job? = null
 
     var libraryGuideDismissed by mutableStateOf(sourceStore.isLibraryGuideDismissed())
         private set
@@ -906,6 +920,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
         playbackError = null
         sourceErrorRetries = 0
+        clearLyrics()
         // 进入「正在播」即移出已点队列（主流 K 歌：已点 = 待唱）
         queue.removeAll { it.id == song.id }
         nextSong = queue.firstOrNull()
@@ -926,13 +941,57 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 }
                 nowPlaying = resolved
                 player.play(resolved, vocalMode, autoPlay = true)
+                player.setPreferEmbeddedSubtitles(!resolved.hasLyrics)
                 isPlaying = true
+                loadLyricsFor(resolved)
             } catch (e: Exception) {
                 playbackError = friendlyPlayError(e)
                 showToast(playbackError!!)
                 isPlaying = false
             }
         }
+    }
+
+    private fun clearLyrics() {
+        lyricsJob?.cancel()
+        lyricsDoc = null
+        lyricLineIndex = -1
+        lyricLineProgress = 0f
+    }
+
+    private fun loadLyricsFor(song: Song) {
+        lyricsJob?.cancel()
+        if (!song.hasLyrics) {
+            clearLyrics()
+            return
+        }
+        lyricsJob = viewModelScope.launch {
+            val text = runCatching {
+                when (song.source) {
+                    MediaSource.Nas -> container.nasSource.loadLyricsText(song)
+                    MediaSource.Usb -> container.localSource.loadLyricsText(song)
+                    else -> null
+                }
+            }.getOrNull()
+            if (nowPlaying?.id != song.id) return@launch
+            val doc = text?.let { LrcParser.parse(it) }?.takeUnless { it.isEmpty }
+            lyricsDoc = doc
+            if (doc == null) {
+                lyricLineIndex = -1
+                lyricLineProgress = 0f
+                // 无有效 LRC 时允许内嵌字幕兜底
+                player.setPreferEmbeddedSubtitles(true)
+            } else {
+                player.setPreferEmbeddedSubtitles(false)
+                syncLyricsToPosition(player.currentPositionMs())
+            }
+        }
+    }
+
+    private fun syncLyricsToPosition(positionMs: Long) {
+        val doc = lyricsDoc ?: return
+        lyricLineIndex = doc.lineIndexAt(positionMs)
+        lyricLineProgress = if (lyricLineIndex >= 0) doc.lineProgressAt(positionMs) else 0f
     }
 
     private suspend fun resolvePlayable(song: Song): Song {
@@ -1177,6 +1236,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                                         NasEntryKind.Audio -> LibraryEntryKind.Audio
                                         NasEntryKind.Video -> LibraryEntryKind.Video
                                         NasEntryKind.Manifest -> LibraryEntryKind.Manifest
+                                        NasEntryKind.Lyrics -> LibraryEntryKind.Lyrics
                                         NasEntryKind.Other -> LibraryEntryKind.Other
                                     },
                                     playableUri = e.absoluteUrl,
@@ -1255,6 +1315,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                     val uri = entry.playableUri
                     val (title, artist) = com.xgy.androidkaraoke.nas.KaraokeFileNames.parseTitleArtist(entry.name)
                     val media = if (source.kind == LibrarySourceKind.Usb) MediaSource.Usb else MediaSource.Nas
+                    val known = catalog.firstOrNull { it.id == entry.id }
                     // 扁平原文件：视频只挂 MV；纯音频只挂可播轨，不误报有原唱/有伴唱
                     val song = if (entry.kind == LibraryEntryKind.Video && uri != null) {
                         Song(
@@ -1266,6 +1327,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                             mvUrl = uri,
                             originalUrl = null,
                             accompanimentUrl = null,
+                            lyricsUrl = known?.lyricsUrl,
                         )
                     } else {
                         Song(
@@ -1277,12 +1339,14 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                             mvUrl = null,
                             originalUrl = uri,
                             accompanimentUrl = null,
+                            lyricsUrl = known?.lyricsUrl,
                         )
                     }
                     addToQueue(song)
                     openPlayback(song)
                 }
                 LibraryEntryKind.Manifest -> showToast("请使用 library.json 清单（MV/原唱/伴唱）")
+                LibraryEntryKind.Lyrics -> showToast("歌词会随曲包一起播放（.lrc）")
                 else -> showToast("暂不支持打开：${entry.name}")
             }
         }
@@ -1587,6 +1651,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 if (dur > 0) durationSec = (dur / 1000).coerceAtLeast(1)
                 currentTimeSec = (player.currentPositionMs() / 1000).coerceAtLeast(0)
                 isPlaying = player.isPlaying()
+                syncLyricsToPosition(player.currentPositionMs())
             }
         }
     }

@@ -12,8 +12,8 @@ android {
         // Sony KD-65A9F = Android 10 (API 29). Keep minSdk ≤ 29.
         minSdk = 28
         targetSdk = 34
-        versionCode = 14
-        versionName = "0.4.9"
+        versionCode = 15
+        versionName = "0.5.0"
         vectorDrawables.useSupportLibrary = true
     }
 

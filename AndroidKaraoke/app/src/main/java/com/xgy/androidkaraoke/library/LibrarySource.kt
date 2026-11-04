@@ -98,7 +98,7 @@ data class LibrarySource(
     }
 }
 
-enum class LibraryEntryKind { Folder, Audio, Video, Manifest, Other }
+enum class LibraryEntryKind { Folder, Audio, Video, Manifest, Lyrics, Other }
 
 data class LibraryEntry(
     val id: String,
