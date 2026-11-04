@@ -304,6 +304,9 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     private var phoneServer: PhoneRequestServer? = null
     private var knownUsbIds: Set<String> = emptySet()
     private var didBootstrapMiniPlayer = false
+    private var playJob: Job? = null
+    /** Source error：最多重试 1 次（重连 SID + 必要时降级 MV）。 */
+    private var sourceErrorRetries = 0
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
@@ -314,11 +317,14 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             if (playbackState == Player.STATE_ENDED) {
                 completeCurrentAndNext()
             }
+            if (playbackState == Player.STATE_READY) {
+                sourceErrorRetries = 0
+                if (playbackError != null) playbackError = null
+            }
         }
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-            playbackError = "播放失败：${error.message?.take(80) ?: "媒体无法加载"}"
-            showToast(playbackError!!)
+            viewModelScope.launch { handlePlayerError(error) }
         }
     }
 
@@ -853,7 +859,6 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         if (nowPlaying == null) {
             // 空闲时直接开唱；不把「正在播」留在已点列表里
             play(song)
-            if (playbackError != null) return
             showToast(
                 if (fromPhone) "手机点歌开始：${song.title}"
                 else "开始播放：${song.title}",
@@ -894,25 +899,120 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             showToast(playbackError!!)
             return
         }
-        if (song.anyPlayableUrl().isNullOrBlank()) {
+        if (song.anyPlayableUrl().isNullOrBlank() && song.relativePath.isNullOrBlank()) {
             playbackError = "无法播放「${song.title}」：缺少 MV / 原唱 / 伴唱"
             showToast(playbackError!!)
             return
         }
         playbackError = null
+        sourceErrorRetries = 0
         // 进入「正在播」即移出已点队列（主流 K 歌：已点 = 待唱）
         queue.removeAll { it.id == song.id }
         nextSong = queue.firstOrNull()
         nowPlaying = song
         isFavorite = listeningPrefs.isFavorite(song.id)
-        try {
-            player.play(song, vocalMode, autoPlay = true)
-            isPlaying = true
-            durationSec = song.durationSec
-            currentTimeSec = 0
-        } catch (e: Exception) {
-            playbackError = "播放失败：${e.message ?: "未知错误"}"
+        isPlaying = true
+        durationSec = song.durationSec
+        currentTimeSec = 0
+        playJob?.cancel()
+        playJob = viewModelScope.launch {
+            try {
+                val resolved = resolvePlayable(song)
+                if (resolved.anyPlayableUrl().isNullOrBlank()) {
+                    playbackError = "无法播放「${song.title}」：文件不存在或 NAS 未连接"
+                    showToast(playbackError!!)
+                    isPlaying = false
+                    return@launch
+                }
+                nowPlaying = resolved
+                player.play(resolved, vocalMode, autoPlay = true)
+                isPlaying = true
+            } catch (e: Exception) {
+                playbackError = friendlyPlayError(e)
+                showToast(playbackError!!)
+                isPlaying = false
+            }
+        }
+    }
+
+    private suspend fun resolvePlayable(song: Song): Song {
+        return when (song.source) {
+            MediaSource.Nas -> container.nasSource.resolveForPlayback(song)
+            else -> song
+        }
+    }
+
+    private suspend fun handlePlayerError(error: androidx.media3.common.PlaybackException) {
+        val song = nowPlaying ?: run {
+            playbackError = friendlyPlaybackException(error)
             showToast(playbackError!!)
+            return
+        }
+        val canRetryNas = song.source == MediaSource.Nas && sourceErrorRetries < 1
+        if (canRetryNas) {
+            sourceErrorRetries++
+            try {
+                showToast("播放异常，正在重连 NAS…")
+                container.nasSource.forceRelogin()
+                var resolved = container.nasSource.resolveForPlayback(song)
+                // 伴唱/原唱轨失败：降级为单路 MV（或唯一可播轨）
+                val hadSeparateTracks = resolved.hasOriginal || resolved.hasAccompaniment
+                if (resolved.hasMv || hadSeparateTracks) {
+                    resolved = resolved.mvOnlyFallback()
+                    if (hadSeparateTracks) showToast("音轨失败，改为播放 MV")
+                }
+                if (resolved.anyPlayableUrl().isNullOrBlank()) {
+                    throw NasError.NotFound
+                }
+                nowPlaying = resolved
+                player.play(resolved, vocalMode, autoPlay = true)
+                return
+            } catch (e: Exception) {
+                playbackError = friendlyPlayError(e)
+                showToast(playbackError!!)
+                isPlaying = false
+                return
+            }
+        }
+        playbackError = friendlyPlaybackException(error)
+        showToast(playbackError!!)
+        isPlaying = false
+    }
+
+    private fun friendlyPlayError(e: Exception): String {
+        return when (e) {
+            is NasError.Unauthorized, is NasError.DsmNeedsCredentials ->
+                "播放失败：NAS 登录失效，请到设置重连 NAS"
+            is NasError.NotFound ->
+                "播放失败：文件不存在，请检查曲库路径"
+            is NasError.Timeout ->
+                "播放失败：连接 NAS 超时，请检查网络"
+            is NasError.Forbidden ->
+                "播放失败：没有权限访问该文件"
+            is NasError -> e.message ?: "播放失败：无法连接 NAS"
+            else -> "播放失败：${e.message?.take(60) ?: "未知错误"}（可尝试设置里重连 NAS）"
+        }
+    }
+
+    private fun friendlyPlaybackException(error: androidx.media3.common.PlaybackException): String {
+        val detail = (error.cause?.message ?: error.message ?: "").lowercase()
+        return when {
+            "401" in detail || "403" in detail || "sid" in detail || "unauthor" in detail ->
+                "播放失败：NAS 登录失效，请到设置重连 NAS"
+            "404" in detail || "not found" in detail || "no such file" in detail ->
+                "播放失败：文件不存在，请检查曲库路径"
+            "ssl" in detail || "cert" in detail || "handshake" in detail ->
+                "播放失败：无法建立安全连接，请检查 NAS 地址"
+            "timeout" in detail || "timed out" in detail ->
+                "播放失败：连接 NAS 超时，请检查网络"
+            "source" in detail ||
+                error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
+                error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
+                error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+                error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ->
+                "播放失败：无法打开媒体（请重连 NAS，或确认文件仍在）"
+            else ->
+                "播放失败：无法打开媒体（请重连 NAS，或确认文件仍在）"
         }
     }
 
@@ -1155,7 +1255,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                     val uri = entry.playableUri
                     val (title, artist) = com.xgy.androidkaraoke.nas.KaraokeFileNames.parseTitleArtist(entry.name)
                     val media = if (source.kind == LibrarySourceKind.Usb) MediaSource.Usb else MediaSource.Nas
-                    // 扁平原 MP4：同轨占位 MV/原唱/伴奏
+                    // 扁平原文件：视频只挂 MV；纯音频只挂可播轨，不误报有原唱/有伴唱
                     val song = if (entry.kind == LibraryEntryKind.Video && uri != null) {
                         Song(
                             id = entry.id,
@@ -1164,8 +1264,8 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                             relativePath = entry.path,
                             source = media,
                             mvUrl = uri,
-                            originalUrl = uri,
-                            accompanimentUrl = uri,
+                            originalUrl = null,
+                            accompanimentUrl = null,
                         )
                     } else {
                         Song(
@@ -1176,7 +1276,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                             source = media,
                             mvUrl = null,
                             originalUrl = uri,
-                            accompanimentUrl = uri,
+                            accompanimentUrl = null,
                         )
                     }
                     addToQueue(song)

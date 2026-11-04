@@ -196,9 +196,9 @@ class HttpsNasMediaSource(
         val isExplicitAcc = lower.contains("accompaniment") || lower.contains("伴唱") ||
             lower.contains("inst") || lower.startsWith("acc")
         val isExplicitMv = lower.startsWith("mv") || lower.contains(".mv.")
-        // 扁平原 MP4：同一文件同时作为 MV / 原唱 / 伴奏占位，可唱可切
+        // 扁平原 MP4：只挂 MV，不假装「有原唱/有伴唱」
         val flatKaraokeVideo = entry.kind == NasEntryKind.Video &&
-            !isExplicitOriginal && !isExplicitAcc && url != null
+            !isExplicitOriginal && !isExplicitAcc && !isExplicitMv && url != null
         return Song(
             id = entry.id,
             title = parsed.first,
@@ -206,16 +206,16 @@ class HttpsNasMediaSource(
             source = MediaSource.Nas,
             relativePath = entry.path,
             mvUrl = when {
-                flatKaraokeVideo || isExplicitMv || entry.kind == NasEntryKind.Video -> url
+                flatKaraokeVideo || isExplicitMv || (entry.kind == NasEntryKind.Video && !isExplicitOriginal && !isExplicitAcc) -> url
                 else -> null
             },
             originalUrl = when {
-                flatKaraokeVideo || isExplicitOriginal -> url
+                isExplicitOriginal -> url
                 entry.kind == NasEntryKind.Audio && !isExplicitAcc -> url
                 else -> null
             },
             accompanimentUrl = when {
-                flatKaraokeVideo || isExplicitAcc -> url
+                isExplicitAcc -> url
                 else -> null
             },
         )
@@ -231,7 +231,9 @@ class HttpsNasMediaSource(
             val url = e.absoluteUrl ?: continue
             when {
                 lower.startsWith("mv") || lower.contains(".mv.") ||
-                    (e.kind == NasEntryKind.Video && mv == null) -> mv = url
+                    (e.kind == NasEntryKind.Video && mv == null &&
+                        !lower.contains("original") && !lower.contains("原唱") &&
+                        !lower.contains("accompaniment") && !lower.contains("伴唱")) -> mv = url
                 lower.contains("original") || lower.contains("原唱") || lower.startsWith("voc") ->
                     original = url
                 lower.contains("accompaniment") || lower.contains("伴唱") ||
@@ -239,6 +241,9 @@ class HttpsNasMediaSource(
             }
         }
         if (mv == null && original == null && acc == null) return null
+        // 同一 URL 不重复挂到多轨，避免 UI 误报「有原唱/有伴唱」
+        if (original != null && original == mv) original = null
+        if (acc != null && (acc == mv || acc == original)) acc = null
         return Song(
             id = folderPath,
             title = folderName.trim('/'),
@@ -249,6 +254,52 @@ class HttpsNasMediaSource(
             originalUrl = original,
             accompanimentUrl = acc,
         )
+    }
+
+    /**
+     * 播放前刷新群晖 Download URL 的 `_sid`（索引时烘焙的 SID 会过期）。
+     * 非群晖 / 非 NAS 原样返回。
+     */
+    suspend fun resolveForPlayback(song: Song): Song = withContext(Dispatchers.IO) {
+        if (song.source != MediaSource.Nas) return@withContext song
+        ensureBackend()
+        if (synologyMode.get() != true) return@withContext song
+        val station = fs()
+        station.ensureSession()
+        fun refresh(url: String?): String? {
+            if (url.isNullOrBlank()) return null
+            val path = SynologyFileStation.extractDownloadPath(url)
+                ?: url.takeIf { it.startsWith("/") && !it.startsWith("http") }
+            return if (path != null) station.downloadUrl(path) else url
+        }
+        val pathHint = song.relativePath?.takeIf {
+            it.startsWith("/") && !it.startsWith("http")
+        }
+        // 扁平单文件：只用 relativePath 重建 MV
+        if (pathHint != null &&
+            song.originalUrl.isNullOrBlank() &&
+            song.accompanimentUrl.isNullOrBlank()
+        ) {
+            return@withContext song.copy(
+                mvUrl = station.downloadUrl(pathHint),
+                originalUrl = null,
+                accompanimentUrl = null,
+            )
+        }
+        song.copy(
+            mvUrl = refresh(song.mvUrl) ?: pathHint?.let { station.downloadUrl(it) },
+            originalUrl = refresh(song.originalUrl),
+            accompanimentUrl = refresh(song.accompanimentUrl),
+        )
+    }
+
+    /** 强制重新登录群晖（Source error 重试前调用）。 */
+    suspend fun forceRelogin() = withContext(Dispatchers.IO) {
+        ensureBackend()
+        if (synologyMode.get() == true) {
+            fs().invalidateSession()
+            fs().login()
+        }
     }
 
     private suspend fun ensureBackend() {

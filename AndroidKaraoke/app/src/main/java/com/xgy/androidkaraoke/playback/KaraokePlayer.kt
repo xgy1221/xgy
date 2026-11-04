@@ -3,7 +3,9 @@ package com.xgy.androidkaraoke.playback
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.xgy.androidkaraoke.model.Song
 import com.xgy.androidkaraoke.model.VocalMode
 
@@ -12,8 +14,23 @@ import com.xgy.androidkaraoke.model.VocalMode
  * 有独立音频轨时：视频静音播 MV，音频播选中轨；仅有 MV 时直接播 MV 音画。
  */
 class KaraokePlayer(context: Context) {
-    val videoPlayer: ExoPlayer = ExoPlayer.Builder(context.applicationContext).build()
-    val audioPlayer: ExoPlayer = ExoPlayer.Builder(context.applicationContext).build()
+    private val appContext = context.applicationContext
+
+    private val httpFactory = DefaultHttpDataSource.Factory()
+        .setUserAgent("AndroidKaraoke/TV")
+        .setAllowCrossProtocolRedirects(true)
+        .setConnectTimeoutMs(20_000)
+        .setReadTimeoutMs(45_000)
+
+    private val mediaSourceFactory = DefaultMediaSourceFactory(appContext)
+        .setDataSourceFactory(httpFactory)
+
+    val videoPlayer: ExoPlayer = ExoPlayer.Builder(appContext)
+        .setMediaSourceFactory(mediaSourceFactory)
+        .build()
+    val audioPlayer: ExoPlayer = ExoPlayer.Builder(appContext)
+        .setMediaSourceFactory(mediaSourceFactory)
+        .build()
 
     var song: Song? = null
         private set

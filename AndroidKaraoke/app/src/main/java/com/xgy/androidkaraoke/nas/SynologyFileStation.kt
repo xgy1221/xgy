@@ -188,9 +188,38 @@ class SynologyFileStation(
             "&version=2&method=download&mode=open&path=$enc&_sid=$session"
     }
 
+    /** 当前 SID（可能为空）；播放前应先 ensureSession。 */
+    fun currentSid(): String? = sid
+
     companion object {
         private val VOLUME_PREFIX = Regex("^/volume\\d+(/.*)$")
         private val BARE_VOLUME = Regex("^/volume\\d+$")
+
+        /**
+         * 从 File Station Download URL 取出 `path=`（已 URL 解码的共享路径）。
+         * 非 Download URL 返回 null。
+         */
+        fun extractDownloadPath(url: String): String? {
+            if (!url.contains("SYNO.FileStation.Download", ignoreCase = true)) return null
+            val query = url.substringAfter('?', missingDelimiterValue = "")
+            if (query.isEmpty()) return null
+            for (part in query.split('&')) {
+                val eq = part.indexOf('=')
+                if (eq <= 0) continue
+                val key = part.substring(0, eq)
+                if (key != "path") continue
+                val raw = part.substring(eq + 1)
+                return try {
+                    java.net.URLDecoder.decode(raw, "UTF-8")
+                } catch (_: Exception) {
+                    raw
+                }
+            }
+            return null
+        }
+
+        fun isFileStationDownloadUrl(url: String): Boolean =
+            url.contains("SYNO.FileStation.Download", ignoreCase = true)
 
         suspend fun isSynologyDsm(baseUrl: String): Boolean = withContext(Dispatchers.IO) {
             try {

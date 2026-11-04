@@ -40,8 +40,14 @@ data class Song(
     val displayTitle: String get() = if (isHd) "$title(HD)" else title
 
     val hasMv: Boolean get() = !mvUrl.isNullOrBlank()
-    val hasOriginal: Boolean get() = !originalUrl.isNullOrBlank()
-    val hasAccompaniment: Boolean get() = !accompanimentUrl.isNullOrBlank()
+    /** 独立原唱轨（与 MV 不是同一文件）才算「有原唱」。 */
+    val hasOriginal: Boolean
+        get() = !originalUrl.isNullOrBlank() && originalUrl != mvUrl
+    /** 独立伴唱轨（与 MV / 原唱不是同一文件）才算「有伴唱」。 */
+    val hasAccompaniment: Boolean
+        get() = !accompanimentUrl.isNullOrBlank() &&
+            accompanimentUrl != mvUrl &&
+            accompanimentUrl != originalUrl
 
     val styleTags: List<String>
         get() = (genres + listOfNotNull(tag)).map { it.trim() }.filter { it.isNotEmpty() }.distinct()
@@ -52,6 +58,12 @@ data class Song(
     }
 
     fun anyPlayableUrl(): String? = mvUrl ?: accompanimentUrl ?: originalUrl
+
+    /** 仅保留 MV（或唯一可播轨），用于伴唱轨失败时降级。 */
+    fun mvOnlyFallback(): Song {
+        val sole = mvUrl ?: originalUrl ?: accompanimentUrl
+        return copy(mvUrl = sole, originalUrl = null, accompanimentUrl = null)
+    }
 }
 
 data class Singer(
