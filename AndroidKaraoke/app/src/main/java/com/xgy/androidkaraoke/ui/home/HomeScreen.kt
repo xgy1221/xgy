@@ -44,8 +44,9 @@ import com.xgy.androidkaraoke.ui.components.ShelfHeader
 fun HomeScreen(vm: AppViewModel) {
     val top = MockData.homeTiles.filter {
         it.kind in setOf(
-            HomeTileKind.Daily, HomeTileKind.SongOrder,
-            HomeTileKind.SingerOrder, HomeTileKind.CategoryOrder,
+            HomeTileKind.SongOrder,
+            HomeTileKind.SingerOrder,
+            HomeTileKind.CategoryOrder,
         )
     }
     val bottom = MockData.homeTiles.filter {
@@ -107,23 +108,30 @@ fun HomeScreen(vm: AppViewModel) {
             contentPadding = PaddingValues(horizontal = 40.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            item(key = "mini-now-playing") {
+                MiniNowPlayingCard(
+                    vm = vm,
+                    modifier = Modifier
+                        .width(360.dp)
+                        .height(200.dp),
+                )
+            }
             items(top, key = { it.id }) { tile ->
                 PosterCard(
                     title = tile.title,
                     tint = tile.tint,
                     onClick = { onTile(vm, tile.kind) },
                     modifier = Modifier
-                        .width(if (tile.isWide) 360.dp else 200.dp)
+                        .width(200.dp)
                         .height(200.dp),
                     icon = iconFor(tile.kind),
-                    badge = tile.badgeCount?.let { "已点 $it" },
                 )
             }
         }
 
         if (recent.isNotEmpty()) {
             Column(modifier = Modifier.padding(horizontal = 40.dp)) {
-                ShelfHeader("最近唱过", "一键再点")
+                ShelfHeader("最近唱过", "仅曲库真实歌曲 · 一键再点")
             }
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 40.dp),
@@ -181,11 +189,7 @@ fun HomeScreen(vm: AppViewModel) {
 
 private fun onTile(vm: AppViewModel, kind: HomeTileKind) {
     when (kind) {
-        HomeTileKind.Daily -> {
-            val song = vm.forYouRecommendations.firstOrNull()
-            if (song != null) vm.openPlayback(song)
-            else vm.showToast("请先添加曲库")
-        }
+        HomeTileKind.Daily -> vm.openContinueSinging()
         HomeTileKind.SongOrder -> vm.openSearch()
         HomeTileKind.SingerOrder -> vm.selectTab(com.xgy.androidkaraoke.model.MainTab.Singers)
         HomeTileKind.CategoryOrder -> vm.selectTab(com.xgy.androidkaraoke.model.MainTab.Hot)

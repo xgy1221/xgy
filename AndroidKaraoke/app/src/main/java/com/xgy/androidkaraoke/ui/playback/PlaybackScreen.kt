@@ -70,12 +70,18 @@ fun PlaybackScreen(vm: AppViewModel) {
                     this.player = player.videoPlayer
                 }
             },
-            update = { it.player = player.videoPlayer },
+            update = { view ->
+                if (view.player !== player.videoPlayer) {
+                    view.player = player.videoPlayer
+                }
+            },
             modifier = Modifier.fillMaxSize(),
         )
 
         DisposableEffect(Unit) {
-            onDispose { /* player owned by app container */ }
+            onDispose {
+                // 离开全屏后由首页迷你 PlayerView 重新挂上同一 ExoPlayer
+            }
         }
 
         if (song?.hasMv != true) {

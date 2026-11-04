@@ -44,6 +44,22 @@ class ListeningPreferenceStore(context: Context) {
 
     fun isFavorite(songId: String): Boolean = songId in favoriteIds()
 
+    /** 丢掉不在曲库中的历史 / 收藏（含旧演示歌 id）。 */
+    fun retainOnlySongIds(validIds: Set<String>) {
+        val hist = historySongIds().filter { it in validIds }
+        prefs.edit().putString(KEY_HISTORY, hist.joinToString(",")).apply()
+        val favs = favoriteIds().filter { it in validIds }.toSet()
+        prefs.edit().putStringSet(KEY_FAVORITES, favs).apply()
+    }
+
+    fun removeSongIds(ids: Set<String>) {
+        if (ids.isEmpty()) return
+        val hist = historySongIds().filterNot { it in ids }
+        prefs.edit().putString(KEY_HISTORY, hist.joinToString(",")).apply()
+        val favs = favoriteIds().filterNot { it in ids }.toSet()
+        prefs.edit().putStringSet(KEY_FAVORITES, favs).apply()
+    }
+
     private fun bumpArtist(artist: String, delta: Float) {
         if (artist.isBlank()) return
         val map = artistWeights().toMutableMap()

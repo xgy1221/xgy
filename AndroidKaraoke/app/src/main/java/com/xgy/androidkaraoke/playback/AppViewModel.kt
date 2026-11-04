@@ -273,6 +273,17 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 .sortedBy { it.title }
         }
 
+    /**
+     * 首页迷你唱页目标：正在播，否则最近唱过里第一首可播放的真实曲库歌。
+     * 绝不回落到演示曲或随便一首库内歌。
+     */
+    val continueSingSong: Song?
+        get() {
+            prefsEpoch
+            nowPlaying?.takeIf { !it.anyPlayableUrl().isNullOrBlank() }?.let { return it }
+            return recentSongs.firstOrNull { !it.anyPlayableUrl().isNullOrBlank() }
+        }
+
     val progress: Float
         get() {
             val total = durationSec.coerceAtLeast(1)
@@ -283,6 +294,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     private var tickJob: Job? = null
     private var phoneServer: PhoneRequestServer? = null
     private var knownUsbIds: Set<String> = emptySet()
+    private var didBootstrapMiniPlayer = false
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
@@ -303,8 +315,10 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     init {
         migrateLegacyNasIfNeeded()
-        reloadSources(scanUsb = true, announceUsb = false)
+        // 先清掉已知演示歌历史，避免「最近唱过」残留小半等
+        listeningPrefs.removeSongIds(LEGACY_DEMO_SONG_IDS)
         bumpPrefs()
+        reloadSources(scanUsb = true, announceUsb = false)
         player.addListener(playerListener)
         startPhoneServer()
         startTicker()
@@ -721,19 +735,33 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     fun openPlayback(song: Song? = null) {
         when {
-            song != null -> play(song)
+            song != null -> {
+                // 同一首歌：不重新 prepare，首页迷你唱页 → 全屏无缝续播
+                if (nowPlaying?.id == song.id) {
+                    player.resume()
+                } else {
+                    play(song)
+                }
+            }
             nowPlaying != null -> player.resume()
             queue.isNotEmpty() -> play(queue.removeAt(0))
             else -> {
-                val fallback = libraryCatalog.firstOrNull()
-                if (fallback != null) play(fallback)
-                else {
-                    showToast("没有可播放的歌曲，请先添加曲库")
-                    return
-                }
+                showToast("没有可播放的歌曲")
+                return
             }
         }
         overlay = Overlay.Playback
+    }
+
+    /** 首页迷你唱页点击：进入全屏演唱页。 */
+    fun openContinueSinging() {
+        val song = continueSingSong
+        if (song == null) {
+            showToast("还没有唱过的曲库歌曲")
+            if (libraryCatalog.isEmpty()) openSettings() else openSearch()
+            return
+        }
+        openPlayback(song)
     }
 
     fun openGuess() {
@@ -1230,11 +1258,52 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     private fun mergeCatalog(songs: List<Song>) {
+        var added = false
         songs.forEach { song ->
             if (song.source == MediaSource.Mock) return@forEach
             val idx = catalog.indexOfFirst { it.id == song.id }
-            if (idx >= 0) catalog[idx] = song else catalog.add(song)
+            if (idx >= 0) catalog[idx] = song else {
+                catalog.add(song)
+                added = true
+            }
         }
+        pruneListeningToLibrary()
+        if (added || libraryCatalog.isNotEmpty()) {
+            maybeBootstrapMiniPlayer()
+        }
+    }
+
+    private fun pruneListeningToLibrary() {
+        val valid = libraryCatalog.map { it.id }.toSet()
+        if (valid.isEmpty()) {
+            listeningPrefs.removeSongIds(LEGACY_DEMO_SONG_IDS)
+        } else {
+            listeningPrefs.retainOnlySongIds(valid)
+        }
+        bumpPrefs()
+    }
+
+    /** 启动后：用「最近唱过」第一首可播放曲库歌填满首页迷你唱页（播 MV）。 */
+    private fun maybeBootstrapMiniPlayer() {
+        if (didBootstrapMiniPlayer) return
+        if (nowPlaying != null) {
+            didBootstrapMiniPlayer = true
+            return
+        }
+        if (overlay == Overlay.Playback || overlay == Overlay.Guess) return
+        val song = recentSongs.firstOrNull { !it.anyPlayableUrl().isNullOrBlank() } ?: return
+        didBootstrapMiniPlayer = true
+        play(song)
+    }
+
+    companion object {
+        /** 旧版 MockData 写入 SharedPreferences 的演示曲 id，需主动清掉。 */
+        private val LEGACY_DEMO_SONG_IDS = setOf(
+            "xiaoban", "chahua", "yongchun", "shimian", "shexiang",
+            "xihai", "hongyan", "fenmo", "qinghuaci",
+            "daoxiang", "dongfengpo", "2002", "luhua", "zui", "lang",
+            "gufeng2", "minyao2", "liuxing1", "caoyuan",
+        )
     }
 
     private fun startPhoneServer(refreshIp: Boolean = false) {
