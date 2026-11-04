@@ -1,6 +1,9 @@
 package com.xgy.androidkaraoke
 
 import android.app.Application
+import com.xgy.androidkaraoke.library.LibrarySourceStore
+import com.xgy.androidkaraoke.library.LocalFolderMediaSource
+import com.xgy.androidkaraoke.library.UsbStorageScanner
 import com.xgy.androidkaraoke.playback.KaraokePlayer
 
 class KaraokeApp : Application() {
@@ -16,7 +19,10 @@ class KaraokeApp : Application() {
 class AppContainer(app: Application) {
     val nasConfigStore = com.xgy.androidkaraoke.nas.NasConfigStore(app)
     val credentialStore = com.xgy.androidkaraoke.nas.SecureCredentialStore(app)
+    val librarySourceStore = LibrarySourceStore(app)
+    val usbScanner = UsbStorageScanner(app)
     val nasSource = com.xgy.androidkaraoke.nas.HttpsNasMediaSource(nasConfigStore, credentialStore)
+    val localSource = LocalFolderMediaSource()
     val microphone = com.xgy.androidkaraoke.audio.StubMicrophoneInput()
     val player = KaraokePlayer(app)
     val listeningPrefs = com.xgy.androidkaraoke.recommend.ListeningPreferenceStore(app)

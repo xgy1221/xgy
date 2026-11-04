@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +27,8 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import com.xgy.androidkaraoke.BrandConfig
+import com.xgy.androidkaraoke.library.LibrarySource
+import com.xgy.androidkaraoke.library.LibrarySourceKind
 import com.xgy.androidkaraoke.playback.AppViewModel
 import com.xgy.androidkaraoke.theme.KaraokeColors
 import com.xgy.androidkaraoke.ui.components.FocusSurface
@@ -41,82 +45,257 @@ fun SettingsScreen(vm: AppViewModel) {
     ) {
         Column(
             modifier = Modifier
-                .width(760.dp)
+                .width(820.dp)
+                .height(560.dp)
                 .background(KaraokeColors.backgroundElevated, RoundedCornerShape(24.dp))
-                .padding(32.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(28.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            ShelfHeader("设置", "NAS 曲库 · 无需登录 · ${BrandConfig.appDisplayName}")
-            Text(
-                "账号密码仅保存在本机加密存储。曲库入口在此，不占用顶部分类。",
-                color = KaraokeColors.textTertiary,
-                fontSize = 14.sp,
-            )
-            SettingField("Base URL", vm.settingsBaseUrl, singleLine = true) { vm.settingsBaseUrl = it }
-            SettingField("曲库路径", vm.settingsPath, singleLine = true) { vm.settingsPath = it }
-            SettingField("用户名（可选）", vm.settingsUsername, singleLine = true) { vm.settingsUsername = it }
-            SettingField(
-                "密码（可选）",
-                vm.settingsPassword,
-                singleLine = true,
-                isPassword = true,
-                placeholder = if (vm.settingsUsername.isNotEmpty()) "••••••••（留空保留原密码）" else "如需 Basic 认证再填写",
-            ) { vm.settingsPassword = it }
+            when (val kind = vm.settingsEditorKind) {
+                null -> SourceListPane(vm)
+                LibrarySourceKind.Nas -> NasEditorPane(vm, isNew = vm.editingSourceId == null)
+                LibrarySourceKind.Usb -> UsbEditorPane(vm)
+            }
+        }
+    }
+}
 
-            vm.settingsMessage?.let { msg ->
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun SourceListPane(vm: AppViewModel) {
+    ShelfHeader("设置", "曲库来源 · U 盘 / NAS · ${BrandConfig.appDisplayName}")
+    Text(
+        "可添加多个 NAS，或插入 U 盘后扫描。启用后点「浏览」进入统一曲库（MV + 原唱 + 伴唱）。",
+        color = KaraokeColors.textTertiary,
+        fontSize = 14.sp,
+    )
+
+    vm.librarySources.forEach { source ->
+        SourceRow(vm, source)
+    }
+
+    if (vm.librarySources.isEmpty()) {
+        Text("暂无来源，请添加 NAS 或扫描 U 盘。", color = KaraokeColors.textSecondary, fontSize = 16.sp)
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        FocusSurface(onClick = { vm.beginAddNas() }, corner = 12.dp) {
+            Text(
+                "添加 NAS",
+                color = KaraokeColors.textPrimary,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                fontSize = 16.sp,
+            )
+        }
+        FocusSurface(onClick = { vm.scanUsbNow() }, corner = 12.dp) {
+            Text(
+                "扫描 U 盘",
+                color = KaraokeColors.textPrimary,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                fontSize = 16.sp,
+            )
+        }
+        FocusSurface(onClick = { vm.dismissOverlay() }, corner = 12.dp) {
+            Text(
+                "关闭",
+                color = KaraokeColors.textSecondary,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                fontSize = 16.sp,
+            )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        "目标机：Sony KD-65A9F · Android 10。U 盘拔出后会提示；插回后可再扫描。",
+        color = KaraokeColors.textTertiary,
+        fontSize = 13.sp,
+    )
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun SourceRow(vm: AppViewModel, source: LibrarySource) {
+    val kindLabel = when (source.kind) {
+        LibrarySourceKind.Nas -> "NAS"
+        LibrarySourceKind.Usb -> "U盘"
+    }
+    val status = when {
+        source.kind == LibrarySourceKind.Usb && source.localRootPath == null -> "已拔出"
+        !source.enabled -> "已禁用"
+        else -> "已启用"
+    }
+    val detail = when (source.kind) {
+        LibrarySourceKind.Nas -> "${source.nasBaseUrl.orEmpty()}  ${source.nasLibraryPath.orEmpty()}"
+        LibrarySourceKind.Usb -> {
+            val root = source.localRootPath ?: "（未挂载）"
+            val rel = source.relativeMusicPath.ifBlank { "根目录" }
+            "$root · 曲库子路径：$rel"
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(KaraokeColors.surface, RoundedCornerShape(14.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                "[$kindLabel]",
+                color = KaraokeColors.accentSoft,
+                fontSize = 13.sp,
+            )
+            Text(source.displayName, color = KaraokeColors.textPrimary, fontSize = 18.sp)
+            Text(status, color = KaraokeColors.textTertiary, fontSize = 13.sp)
+        }
+        Text(detail, color = KaraokeColors.textSecondary, fontSize = 13.sp, maxLines = 2)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FocusSurface(onClick = { vm.openLibrary(source) }, corner = 10.dp) {
                 Text(
-                    text = msg,
-                    color = if (vm.settingsIsError) KaraokeColors.danger else KaraokeColors.accentSoft,
-                    fontSize = 16.sp,
+                    "浏览",
+                    color = KaraokeColors.textPrimary,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    fontSize = 15.sp,
                 )
             }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FocusSurface(
-                    onClick = { if (!vm.settingsBusy) vm.saveSettingsAndTest(test = false) },
-                    corner = 12.dp,
-                ) {
+            FocusSurface(onClick = { vm.beginEditSource(source) }, corner = 10.dp) {
+                Text(
+                    "编辑",
+                    color = KaraokeColors.textPrimary,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    fontSize = 15.sp,
+                )
+            }
+            FocusSurface(
+                onClick = { vm.setSourceEnabled(source.id, !source.enabled) },
+                corner = 10.dp,
+            ) {
+                Text(
+                    if (source.enabled) "禁用" else "启用",
+                    color = KaraokeColors.textPrimary,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    fontSize = 15.sp,
+                )
+            }
+            if (source.kind == LibrarySourceKind.Nas || source.localRootPath == null) {
+                FocusSurface(onClick = { vm.removeSource(source.id) }, corner = 10.dp) {
                     Text(
-                        if (vm.settingsBusy) "处理中…" else "保存",
-                        color = KaraokeColors.textPrimary,
-                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp),
-                        fontSize = 17.sp,
-                    )
-                }
-                FocusSurface(
-                    onClick = { if (!vm.settingsBusy) vm.saveSettingsAndTest(test = true) },
-                    corner = 12.dp,
-                ) {
-                    Text(
-                        "测试连接",
-                        color = KaraokeColors.textPrimary,
-                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp),
-                        fontSize = 17.sp,
-                    )
-                }
-                FocusSurface(onClick = { vm.openNasLibrary() }, corner = 12.dp) {
-                    Text(
-                        "浏览曲库",
-                        color = KaraokeColors.textPrimary,
-                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp),
-                        fontSize = 17.sp,
-                    )
-                }
-                FocusSurface(onClick = { vm.dismissOverlay() }, corner = 12.dp) {
-                    Text(
-                        "关闭",
-                        color = KaraokeColors.textSecondary,
-                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp),
-                        fontSize = 17.sp,
+                        "删除",
+                        color = KaraokeColors.danger,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        fontSize = 15.sp,
                     )
                 }
             }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(4.dp))
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun NasEditorPane(vm: AppViewModel, isNew: Boolean) {
+    ShelfHeader(
+        if (isNew) "添加 NAS" else "编辑 NAS",
+        "预填 ${BrandConfig.defaultNasBaseUrl} · 账号密码仅本机加密保存",
+    )
+    SettingField("显示名称", vm.settingsDisplayName, singleLine = true) { vm.settingsDisplayName = it }
+    SettingField("Base URL", vm.settingsBaseUrl, singleLine = true) { vm.settingsBaseUrl = it }
+    SettingField("曲库路径", vm.settingsPath, singleLine = true) { vm.settingsPath = it }
+    SettingField("用户名（可选）", vm.settingsUsername, singleLine = true) { vm.settingsUsername = it }
+    SettingField(
+        "密码（可选）",
+        vm.settingsPassword,
+        singleLine = true,
+        isPassword = true,
+        placeholder = if (vm.settingsUsername.isNotEmpty()) "••••••••（留空保留原密码）" else "如需 Basic 认证再填写",
+    ) { vm.settingsPassword = it }
+
+    vm.settingsMessage?.let { msg ->
+        Text(
+            text = msg,
+            color = if (vm.settingsIsError) KaraokeColors.danger else KaraokeColors.accentSoft,
+            fontSize = 16.sp,
+        )
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        FocusSurface(
+            onClick = { if (!vm.settingsBusy) vm.saveSettingsAndTest(test = false) },
+            corner = 12.dp,
+        ) {
             Text(
-                "目标机：Sony KD-65A9F · Android 10。library.json 可写 mv / original / accompaniment。",
-                color = KaraokeColors.textTertiary,
-                fontSize = 13.sp,
+                if (vm.settingsBusy) "处理中…" else "保存",
+                color = KaraokeColors.textPrimary,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                fontSize = 16.sp,
+            )
+        }
+        FocusSurface(
+            onClick = { if (!vm.settingsBusy) vm.saveSettingsAndTest(test = true) },
+            corner = 12.dp,
+        ) {
+            Text(
+                "测试连接",
+                color = KaraokeColors.textPrimary,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                fontSize = 16.sp,
+            )
+        }
+        FocusSurface(onClick = { vm.cancelSourceEditor() }, corner = 12.dp) {
+            Text(
+                "返回列表",
+                color = KaraokeColors.textSecondary,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                fontSize = 16.sp,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun UsbEditorPane(vm: AppViewModel) {
+    ShelfHeader("编辑 U 盘来源", "可指定曲库子目录（如 music / Karaoke）")
+    SettingField("显示名称", vm.settingsDisplayName, singleLine = true) { vm.settingsDisplayName = it }
+    SettingField(
+        "曲库子路径（相对 U 盘根）",
+        vm.settingsRelativeMusicPath,
+        singleLine = true,
+        placeholder = "留空 = U 盘根目录",
+    ) { vm.settingsRelativeMusicPath = it }
+
+    vm.settingsMessage?.let { msg ->
+        Text(
+            text = msg,
+            color = if (vm.settingsIsError) KaraokeColors.danger else KaraokeColors.accentSoft,
+            fontSize = 16.sp,
+        )
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        FocusSurface(
+            onClick = { if (!vm.settingsBusy) vm.saveSettingsAndTest(test = false) },
+            corner = 12.dp,
+        ) {
+            Text(
+                "保存",
+                color = KaraokeColors.textPrimary,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                fontSize = 16.sp,
+            )
+        }
+        FocusSurface(onClick = { vm.cancelSourceEditor() }, corner = 12.dp) {
+            Text(
+                "返回列表",
+                color = KaraokeColors.textSecondary,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                fontSize = 16.sp,
             )
         }
     }

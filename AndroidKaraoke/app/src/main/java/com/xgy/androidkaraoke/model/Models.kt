@@ -11,7 +11,7 @@ enum class MainTab(val title: String, val implemented: Boolean = true) {
     Features("玩法", implemented = false),
 }
 
-enum class MediaSource { Mock, Nas, RemoteHttp }
+enum class MediaSource { Mock, Nas, Usb, RemoteHttp }
 
 /**
  * 一首歌 = MV + 原唱 + 伴唱（任一轨可缺，播放器按可用轨降级）。

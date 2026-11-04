@@ -26,7 +26,8 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
-import com.xgy.androidkaraoke.nas.NasEntryKind
+import com.xgy.androidkaraoke.library.LibraryEntryKind
+import com.xgy.androidkaraoke.library.LibrarySourceKind
 import com.xgy.androidkaraoke.playback.AppViewModel
 import com.xgy.androidkaraoke.theme.KaraokeColors
 import com.xgy.androidkaraoke.ui.components.FocusSurface
@@ -35,17 +36,29 @@ import com.xgy.androidkaraoke.ui.components.ShelfHeader
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun NasLibraryScreen(vm: AppViewModel) {
+    val source = vm.activeSource
+    val title = when (source?.kind) {
+        LibrarySourceKind.Usb -> "曲库 · U 盘"
+        LibrarySourceKind.Nas -> "曲库 · NAS"
+        null -> "曲库"
+    }
+    val subtitle = buildString {
+        append(source?.displayName ?: "未选择来源")
+        append("  ·  ")
+        append(vm.libraryPath.ifBlank { "—" })
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 40.dp, vertical = 8.dp),
     ) {
-        ShelfHeader("曲库（设置）", vm.nasPath)
+        ShelfHeader(title, subtitle)
         Row(
             modifier = Modifier.padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            FocusSurface(onClick = { vm.nasGoUp() }, corner = 10.dp) {
+            FocusSurface(onClick = { vm.libraryGoUp() }, corner = 10.dp) {
                 Text(
                     "上级目录",
                     color = KaraokeColors.textPrimary,
@@ -53,7 +66,7 @@ fun NasLibraryScreen(vm: AppViewModel) {
                     fontSize = 16.sp,
                 )
             }
-            FocusSurface(onClick = { vm.refreshNas() }, corner = 10.dp) {
+            FocusSurface(onClick = { vm.refreshLibrary() }, corner = 10.dp) {
                 Text(
                     "刷新",
                     color = KaraokeColors.textPrimary,
@@ -63,7 +76,7 @@ fun NasLibraryScreen(vm: AppViewModel) {
             }
             FocusSurface(onClick = { vm.openSettings() }, corner = 10.dp) {
                 Text(
-                    "设置 NAS",
+                    "曲库来源",
                     color = KaraokeColors.textPrimary,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                     fontSize = 16.sp,
@@ -72,12 +85,12 @@ fun NasLibraryScreen(vm: AppViewModel) {
         }
 
         when {
-            vm.nasLoading -> {
+            vm.libraryLoading -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("正在连接 NAS…", color = KaraokeColors.textSecondary, fontSize = 20.sp)
+                    Text("正在加载曲库…", color = KaraokeColors.textSecondary, fontSize = 20.sp)
                 }
             }
-            vm.nasError != null -> {
+            vm.libraryError != null -> {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -86,9 +99,14 @@ fun NasLibraryScreen(vm: AppViewModel) {
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("无法浏览曲库", color = KaraokeColors.textPrimary, fontSize = 22.sp)
-                        Text(vm.nasError.orEmpty(), color = KaraokeColors.danger, fontSize = 18.sp)
+                        Text(vm.libraryError.orEmpty(), color = KaraokeColors.danger, fontSize = 18.sp)
                         Text(
-                            "请检查网络、地址，或在设置中填写账号密码后重试。",
+                            when (source?.kind) {
+                                LibrarySourceKind.Usb ->
+                                    "请确认 U 盘已插入、已授予存储权限，或返回设置重新扫描。"
+                                else ->
+                                    "请检查网络、地址，或在设置中填写账号密码后重试。"
+                            },
                             color = KaraokeColors.textSecondary,
                             fontSize = 15.sp,
                         )
@@ -100,8 +118,8 @@ fun NasLibraryScreen(vm: AppViewModel) {
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 32.dp),
                 ) {
-                    items(vm.nasEntries, key = { it.id }) { entry ->
-                        FocusSurface(onClick = { vm.openNasEntry(entry) }, corner = 12.dp) { focused ->
+                    items(vm.libraryEntries, key = { it.id }) { entry ->
+                        FocusSurface(onClick = { vm.openLibraryEntry(entry) }, corner = 12.dp) { focused ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -116,9 +134,9 @@ fun NasLibraryScreen(vm: AppViewModel) {
                             ) {
                                 Icon(
                                     imageVector = when (entry.kind) {
-                                        NasEntryKind.Folder -> Icons.Outlined.Folder
-                                        NasEntryKind.Audio -> Icons.Outlined.AudioFile
-                                        NasEntryKind.Video -> Icons.Outlined.Movie
+                                        LibraryEntryKind.Folder -> Icons.Outlined.Folder
+                                        LibraryEntryKind.Audio -> Icons.Outlined.AudioFile
+                                        LibraryEntryKind.Video -> Icons.Outlined.Movie
                                         else -> Icons.Outlined.InsertDriveFile
                                     },
                                     contentDescription = null,
@@ -128,11 +146,11 @@ fun NasLibraryScreen(vm: AppViewModel) {
                                     Text(entry.name, color = KaraokeColors.textPrimary, fontSize = 18.sp)
                                     Text(
                                         when (entry.kind) {
-                                            NasEntryKind.Folder -> "文件夹"
-                                            NasEntryKind.Audio -> "音频"
-                                            NasEntryKind.Video -> "视频"
-                                            NasEntryKind.Manifest -> "清单"
-                                            NasEntryKind.Other -> "文件"
+                                            LibraryEntryKind.Folder -> "文件夹（可含 MV/原唱/伴唱）"
+                                            LibraryEntryKind.Audio -> "音频"
+                                            LibraryEntryKind.Video -> "视频"
+                                            LibraryEntryKind.Manifest -> "清单"
+                                            LibraryEntryKind.Other -> "文件"
                                         },
                                         color = KaraokeColors.textTertiary,
                                         fontSize = 13.sp,

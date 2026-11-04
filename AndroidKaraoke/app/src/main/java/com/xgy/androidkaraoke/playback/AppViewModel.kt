@@ -10,27 +10,33 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
 import com.xgy.androidkaraoke.AppContainer
+import com.xgy.androidkaraoke.BrandConfig
 import com.xgy.androidkaraoke.data.MockData
+import com.xgy.androidkaraoke.library.LibraryEntry
+import com.xgy.androidkaraoke.library.LibraryEntryKind
+import com.xgy.androidkaraoke.library.LibrarySource
+import com.xgy.androidkaraoke.library.LibrarySourceKind
+import com.xgy.androidkaraoke.library.LocalLibraryError
 import com.xgy.androidkaraoke.model.MainTab
+import com.xgy.androidkaraoke.model.MediaSource
 import com.xgy.androidkaraoke.model.Overlay
 import com.xgy.androidkaraoke.model.PlayOrderMode
 import com.xgy.androidkaraoke.model.Song
 import com.xgy.androidkaraoke.model.VocalMode
 import com.xgy.androidkaraoke.nas.NasConfig
-import com.xgy.androidkaraoke.nas.NasEntry
 import com.xgy.androidkaraoke.nas.NasEntryKind
 import com.xgy.androidkaraoke.nas.NasError
 import com.xgy.androidkaraoke.recommend.RecommendationEngine
 import com.xgy.androidkaraoke.remote.PhoneRequestServer
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.util.UUID
 
 class AppViewModel(private val container: AppContainer) : ViewModel() {
     private val player get() = container.player
     private val listeningPrefs get() = container.listeningPrefs
+    private val sourceStore get() = container.librarySourceStore
 
     var selectedTab by mutableStateOf(MainTab.FreeSing)
         private set
@@ -61,13 +67,12 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     var prefsEpoch by mutableStateOf(0)
         private set
 
-    /** 手机点歌与推荐可用的曲目目录（mock ∪ NAS 已加载）。 */
+    /** 手机点歌与推荐可用的曲目目录（mock ∪ 已加载曲库）。 */
     val catalog = mutableStateListOf<Song>().also { it.addAll(MockData.catalog) }
 
-    /** 「为你推荐」：常唱偏好（歌手/曲风），当前播放不作为主信号。 */
     val forYouRecommendations: List<Song>
         get() {
-            prefsEpoch // read for recomposition
+            prefsEpoch
             return RecommendationEngine.rank(
                 candidates = catalog.toList(),
                 artistWeights = listeningPrefs.artistWeights(),
@@ -78,7 +83,6 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             )
         }
 
-    /** 「猜你想唱」：同上，排除队列中已有；当前曲仅弱降权。 */
     val guessYouWantRecommendations: List<Song>
         get() {
             prefsEpoch
@@ -93,24 +97,45 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             )
         }
 
-    var nasPath by mutableStateOf(container.nasConfigStore.load().normalizedPath)
+    // ——— 曲库多来源 ———
+    val librarySources = mutableStateListOf<LibrarySource>()
+    var activeSourceId by mutableStateOf<String?>(null)
         private set
-    var nasEntries = mutableStateListOf<NasEntry>()
+    var libraryPath by mutableStateOf("")
         private set
-    var nasLoading by mutableStateOf(false)
+    var libraryEntries = mutableStateListOf<LibraryEntry>()
         private set
-    var nasError by mutableStateOf<String?>(null)
+    var libraryLoading by mutableStateOf(false)
+        private set
+    var libraryError by mutableStateOf<String?>(null)
         private set
 
-    var settingsBaseUrl by mutableStateOf(container.nasConfigStore.load().normalizedBaseUrl)
-    var settingsPath by mutableStateOf(container.nasConfigStore.load().normalizedPath)
-    var settingsUsername by mutableStateOf(container.credentialStore.username())
+    val activeSource: LibrarySource?
+        get() = librarySources.firstOrNull { it.id == activeSourceId }
+            ?: librarySources.firstOrNull { it.enabled }
+
+    // 兼容旧 UI 命名
+    val nasPath: String get() = libraryPath
+    val nasEntries: List<LibraryEntry> get() = libraryEntries
+    val nasLoading: Boolean get() = libraryLoading
+    val nasError: String? get() = libraryError
+
+    // ——— 设置编辑（NAS 添加/编辑） ———
+    var editingSourceId by mutableStateOf<String?>(null)
+    var settingsDisplayName by mutableStateOf("NAS")
+    var settingsBaseUrl by mutableStateOf(BrandConfig.defaultNasBaseUrl)
+    var settingsPath by mutableStateOf(BrandConfig.defaultNasLibraryPath)
+    var settingsUsername by mutableStateOf("")
     var settingsPassword by mutableStateOf("")
+    var settingsRelativeMusicPath by mutableStateOf("")
     var settingsBusy by mutableStateOf(false)
         private set
     var settingsMessage by mutableStateOf<String?>(null)
         private set
     var settingsIsError by mutableStateOf(false)
+        private set
+    /** null = 列表；Nas = 编辑 NAS；Usb = 编辑 U 盘子路径 */
+    var settingsEditorKind by mutableStateOf<LibrarySourceKind?>(null)
         private set
 
     var phoneOrderUrl by mutableStateOf<String?>(null)
@@ -127,6 +152,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     private var toastJob: Job? = null
     private var tickJob: Job? = null
     private var phoneServer: PhoneRequestServer? = null
+    private var knownUsbIds: Set<String> = emptySet()
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
@@ -141,9 +167,10 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     init {
+        migrateLegacyNasIfNeeded()
+        reloadSources(scanUsb = true, announceUsb = false)
         val seed = MockData.aiSongs.take(4)
         queue.addAll(seed)
-        // 用已点种子建立初始「常唱」画像（演示：民谣/古风/民族等）
         seed.forEach { song ->
             listeningPrefs.recordQueued(song.artist, song.styleTags, song.id)
         }
@@ -151,6 +178,64 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         player.addListener(playerListener)
         startPhoneServer()
         startTicker()
+    }
+
+    private fun migrateLegacyNasIfNeeded() {
+        val existing = sourceStore.load()
+        if (existing.any { it.kind == LibrarySourceKind.Nas }) return
+        val cfg = container.nasConfigStore.load()
+        sourceStore.upsert(
+            LibrarySource(
+                id = "nas-default",
+                kind = LibrarySourceKind.Nas,
+                displayName = "NAS 默认",
+                enabled = true,
+                nasBaseUrl = cfg.normalizedBaseUrl,
+                nasLibraryPath = cfg.normalizedPath,
+            ),
+        )
+    }
+
+    fun reloadSources(scanUsb: Boolean = true, announceUsb: Boolean = false) {
+        val beforeUsb = knownUsbIds
+        if (scanUsb) {
+            container.usbScanner.syncUsbSources(sourceStore)
+        }
+        val list = sourceStore.load()
+        librarySources.clear()
+        librarySources.addAll(list)
+        val usbNow = list.filter { it.kind == LibrarySourceKind.Usb && it.localRootPath != null }
+            .map { it.id }.toSet()
+        if (announceUsb) {
+            val added = usbNow - beforeUsb
+            val removed = beforeUsb - usbNow
+            when {
+                added.isNotEmpty() -> {
+                    val names = list.filter { it.id in added }.joinToString { it.displayName }
+                    showToast("已检测到 U 盘：$names")
+                }
+                removed.isNotEmpty() -> showToast("U 盘已拔出，相关曲库暂不可用")
+            }
+        }
+        knownUsbIds = usbNow
+        if (activeSourceId == null || librarySources.none { it.id == activeSourceId }) {
+            activeSourceId = sourceStore.activeSourceId()
+                ?: librarySources.firstOrNull { it.enabled }?.id
+        }
+    }
+
+    /** 媒体挂载广播 / 权限授予后调用。 */
+    fun onStorageChanged() {
+        reloadSources(scanUsb = true, announceUsb = true)
+        val active = activeSource
+        if (active?.kind == LibrarySourceKind.Usb && overlay == Overlay.NasLibrary) {
+            if (active.localRootPath == null) {
+                libraryError = "U 盘已拔出，请重新插入或切换到来源"
+                libraryEntries.clear()
+            } else {
+                refreshLibrary(active.browseRoot)
+            }
+        }
     }
 
     fun selectTab(tab: MainTab) {
@@ -162,19 +247,98 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun openSettings() {
-        val cfg = container.nasConfigStore.load()
-        settingsBaseUrl = cfg.normalizedBaseUrl
-        settingsPath = cfg.normalizedPath
+        reloadSources(scanUsb = true, announceUsb = false)
+        settingsEditorKind = null
+        editingSourceId = null
+        settingsMessage = null
         settingsUsername = container.credentialStore.username()
         settingsPassword = ""
-        settingsMessage = null
         overlay = Overlay.Settings
     }
 
-    fun openNasLibrary() {
-        overlay = Overlay.NasLibrary
-        refreshNas(nasPath)
+    fun beginAddNas() {
+        editingSourceId = null
+        settingsEditorKind = LibrarySourceKind.Nas
+        settingsDisplayName = "NAS"
+        settingsBaseUrl = BrandConfig.defaultNasBaseUrl
+        settingsPath = BrandConfig.defaultNasLibraryPath
+        settingsUsername = container.credentialStore.username()
+        settingsPassword = ""
+        settingsMessage = null
     }
+
+    fun beginEditSource(source: LibrarySource) {
+        editingSourceId = source.id
+        settingsEditorKind = source.kind
+        settingsDisplayName = source.displayName
+        settingsBaseUrl = source.nasBaseUrl ?: BrandConfig.defaultNasBaseUrl
+        settingsPath = source.nasLibraryPath ?: BrandConfig.defaultNasLibraryPath
+        settingsRelativeMusicPath = source.relativeMusicPath
+        settingsUsername = container.credentialStore.username()
+        settingsPassword = ""
+        settingsMessage = null
+    }
+
+    fun cancelSourceEditor() {
+        settingsEditorKind = null
+        editingSourceId = null
+        settingsMessage = null
+    }
+
+    fun scanUsbNow() {
+        reloadSources(scanUsb = true, announceUsb = true)
+        val usb = librarySources.filter { it.kind == LibrarySourceKind.Usb }
+        if (usb.isEmpty()) {
+            showToast("未发现可移除存储，请插入 U 盘后重试")
+        } else {
+            val mounted = usb.count { it.localRootPath != null }
+            showToast("已扫描：${usb.size} 个 U 盘来源（已挂载 $mounted）")
+        }
+    }
+
+    fun setSourceEnabled(id: String, enabled: Boolean) {
+        sourceStore.setEnabled(id, enabled)
+        reloadSources(scanUsb = false)
+        showToast(if (enabled) "已启用" else "已禁用")
+    }
+
+    fun removeSource(id: String) {
+        sourceStore.remove(id)
+        if (activeSourceId == id) activeSourceId = null
+        reloadSources(scanUsb = false)
+        showToast("已删除来源")
+    }
+
+    fun openLibrary(source: LibrarySource? = null) {
+        val target = source ?: activeSource
+        if (target == null) {
+            showToast("请先添加曲库来源")
+            return
+        }
+        if (!target.enabled) {
+            showToast("该来源已禁用，请先启用")
+            return
+        }
+        if (target.kind == LibrarySourceKind.Usb && target.localRootPath == null) {
+            showToast("U 盘未挂载，请插入后再浏览")
+            return
+        }
+        activeSourceId = target.id
+        sourceStore.setActiveSourceId(target.id)
+        // 同步 NAS 配置给 HttpsNasMediaSource
+        if (target.kind == LibrarySourceKind.Nas) {
+            val cfg = NasConfig(
+                baseUrlString = target.nasBaseUrl ?: BrandConfig.defaultNasBaseUrl,
+                libraryPath = target.nasLibraryPath ?: BrandConfig.defaultNasLibraryPath,
+            )
+            container.nasConfigStore.save(cfg)
+            container.nasSource.reloadConfig()
+        }
+        overlay = Overlay.NasLibrary
+        refreshLibrary(target.browseRoot)
+    }
+
+    fun openNasLibrary() = openLibrary(activeSource)
 
     fun openQueue() {
         overlay = Overlay.Queue
@@ -245,7 +409,6 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun nextTrack() {
-        // 主动切歌：若已听过大半，记为播完偏好；否则不记完成。
         val current = nowPlaying
         if (current != null && durationSec > 0 && currentTimeSec >= durationSec * 0.6) {
             listeningPrefs.recordPlayCompleted(current.artist, current.styleTags, current.id)
@@ -326,71 +489,158 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         return "%02d:%02d".format(m, s)
     }
 
-    fun refreshNas(path: String = nasPath) {
+    fun refreshNas(path: String = libraryPath) = refreshLibrary(path)
+
+    fun refreshLibrary(path: String = libraryPath) {
+        val source = activeSource ?: run {
+            libraryError = "未选择曲库来源"
+            return
+        }
         viewModelScope.launch {
-            nasLoading = true
-            nasError = null
+            libraryLoading = true
+            libraryError = null
             try {
-                container.nasSource.reloadConfig()
-                nasPath = path
-                val entries = container.nasSource.listDirectory(path)
-                nasEntries.clear()
-                nasEntries.addAll(entries)
-                runCatching {
-                    val fromJson = container.nasSource.loadLibraryJson(path)
-                    if (fromJson.isNotEmpty()) {
-                        mergeCatalog(fromJson)
-                    } else {
-                        val songs = container.nasSource.listSongs(path)
-                        if (songs.isNotEmpty()) mergeCatalog(songs)
+                libraryPath = path
+                when (source.kind) {
+                    LibrarySourceKind.Nas -> {
+                        applyNasConfig(source)
+                        val entries = container.nasSource.listDirectory(path)
+                        libraryEntries.clear()
+                        libraryEntries.addAll(
+                            entries.map { e ->
+                                LibraryEntry(
+                                    id = e.id,
+                                    name = e.name,
+                                    path = e.path,
+                                    kind = when (e.kind) {
+                                        NasEntryKind.Folder -> LibraryEntryKind.Folder
+                                        NasEntryKind.Audio -> LibraryEntryKind.Audio
+                                        NasEntryKind.Video -> LibraryEntryKind.Video
+                                        NasEntryKind.Manifest -> LibraryEntryKind.Manifest
+                                        NasEntryKind.Other -> LibraryEntryKind.Other
+                                    },
+                                    playableUri = e.absoluteUrl,
+                                    sourceId = source.id,
+                                )
+                            },
+                        )
+                        runCatching {
+                            val fromJson = container.nasSource.loadLibraryJson(path)
+                            if (fromJson.isNotEmpty()) mergeCatalog(fromJson)
+                            else {
+                                val songs = container.nasSource.listSongs(path)
+                                if (songs.isNotEmpty()) mergeCatalog(songs)
+                            }
+                        }
+                    }
+                    LibrarySourceKind.Usb -> {
+                        val root = source.localRootPath
+                            ?: throw LocalLibraryError.NotFound("U 盘未挂载")
+                        val browse = if (path.isBlank()) source.browseRoot else path
+                        libraryPath = browse
+                        val entries = container.localSource.listDirectory(root, browse)
+                        libraryEntries.clear()
+                        libraryEntries.addAll(entries.map { it.copy(sourceId = source.id) })
+                        runCatching {
+                            val fromJson = container.localSource.loadLibraryJson(browse)
+                            if (fromJson.isNotEmpty()) {
+                                mergeCatalog(fromJson.map { it.copy(source = MediaSource.Usb) })
+                            } else {
+                                val songs = container.localSource.listSongs(browse)
+                                if (songs.isNotEmpty()) {
+                                    mergeCatalog(songs.map { it.copy(source = MediaSource.Usb) })
+                                }
+                            }
+                        }
                     }
                 }
             } catch (e: Exception) {
-                nasEntries.clear()
-                nasError = (e as? NasError)?.message ?: (e.message ?: "无法连接 NAS")
+                libraryEntries.clear()
+                libraryError = when (e) {
+                    is NasError -> e.message
+                    is LocalLibraryError -> e.message
+                    else -> e.message ?: "无法浏览曲库"
+                }
             } finally {
-                nasLoading = false
+                libraryLoading = false
             }
         }
     }
 
-    fun openNasEntry(entry: NasEntry) {
+    fun openNasEntry(entry: LibraryEntry) = openLibraryEntry(entry)
+
+    fun openLibraryEntry(entry: LibraryEntry) {
+        val source = activeSource ?: return
         viewModelScope.launch {
             when (entry.kind) {
-                NasEntryKind.Folder -> {
-                    val bundled = runCatching {
-                        container.nasSource.songFromFolder(entry.path, entry.name)
-                    }.getOrNull()
+                LibraryEntryKind.Folder -> {
+                    val bundled = when (source.kind) {
+                        LibrarySourceKind.Nas -> runCatching {
+                            container.nasSource.songFromFolder(entry.path, entry.name)
+                        }.getOrNull()
+                        LibrarySourceKind.Usb -> runCatching {
+                            container.localSource.songFromFolder(entry.path, entry.name)
+                                ?.copy(source = MediaSource.Usb, artist = source.displayName)
+                        }.getOrNull()
+                    }
                     if (bundled != null && bundled.anyPlayableUrl() != null) {
                         mergeCatalog(listOf(bundled))
                         addToQueue(bundled)
                         openPlayback(bundled)
                     } else {
-                        refreshNas(entry.path)
+                        refreshLibrary(entry.path)
                     }
                 }
-                NasEntryKind.Audio, NasEntryKind.Video -> {
+                LibraryEntryKind.Audio, LibraryEntryKind.Video -> {
+                    val uri = entry.playableUri
                     val song = Song(
                         id = entry.id,
                         title = entry.name.substringBeforeLast('.'),
-                        artist = "NAS",
+                        artist = source.displayName,
                         relativePath = entry.path,
-                        mvUrl = if (entry.kind == NasEntryKind.Video) entry.absoluteUrl else null,
-                        originalUrl = if (entry.kind == NasEntryKind.Audio) entry.absoluteUrl else null,
+                        source = if (source.kind == LibrarySourceKind.Usb) MediaSource.Usb else MediaSource.Nas,
+                        mvUrl = if (entry.kind == LibraryEntryKind.Video) uri else null,
+                        originalUrl = if (entry.kind == LibraryEntryKind.Audio) uri else null,
                         accompanimentUrl = null,
                     )
                     addToQueue(song)
                     openPlayback(song)
                 }
-                NasEntryKind.Manifest -> showToast("请在设置中配置 library.json 清单")
+                LibraryEntryKind.Manifest -> showToast("请使用 library.json 清单（MV/原唱/伴唱）")
                 else -> showToast("暂不支持打开：${entry.name}")
             }
         }
     }
 
-    fun nasGoUp() {
-        val parent = nasPath.trimEnd('/').substringBeforeLast('/', missingDelimiterValue = "/")
-        refreshNas(if (parent.isEmpty()) "/" else parent)
+    fun nasGoUp() = libraryGoUp()
+
+    fun libraryGoUp() {
+        val source = activeSource ?: return
+        when (source.kind) {
+            LibrarySourceKind.Nas -> {
+                val parent = libraryPath.trimEnd('/').substringBeforeLast('/', missingDelimiterValue = "/")
+                refreshLibrary(if (parent.isEmpty()) "/" else parent)
+            }
+            LibrarySourceKind.Usb -> {
+                val root = source.browseRoot.trimEnd('/')
+                val current = libraryPath.trimEnd('/')
+                if (current == root || current.length <= root.length) {
+                    showToast("已在曲库根目录")
+                    return
+                }
+                val parent = current.substringBeforeLast('/', missingDelimiterValue = root)
+                refreshLibrary(if (parent.length < root.length) root else parent)
+            }
+        }
+    }
+
+    private fun applyNasConfig(source: LibrarySource) {
+        val cfg = NasConfig(
+            baseUrlString = source.nasBaseUrl ?: BrandConfig.defaultNasBaseUrl,
+            libraryPath = source.nasLibraryPath ?: BrandConfig.defaultNasLibraryPath,
+        )
+        container.nasConfigStore.save(cfg)
+        container.nasSource.reloadConfig()
     }
 
     fun saveSettingsAndTest(test: Boolean) {
@@ -399,26 +649,57 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             settingsMessage = null
             settingsIsError = false
             try {
-                val cfg = NasConfig(
-                    baseUrlString = settingsBaseUrl.trim(),
-                    libraryPath = settingsPath.trim(),
-                )
-                container.nasConfigStore.save(cfg)
-                val passToStore = settingsPassword.ifEmpty {
-                    container.credentialStore.password()
-                }
-                container.credentialStore.save(settingsUsername.trim(), passToStore)
-                settingsPassword = ""
-                container.nasSource.reloadConfig()
-                nasPath = cfg.normalizedPath
-                if (test) {
-                    val msg = container.nasSource.testConnection()
-                    settingsMessage = msg
-                    settingsIsError = false
-                    showToast(msg)
-                } else {
-                    settingsMessage = "已保存"
-                    showToast("设置已保存")
+                when (settingsEditorKind) {
+                    LibrarySourceKind.Nas, null -> {
+                        val id = editingSourceId ?: ("nas-" + UUID.randomUUID().toString().take(8))
+                        val source = LibrarySource(
+                            id = id,
+                            kind = LibrarySourceKind.Nas,
+                            displayName = settingsDisplayName.trim().ifBlank { "NAS" },
+                            enabled = true,
+                            nasBaseUrl = settingsBaseUrl.trim(),
+                            nasLibraryPath = settingsPath.trim(),
+                        )
+                        sourceStore.upsert(source)
+                        val cfg = NasConfig(
+                            baseUrlString = settingsBaseUrl.trim(),
+                            libraryPath = settingsPath.trim(),
+                        )
+                        container.nasConfigStore.save(cfg)
+                        val passToStore = settingsPassword.ifEmpty {
+                            container.credentialStore.password()
+                        }
+                        container.credentialStore.save(settingsUsername.trim(), passToStore)
+                        settingsPassword = ""
+                        container.nasSource.reloadConfig()
+                        activeSourceId = id
+                        sourceStore.setActiveSourceId(id)
+                        reloadSources(scanUsb = false)
+                        if (test) {
+                            val msg = container.nasSource.testConnection()
+                            settingsMessage = msg
+                            settingsIsError = false
+                            showToast(msg)
+                        } else {
+                            settingsMessage = "已保存"
+                            showToast("NAS 来源已保存")
+                            settingsEditorKind = null
+                        }
+                    }
+                    LibrarySourceKind.Usb -> {
+                        val id = editingSourceId ?: return@launch
+                        val prev = sourceStore.load().firstOrNull { it.id == id } ?: return@launch
+                        sourceStore.upsert(
+                            prev.copy(
+                                displayName = settingsDisplayName.trim().ifBlank { prev.displayName },
+                                relativeMusicPath = settingsRelativeMusicPath.trim().trim('/'),
+                            ),
+                        )
+                        reloadSources(scanUsb = false)
+                        settingsMessage = "已保存"
+                        showToast("U 盘来源已保存")
+                        settingsEditorKind = null
+                    }
                 }
             } catch (e: Exception) {
                 settingsIsError = true
