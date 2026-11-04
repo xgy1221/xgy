@@ -163,20 +163,57 @@ class HttpsNasMediaSource(
         return songs
     }
 
-    /** 读取外挂 LRC 文本（播放前调用）。 */
-    suspend fun loadLyricsText(song: Song): String? = withContext(Dispatchers.IO) {
-        val rawUrl = song.lyricsUrl ?: return@withContext null
+    /**
+     * 读取外挂 LRC。若 song.lyricsUrl 为空，会尝试在曲包目录发现 lyrics.lrc。
+     * 返回 Pair(正文, 实际使用的 lyricsUrl) 便于回写 catalog。
+     */
+    suspend fun loadLyricsText(song: Song): Pair<String, String>? = withContext(Dispatchers.IO) {
         ensureBackend()
+        val resolvedUrl = song.lyricsUrl?.takeIf { it.isNotBlank() }
+            ?: discoverLyricsUrl(song)
+            ?: return@withContext null
         val url = if (synologyMode.get() == true) {
             fs().ensureSession()
-            val path = SynologyFileStation.extractDownloadPath(rawUrl)
-                ?: rawUrl.takeIf { it.startsWith("/") && !it.startsWith("http") }
-            if (path != null) fs().downloadUrl(path) else rawUrl
+            val path = SynologyFileStation.extractDownloadPath(resolvedUrl)
+                ?: resolvedUrl.takeIf { it.startsWith("/") && !it.startsWith("http") }
+            if (path != null) fs().downloadUrl(path) else resolvedUrl
         } else {
-            rawUrl
+            resolvedUrl
         }
         try {
-            fetchText(url, allowRedirect = true)
+            val body = fetchText(url, allowRedirect = true)
+            if (body.isBlank()) null else body to resolvedUrl
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** 曲包目录或扁平文件旁发现 .lrc。 */
+    suspend fun discoverLyricsUrl(song: Song): String? = withContext(Dispatchers.IO) {
+        ensureBackend()
+        val rel = song.relativePath ?: return@withContext null
+        val dir = when {
+            rel.lowercase().endsWith(".lrc") -> rel.substringBeforeLast('/', missingDelimiterValue = "")
+            SynologyFileStation.classifyFile(rel.substringAfterLast('/')) in
+                setOf(NasEntryKind.Audio, NasEntryKind.Video) ->
+                rel.substringBeforeLast('/', missingDelimiterValue = "")
+            else -> rel
+        }.ifBlank { return@withContext null }
+        try {
+            val entries = listDirectory(dir)
+            siblingLyricsUrl(
+                entries,
+                NasEntry(
+                    id = song.id,
+                    name = song.relativePath?.substringAfterLast('/') ?: song.title,
+                    path = rel,
+                    kind = NasEntryKind.Other,
+                ),
+            ) ?: run {
+                val prefer = LyricsFiles.preferredNames(song.title, song.artist, dir.substringAfterLast('/'))
+                val name = LyricsFiles.pickLyricsName(entries.map { it.name }, prefer) ?: return@withContext null
+                entries.firstOrNull { it.name.equals(name, ignoreCase = true) }?.absoluteUrl
+            }
         } catch (_: Exception) {
             null
         }
@@ -266,18 +303,42 @@ class HttpsNasMediaSource(
     suspend fun songFromFolder(folderPath: String, folderName: String): Song? {
         val entries = listDirectory(folderPath)
         var mv: String? = null
+        var mvName: String? = null
         var original: String? = null
+        var originalName: String? = null
         var acc: String? = null
+        var accName: String? = null
         for (e in entries) {
             val url = e.absoluteUrl ?: continue
             when (TrackRoles.classify(e.name)) {
                 TrackRole.Lyrics, TrackRole.Ignore -> Unit
-                TrackRole.Mv -> if (mv == null) mv = url
-                TrackRole.Original -> if (original == null) original = url
-                TrackRole.Accompaniment -> if (acc == null) acc = url
+                TrackRole.Mv -> {
+                    val next = TrackRoles.pickPreferred(mv, mvName, url, e.name)
+                    if (next != mv) {
+                        mv = next
+                        mvName = e.name
+                    }
+                }
+                TrackRole.Original -> {
+                    val next = TrackRoles.pickPreferred(original, originalName, url, e.name)
+                    if (next != original) {
+                        original = next
+                        originalName = e.name
+                    }
+                }
+                TrackRole.Accompaniment -> {
+                    val next = TrackRoles.pickPreferred(acc, accName, url, e.name)
+                    if (next != acc) {
+                        acc = next
+                        accName = e.name
+                    }
+                }
                 TrackRole.Other -> {
-                    // 未命名视频可作 MV；不把未命名音频猜成原唱干声
-                    if (e.kind == NasEntryKind.Video && mv == null) mv = url
+                    // 仅当还没有显式 mv 时，未命名视频可作 MV（source.* 已被 Ignore）
+                    if (e.kind == NasEntryKind.Video && mv == null) {
+                        mv = url
+                        mvName = e.name
+                    }
                 }
             }
         }

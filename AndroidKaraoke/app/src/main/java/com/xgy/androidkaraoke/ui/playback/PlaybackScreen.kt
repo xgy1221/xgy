@@ -114,11 +114,18 @@ fun PlaybackScreen(vm: AppViewModel) {
             )
             Text(
                 text = buildString {
-                    append(if (song?.hasMv == true) "MV " else "无MV ")
-                    append("· ")
-                    append(if (vm.vocalMode == VocalMode.Accompaniment) "伴唱" else "原唱")
-                    if (song?.hasOriginal == true) append(" · 有原唱")
-                    if (song?.hasAccompaniment == true) append(" · 有伴唱")
+                    append(if (song?.hasMv == true) "MV" else "无MV")
+                    append(" · ")
+                    append(
+                        if (vm.vocalMode == VocalMode.Accompaniment) "伴唱（纯伴奏）"
+                        else "原唱（完整混音）",
+                    )
+                    when {
+                        song?.canToggleVocal == true -> append(" · 可切换")
+                        song?.hasAccompaniment == true -> append(" · 仅伴奏")
+                        song?.hasOriginal == true -> append(" · 仅原曲")
+                    }
+                    if (song?.hasLyrics == true || vm.lyricsDoc != null) append(" · 有歌词")
                 },
                 color = KaraokeColors.textSecondary,
                 fontSize = 15.sp,
@@ -133,17 +140,29 @@ fun PlaybackScreen(vm: AppViewModel) {
             }
         }
 
-        // 同步歌词（有 .lrc 才显示；无则保持干净，不放假词）
-        vm.lyricsDoc?.takeUnless { it.isEmpty }?.let { doc ->
-            LyricsOverlay(
-                doc = doc,
-                currentIndex = vm.lyricLineIndex,
-                lineProgress = vm.lyricLineProgress,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth()
-                    .padding(bottom = 120.dp),
-            )
+        // 同步歌词 / 明确空态（不放假词）
+        val lyricsDoc = vm.lyricsDoc
+        when {
+            lyricsDoc != null && !lyricsDoc.isEmpty -> {
+                LyricsOverlay(
+                    doc = lyricsDoc,
+                    currentIndex = vm.lyricLineIndex,
+                    lineProgress = vm.lyricLineProgress,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .fillMaxWidth()
+                        .padding(bottom = 120.dp),
+                )
+            }
+            else -> {
+                LyricsEmptyHint(
+                    loading = vm.lyricsLoading,
+                    missing = vm.lyricsMissing,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(bottom = 120.dp),
+                )
+            }
         }
 
         Column(
@@ -189,7 +208,12 @@ fun PlaybackScreen(vm: AppViewModel) {
                     prominent = true,
                 ) { vm.togglePlayPause() }
                 ControlBtn(
-                    if (vm.vocalMode == VocalMode.Accompaniment) "伴唱" else "原唱",
+                    when {
+                        song?.canToggleVocal != true && song?.hasAccompaniment == true -> "仅伴奏"
+                        song?.canToggleVocal != true && song?.hasOriginal == true -> "仅原曲"
+                        vm.vocalMode == VocalMode.Accompaniment -> "伴唱"
+                        else -> "原唱"
+                    },
                     Icons.Outlined.RecordVoiceOver,
                 ) { vm.toggleVocal() }
                 ControlBtn("切歌", Icons.Outlined.SkipNext) { vm.nextTrack() }

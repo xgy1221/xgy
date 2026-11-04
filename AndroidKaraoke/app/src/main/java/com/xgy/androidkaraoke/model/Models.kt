@@ -54,8 +54,17 @@ data class Song(
             accompanimentUrl != originalUrl
     val hasLyrics: Boolean get() = !lyricsUrl.isNullOrBlank()
 
+    /** 原曲混音与伴奏都独立存在时，才允许切换。 */
+    val canToggleVocal: Boolean get() = hasOriginal && hasAccompaniment
+
     val styleTags: List<String>
         get() = (genres + listOfNotNull(tag)).map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+
+    fun preferredVocalMode(): VocalMode = when {
+        hasAccompaniment -> VocalMode.Accompaniment
+        hasOriginal -> VocalMode.Original
+        else -> VocalMode.Accompaniment
+    }
 
     fun audioUrl(mode: VocalMode): String? = when (mode) {
         VocalMode.Original -> originalUrl ?: accompanimentUrl ?: mvUrl

@@ -209,6 +209,11 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     /** 当前曲目已解析的 LRC；无歌词时为 null（不展示假歌词）。 */
     var lyricsDoc by mutableStateOf<LyricsDocument?>(null)
         private set
+    var lyricsLoading by mutableStateOf(false)
+        private set
+    /** 已尝试加载且无可用 LRC（用于「暂无歌词」空态，非假词）。 */
+    var lyricsMissing by mutableStateOf(false)
+        private set
     var lyricLineIndex by mutableIntStateOf(-1)
         private set
     /** 当前行「唱到哪」进度 0..1 */
@@ -940,6 +945,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                     return@launch
                 }
                 nowPlaying = resolved
+                vocalMode = resolved.preferredVocalMode()
                 player.play(resolved, vocalMode, autoPlay = true)
                 player.setPreferEmbeddedSubtitles(!resolved.hasLyrics)
                 isPlaying = true
@@ -955,18 +961,21 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     private fun clearLyrics() {
         lyricsJob?.cancel()
         lyricsDoc = null
+        lyricsLoading = false
+        lyricsMissing = false
         lyricLineIndex = -1
         lyricLineProgress = 0f
     }
 
     private fun loadLyricsFor(song: Song) {
         lyricsJob?.cancel()
-        if (!song.hasLyrics) {
-            clearLyrics()
-            return
-        }
+        lyricsDoc = null
+        lyricLineIndex = -1
+        lyricLineProgress = 0f
+        lyricsMissing = false
+        lyricsLoading = true
         lyricsJob = viewModelScope.launch {
-            val text = runCatching {
+            val loaded = runCatching {
                 when (song.source) {
                     MediaSource.Nas -> container.nasSource.loadLyricsText(song)
                     MediaSource.Usb -> container.localSource.loadLyricsText(song)
@@ -974,14 +983,23 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 }
             }.getOrNull()
             if (nowPlaying?.id != song.id) return@launch
+            lyricsLoading = false
+            val text = loaded?.first
+            val usedUrl = loaded?.second
             val doc = text?.let { LrcParser.parse(it) }?.takeUnless { it.isEmpty }
             lyricsDoc = doc
             if (doc == null) {
+                lyricsMissing = true
                 lyricLineIndex = -1
                 lyricLineProgress = 0f
-                // 无有效 LRC 时允许内嵌字幕兜底
                 player.setPreferEmbeddedSubtitles(true)
             } else {
+                lyricsMissing = false
+                if (!usedUrl.isNullOrBlank() && nowPlaying?.lyricsUrl != usedUrl) {
+                    val updated = nowPlaying!!.copy(lyricsUrl = usedUrl)
+                    nowPlaying = updated
+                    mergeCatalog(listOf(updated))
+                }
                 player.setPreferEmbeddedSubtitles(false)
                 syncLyricsToPosition(player.currentPositionMs())
             }
@@ -1170,9 +1188,24 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun toggleVocal() {
+        val song = nowPlaying
+        if (song == null) return
+        if (!song.canToggleVocal) {
+            showToast(
+                when {
+                    song.hasAccompaniment && !song.hasOriginal -> "本曲仅有伴奏（完整混音原唱缺失）"
+                    song.hasOriginal && !song.hasAccompaniment -> "本曲仅有原曲混音（无独立伴奏）"
+                    else -> "本曲无独立音轨，正在播放 MV 音画"
+                },
+            )
+            return
+        }
         vocalMode = if (vocalMode == VocalMode.Accompaniment) VocalMode.Original else VocalMode.Accompaniment
         player.switchVocalMode(vocalMode)
-        showToast(if (vocalMode == VocalMode.Accompaniment) "伴唱" else "原唱")
+        showToast(
+            if (vocalMode == VocalMode.Accompaniment) "伴唱（纯伴奏）"
+            else "原唱（完整混音）",
+        )
     }
 
     fun cycleOrder() {

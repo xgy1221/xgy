@@ -22,6 +22,17 @@ object TrackRoles {
         if (lower.isEmpty()) return TrackRole.Other
         if (lower.endsWith(".lrc")) return TrackRole.Lyrics
 
+        // 源备份 / README 等：不当 MV、不当音轨
+        if (
+            lower.startsWith("source.") ||
+            lower.startsWith("source-") ||
+            lower.startsWith("source_") ||
+            lower == "readme.md" ||
+            lower.endsWith(".md")
+        ) {
+            return TrackRole.Ignore
+        }
+
         if (
             lower.startsWith("mv") ||
             lower.contains(".mv.") ||
@@ -78,5 +89,25 @@ object TrackRoles {
         }
 
         return TrackRole.Other
+    }
+
+    /** 流媒体优先：m4a/mp3 > flac/ogg > wav（NAS 上 wav 太大易卡）。 */
+    fun streamPreferScore(fileName: String): Int {
+        val ext = fileName.lowercase().substringAfterLast('.', "")
+        return when (ext) {
+            "m4a", "mp3", "aac" -> 0
+            "ogg", "opus", "flac" -> 1
+            "wav", "aiff", "aif" -> 2
+            "mp4", "m4v", "mkv", "webm", "mov" -> 0
+            else -> 3
+        }
+    }
+
+    /** 同角色多文件时选更适合流播的。 */
+    fun pickPreferred(current: String?, currentName: String?, candidateUrl: String, candidateName: String): String {
+        if (current == null) return candidateUrl
+        val curScore = streamPreferScore(currentName ?: current)
+        val newScore = streamPreferScore(candidateName)
+        return if (newScore < curScore) candidateUrl else current
     }
 }

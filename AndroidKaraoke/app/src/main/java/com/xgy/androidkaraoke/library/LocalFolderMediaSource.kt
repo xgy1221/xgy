@@ -58,18 +58,42 @@ class LocalFolderMediaSource {
             val dir = File(folderPath)
             if (!dir.isDirectory) return@withContext null
             var mv: String? = null
+            var mvName: String? = null
             var original: String? = null
+            var originalName: String? = null
             var acc: String? = null
+            var accName: String? = null
             val files = dir.listFiles()?.filter { it.isFile } ?: emptyList()
             files.forEach { f ->
                 val uri = f.toURI().toString()
                 when (TrackRoles.classify(f.name)) {
                     TrackRole.Lyrics, TrackRole.Ignore -> Unit
-                    TrackRole.Mv -> if (mv == null) mv = uri
-                    TrackRole.Original -> if (original == null) original = uri
-                    TrackRole.Accompaniment -> if (acc == null) acc = uri
+                    TrackRole.Mv -> {
+                        val next = TrackRoles.pickPreferred(mv, mvName, uri, f.name)
+                        if (next != mv) {
+                            mv = next
+                            mvName = f.name
+                        }
+                    }
+                    TrackRole.Original -> {
+                        val next = TrackRoles.pickPreferred(original, originalName, uri, f.name)
+                        if (next != original) {
+                            original = next
+                            originalName = f.name
+                        }
+                    }
+                    TrackRole.Accompaniment -> {
+                        val next = TrackRoles.pickPreferred(acc, accName, uri, f.name)
+                        if (next != acc) {
+                            acc = next
+                            accName = f.name
+                        }
+                    }
                     TrackRole.Other -> {
-                        if (f.extension.lowercase() in videoExt && mv == null) mv = uri
+                        if (f.extension.lowercase() in videoExt && mv == null) {
+                            mv = uri
+                            mvName = f.name
+                        }
                     }
                 }
             }
@@ -150,17 +174,34 @@ class LocalFolderMediaSource {
         songs
     }
 
-    suspend fun loadLyricsText(song: Song): String? = withContext(Dispatchers.IO) {
-        val url = song.lyricsUrl ?: return@withContext null
+    /** @return Pair(正文, lyricsUrl) */
+    suspend fun loadLyricsText(song: Song): Pair<String, String>? = withContext(Dispatchers.IO) {
+        val resolved = song.lyricsUrl?.takeIf { it.isNotBlank() } ?: discoverLyricsUrl(song)
+            ?: return@withContext null
         try {
-            when {
-                url.startsWith("file:") -> File(URI(url)).takeIf { it.isFile }?.readText(Charsets.UTF_8)
-                url.startsWith("/") -> File(url).takeIf { it.isFile }?.readText(Charsets.UTF_8)
+            val text = when {
+                resolved.startsWith("file:") -> File(URI(resolved)).takeIf { it.isFile }?.readText(Charsets.UTF_8)
+                resolved.startsWith("/") -> File(resolved).takeIf { it.isFile }?.readText(Charsets.UTF_8)
                 else -> null
-            }
+            } ?: return@withContext null
+            if (text.isBlank()) null else text to resolved
         } catch (_: Exception) {
             null
         }
+    }
+
+    suspend fun discoverLyricsUrl(song: Song): String? = withContext(Dispatchers.IO) {
+        val rel = song.relativePath ?: return@withContext null
+        val base = File(rel)
+        val dir = when {
+            base.isDirectory -> base
+            base.isFile -> base.parentFile
+            else -> base.parentFile
+        } ?: return@withContext null
+        val files = dir.listFiles()?.filter { it.isFile } ?: return@withContext null
+        val prefer = LyricsFiles.preferredNames(song.title, song.artist, dir.name)
+        val name = LyricsFiles.pickLyricsName(files.map { it.name }, prefer) ?: return@withContext null
+        files.firstOrNull { it.name.equals(name, ignoreCase = true) }?.toURI()?.toString()
     }
 
     private fun resolveDir(rootPath: String, relativeOrAbs: String): File? {

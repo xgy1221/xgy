@@ -28,7 +28,7 @@ import com.xgy.androidkaraoke.theme.KaraokeColors
 
 /**
  * 主流 K 歌式滚动歌词：当前行放大高亮 + 行内进度条（唱到哪）。
- * 无歌词时不渲染（由调用方控制），避免假歌词。
+ * 无歌词时不渲染假词；由 [LyricsEmptyHint] 显示空态。
  */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -39,10 +39,15 @@ fun LyricsOverlay(
     modifier: Modifier = Modifier,
 ) {
     val window = remember(doc, currentIndex) {
-        val start = (currentIndex - 2).coerceAtLeast(0)
-        val end = (currentIndex + 3).coerceAtMost(doc.lines.lastIndex)
-        if (doc.lines.isEmpty()) emptyList()
-        else (start..end).map { it to doc.lines[it] }
+        if (doc.lines.isEmpty()) return@remember emptyList()
+        if (currentIndex < 0) {
+            // 前奏：只预告即将到来的几行，不高亮假「当前行」
+            doc.lines.take(3).mapIndexed { i, line -> i to line }
+        } else {
+            val start = (currentIndex - 2).coerceAtLeast(0)
+            val end = (currentIndex + 3).coerceAtMost(doc.lines.lastIndex)
+            (start..end).map { it to doc.lines[it] }
+        }
     }
 
     Box(
@@ -70,26 +75,29 @@ fun LyricsOverlay(
         ) {
             if (currentIndex < 0 && doc.lines.isNotEmpty()) {
                 Text(
-                    text = doc.lines.first().text,
+                    text = "即将开始",
                     color = KaraokeColors.textTertiary,
-                    fontSize = 22.sp,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 14.sp,
                 )
             }
             window.forEach { (index, line) ->
-                val isCurrent = index == currentIndex
+                val isCurrent = currentIndex >= 0 && index == currentIndex
+                val isUpcoming = currentIndex < 0 && index == 0
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = line.text,
                         color = when {
                             isCurrent -> Color.White
-                            index < currentIndex -> KaraokeColors.textTertiary
-                            else -> KaraokeColors.textSecondary
+                            isUpcoming -> KaraokeColors.textSecondary
+                            currentIndex >= 0 && index < currentIndex -> KaraokeColors.textTertiary
+                            else -> KaraokeColors.textTertiary
                         },
-                        fontSize = if (isCurrent) 34.sp else 22.sp,
-                        fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
+                        fontSize = when {
+                            isCurrent -> 34.sp
+                            isUpcoming -> 26.sp
+                            else -> 22.sp
+                        },
+                        fontWeight = if (isCurrent || isUpcoming) FontWeight.SemiBold else FontWeight.Normal,
                         textAlign = TextAlign.Center,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -116,4 +124,23 @@ fun LyricsOverlay(
             }
         }
     }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun LyricsEmptyHint(
+    loading: Boolean,
+    missing: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    if (!loading && !missing) return
+    Text(
+        text = if (loading) "歌词加载中…" else "暂无歌词",
+        color = KaraokeColors.textTertiary,
+        fontSize = 16.sp,
+        textAlign = TextAlign.Center,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 48.dp),
+    )
 }
