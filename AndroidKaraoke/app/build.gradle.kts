@@ -12,8 +12,8 @@ android {
         // Sony KD-65A9F = Android 10 (API 29). Keep minSdk ≤ 29.
         minSdk = 28
         targetSdk = 34
-        versionCode = 10
-        versionName = "0.4.5"
+        versionCode = 11
+        versionName = "0.4.6"
         vectorDrawables.useSupportLibrary = true
     }
 
@@ -40,6 +40,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         // Compatible with androidx.tv:tv-material:1.0.0 (Compose 1.6.x)

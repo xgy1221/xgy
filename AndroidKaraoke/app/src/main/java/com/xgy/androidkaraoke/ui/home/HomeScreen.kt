@@ -14,15 +14,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Album
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.PersonSearch
 import androidx.compose.material.icons.outlined.QueueMusic
 import androidx.compose.material.icons.outlined.Recommend
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +39,7 @@ import com.xgy.androidkaraoke.ui.components.ShelfHeader
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun HomeScreen(vm: AppViewModel) {
+    // 明确排除 Daily：首页英雄位只能是迷你唱页，绝不再渲染「每日推荐」星标
     val top = MockData.homeTiles.filter {
         it.kind in setOf(
             HomeTileKind.SongOrder,
@@ -51,7 +49,8 @@ fun HomeScreen(vm: AppViewModel) {
     }
     val bottom = MockData.homeTiles.filter {
         it.kind in setOf(
-            HomeTileKind.MyQueue, HomeTileKind.Favorites,
+            HomeTileKind.MyQueue,
+            HomeTileKind.Favorites,
             HomeTileKind.KRecommend,
         )
     }
@@ -112,8 +111,8 @@ fun HomeScreen(vm: AppViewModel) {
                 MiniNowPlayingCard(
                     vm = vm,
                     modifier = Modifier
-                        .width(360.dp)
-                        .height(200.dp),
+                        .width(400.dp)
+                        .height(220.dp),
                 )
             }
             items(top, key = { it.id }) { tile ->
@@ -123,7 +122,7 @@ fun HomeScreen(vm: AppViewModel) {
                     onClick = { onTile(vm, tile.kind) },
                     modifier = Modifier
                         .width(200.dp)
-                        .height(200.dp),
+                        .height(220.dp),
                     icon = iconFor(tile.kind),
                 )
             }
@@ -179,7 +178,7 @@ fun HomeScreen(vm: AppViewModel) {
                     icon = iconFor(tile.kind),
                     badge = when (tile.kind) {
                         HomeTileKind.MyQueue -> vm.queue.size.takeIf { it > 0 }?.toString()
-                        else -> tile.badgeCount?.toString()
+                        else -> null
                     },
                 )
             }
@@ -201,18 +200,16 @@ private fun onTile(vm: AppViewModel, kind: HomeTileKind) {
             else vm.openSearch()
         }
         HomeTileKind.KRecommend -> vm.openGuess()
-        HomeTileKind.Ranking -> vm.showToast("排行榜已从顶栏移除")
+        HomeTileKind.Ranking -> Unit
     }
 }
 
 private fun iconFor(kind: HomeTileKind): ImageVector = when (kind) {
-    HomeTileKind.Daily -> Icons.Outlined.Star
     HomeTileKind.SongOrder -> Icons.Outlined.MusicNote
     HomeTileKind.SingerOrder -> Icons.Outlined.PersonSearch
     HomeTileKind.CategoryOrder -> Icons.Outlined.Category
-    HomeTileKind.FreeZone -> Icons.Outlined.Mic
     HomeTileKind.MyQueue -> Icons.Outlined.QueueMusic
     HomeTileKind.Favorites -> Icons.Outlined.FavoriteBorder
     HomeTileKind.KRecommend -> Icons.Outlined.Recommend
-    HomeTileKind.Ranking -> Icons.Outlined.Album
+    else -> Icons.Outlined.MusicNote
 }

@@ -32,6 +32,7 @@ import com.xgy.androidkaraoke.recommend.RecommendationEngine
 import com.xgy.androidkaraoke.remote.LanAddresses
 import com.xgy.androidkaraoke.remote.PhoneRequestServer
 import com.xgy.androidkaraoke.search.SongSearch
+import android.util.Log
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -274,15 +275,18 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
 
     /**
-     * 首页迷你唱页目标：正在播，否则最近唱过里第一首可播放的真实曲库歌。
-     * 绝不回落到演示曲或随便一首库内歌。
+     * 首页迷你唱页目标（仅真实曲库）：
+     * 正在播 → 最近唱过 → 习惯推荐 → 曲库第一首可播放。
+     * 曲库空时才为空。
      */
     val continueSingSong: Song?
         get() {
             prefsEpoch
-            nowPlaying?.takeIf { !it.anyPlayableUrl().isNullOrBlank() }?.let { return it }
-            return recentSongs.firstOrNull { !it.anyPlayableUrl().isNullOrBlank() }
+            return pickHomePreviewSong()
         }
+
+    var libraryIndexing by mutableStateOf(false)
+        private set
 
     val progress: Float
         get() {
@@ -319,8 +323,10 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         listeningPrefs.removeSongIds(LEGACY_DEMO_SONG_IDS)
         bumpPrefs()
         reloadSources(scanUsb = true, announceUsb = false)
+        indexEnabledLibraries()
         player.addListener(playerListener)
-        startPhoneServer()
+        // 后台起服务即可；扫码 IP 提示只在打开「扫码点歌」时展示，不在首页 toast
+        startPhoneServer(refreshIp = true, announceTips = false)
         startTicker()
     }
 
@@ -591,6 +597,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 nasWizardStep = NasWizardStep.Connect
                 settingsMessage = null
                 dirPickError = null
+                reindexLibrariesAndBootstrap()
             } catch (e: Exception) {
                 settingsIsError = true
                 settingsMessage = e.message ?: "保存失败"
@@ -608,6 +615,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         } else {
             val mounted = usb.count { it.localRootPath != null }
             showToast("已扫描：${usb.size} 个 U 盘来源（已挂载 $mounted）")
+            reindexLibrariesAndBootstrap()
         }
     }
 
@@ -700,7 +708,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     fun openPhoneOrder() {
         overlay = Overlay.PhoneOrder
-        startPhoneServer(refreshIp = true)
+        startPhoneServer(refreshIp = true, announceTips = true)
     }
 
     /** 在多个局域网地址间轮换（家用 Wi‑Fi vs VPN/虚拟网卡）。 */
@@ -1232,6 +1240,8 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                             showToast("NAS 来源已保存")
                             settingsEditorKind = null
                         }
+                        // 选完 /music 根后立刻扫进 catalog，驱动首页迷你唱页自动播
+                        reindexLibrariesAndBootstrap()
                     }
                     LibrarySourceKind.Usb -> {
                         val id = editingSourceId ?: return@launch
@@ -1246,6 +1256,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                         settingsMessage = "已保存"
                         showToast("U 盘来源已保存")
                         settingsEditorKind = null
+                        reindexLibrariesAndBootstrap()
                     }
                 }
             } catch (e: Exception) {
@@ -1258,19 +1269,13 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     private fun mergeCatalog(songs: List<Song>) {
-        var added = false
         songs.forEach { song ->
             if (song.source == MediaSource.Mock) return@forEach
             val idx = catalog.indexOfFirst { it.id == song.id }
-            if (idx >= 0) catalog[idx] = song else {
-                catalog.add(song)
-                added = true
-            }
+            if (idx >= 0) catalog[idx] = song else catalog.add(song)
         }
         pruneListeningToLibrary()
-        if (added || libraryCatalog.isNotEmpty()) {
-            maybeBootstrapMiniPlayer()
-        }
+        maybeBootstrapMiniPlayer()
     }
 
     private fun pruneListeningToLibrary() {
@@ -1283,20 +1288,112 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         bumpPrefs()
     }
 
-    /** 启动后：用「最近唱过」第一首可播放曲库歌填满首页迷你唱页（播 MV）。 */
+    private fun isPlayable(song: Song): Boolean = !song.anyPlayableUrl().isNullOrBlank()
+
+    private fun pickHomePreviewSong(): Song? {
+        nowPlaying?.takeIf(::isPlayable)?.let { return it }
+        recentSongs.firstOrNull(::isPlayable)?.let { return it }
+        forYouRecommendations.firstOrNull(::isPlayable)?.let { return it }
+        return libraryCatalog.firstOrNull(::isPlayable)
+    }
+
+    /**
+     * 曲库索引完成后自动预览。
+     * 曲库仍空时不标记完成，等 NAS/USB 扫完再试。
+     */
     private fun maybeBootstrapMiniPlayer() {
-        if (didBootstrapMiniPlayer) return
         if (nowPlaying != null) {
             didBootstrapMiniPlayer = true
+            Log.i(TAG, "mini bootstrap skip: already playing ${nowPlaying?.title}")
             return
         }
-        if (overlay == Overlay.Playback || overlay == Overlay.Guess) return
-        val song = recentSongs.firstOrNull { !it.anyPlayableUrl().isNullOrBlank() } ?: return
+        if (didBootstrapMiniPlayer) {
+            Log.i(TAG, "mini bootstrap skip: already attempted")
+            return
+        }
+        if (overlay == Overlay.Playback || overlay == Overlay.Guess) {
+            Log.i(TAG, "mini bootstrap skip: overlay=$overlay")
+            return
+        }
+        if (libraryIndexing) {
+            Log.i(TAG, "mini bootstrap wait: still indexing")
+            return
+        }
+        if (libraryCatalog.isEmpty()) {
+            Log.i(TAG, "mini bootstrap wait: catalog empty")
+            return
+        }
+        val song = pickHomePreviewSong()
+        if (song == null) {
+            Log.w(TAG, "mini bootstrap skip: no playable song in ${libraryCatalog.size} catalog entries")
+            return
+        }
         didBootstrapMiniPlayer = true
+        Log.i(TAG, "mini bootstrap play: ${song.title} / ${song.artist} mv=${song.hasMv}")
         play(song)
     }
 
+    /** 后台把已启用 NAS/USB 来源扫进 catalog，供搜索/迷你唱页使用。 */
+    fun reindexLibrariesAndBootstrap() {
+        // 允许在曲库保存后再自动预览一次
+        if (nowPlaying == null) didBootstrapMiniPlayer = false
+        indexEnabledLibraries()
+    }
+
+    private fun indexEnabledLibraries() {
+        viewModelScope.launch {
+            libraryIndexing = true
+            var total = 0
+            try {
+                val sources = librarySources.filter { it.enabled }.toList()
+                Log.i(TAG, "index libraries: ${sources.size} enabled source(s)")
+                for (source in sources) {
+                    when (source.kind) {
+                        LibrarySourceKind.Nas -> {
+                            val result = runCatching {
+                                applyNasConfig(source)
+                                val path = source.nasLibraryPath ?: BrandConfig.defaultNasLibraryPath
+                                val fromJson = container.nasSource.loadLibraryJson(path)
+                                val songs = fromJson.ifEmpty { container.nasSource.listSongs(path) }
+                                Log.i(TAG, "NAS index path=$path json=${fromJson.size} flat=${songs.size}")
+                                if (songs.isNotEmpty()) mergeCatalog(songs)
+                                songs.size
+                            }
+                            total += result.getOrElse {
+                                Log.w(TAG, "NAS index failed: ${it.message}")
+                                0
+                            }
+                        }
+                        LibrarySourceKind.Usb -> {
+                            val root = source.localRootPath
+                            if (root == null) continue
+                            val result = runCatching {
+                                val browse = source.browseRoot
+                                val fromJson = container.localSource.loadLibraryJson(browse)
+                                val songs = fromJson.ifEmpty { container.localSource.listSongs(browse) }
+                                    .map { it.copy(source = MediaSource.Usb) }
+                                Log.i(TAG, "USB index path=$browse json=${fromJson.size} flat=${songs.size}")
+                                if (songs.isNotEmpty()) mergeCatalog(songs)
+                                songs.size
+                            }
+                            total += result.getOrElse {
+                                Log.w(TAG, "USB index failed: ${it.message}")
+                                0
+                            }
+                        }
+                    }
+                }
+            } finally {
+                libraryIndexing = false
+                Log.i(TAG, "index done: catalog=${libraryCatalog.size} indexedBatch=$total")
+                maybeBootstrapMiniPlayer()
+            }
+        }
+    }
+
     companion object {
+        private const val TAG = "KaraokeHome"
+
         /** 旧版 MockData 写入 SharedPreferences 的演示曲 id，需主动清掉。 */
         private val LEGACY_DEMO_SONG_IDS = setOf(
             "xiaoban", "chahua", "yongchun", "shimian", "shexiang",
@@ -1306,7 +1403,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         )
     }
 
-    private fun startPhoneServer(refreshIp: Boolean = false) {
+    private fun startPhoneServer(refreshIp: Boolean = false, announceTips: Boolean = false) {
         refreshPhoneLanCandidates()
         if (phoneOrderHost == null || refreshIp ||
             phoneOrderCandidates.none { it.host == phoneOrderHost }
@@ -1320,11 +1417,9 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         if (existing?.isRunning == true) {
             phoneServerRunning = true
             phoneServerError = null
-            if (phoneOrderUrl == null) {
+            if (announceTips && phoneOrderUrl == null) {
                 phoneServerError = "无法获取电视局域网 IP，请确认已连 Wi‑Fi"
                 showToast(phoneServerError!!)
-            } else if (phoneOrderTip != null) {
-                showToast(phoneOrderTip!!)
             }
             return
         }
@@ -1342,7 +1437,6 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         )
         phoneServer = server
         server.start()
-        // bind 在后台线程；稍候确认是否真正起来
         phoneServerRunning = true
         viewModelScope.launch {
             delay(350)
@@ -1351,15 +1445,13 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 phoneServerRunning = false
                 phoneServerError = "点歌服务启动失败（端口 ${PhoneRequestServer.DEFAULT_PORT} 可能被占用）"
                 phoneOrderUrl = null
-                showToast(phoneServerError!!)
+                if (announceTips) showToast(phoneServerError!!)
             } else {
                 phoneServerRunning = true
                 phoneServerError = null
-                if (phoneOrderUrl == null) {
+                if (announceTips && phoneOrderUrl == null) {
                     phoneServerError = "无法获取电视局域网 IP，请确认已连 Wi‑Fi"
                     showToast(phoneServerError!!)
-                } else if (phoneOrderTip != null) {
-                    showToast(phoneOrderTip!!)
                 }
             }
         }

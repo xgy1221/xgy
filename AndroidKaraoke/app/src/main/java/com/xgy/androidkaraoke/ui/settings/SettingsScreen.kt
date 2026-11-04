@@ -72,6 +72,11 @@ fun SettingsScreen(vm: AppViewModel) {
 private fun SourceListPane(vm: AppViewModel) {
     ShelfHeader("设置", "添加曲库 · NAS / U 盘 · ${BrandConfig.appDisplayName}")
     Text(
+        "版本 ${com.xgy.androidkaraoke.BuildConfig.VERSION_NAME}（${com.xgy.androidkaraoke.BuildConfig.VERSION_CODE}）· 曲库已索引 ${vm.libraryCatalog.size} 首",
+        color = KaraokeColors.accentSoft,
+        fontSize = 14.sp,
+    )
+    Text(
         "先连接 NAS，再浏览目录选择曲库根；也可扫描已插入的 U 盘。",
         color = KaraokeColors.textTertiary,
         fontSize = 14.sp,
