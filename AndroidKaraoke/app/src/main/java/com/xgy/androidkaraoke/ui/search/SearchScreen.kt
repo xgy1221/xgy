@@ -116,40 +116,36 @@ fun SearchScreen(vm: AppViewModel) {
                             modifier = Modifier.weight(1f, fill = false),
                         ) {
                             items(results, key = { it.id }) { song ->
-                                FocusSurface(
-                                    onClick = {
-                                        vm.addToQueue(song)
-                                        vm.openPlayback(song)
-                                    },
-                                    corner = 12.dp,
-                                ) { focused ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(64.dp)
-                                            .background(
-                                                if (focused) KaraokeColors.surfaceStrong else KaraokeColors.surface,
-                                                RoundedCornerShape(12.dp),
-                                            )
-                                            .padding(horizontal = 16.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                    ) {
-                                        Column {
-                                            Text(song.displayTitle, color = KaraokeColors.textPrimary, fontSize = 18.sp)
-                                            Text(song.artist, color = KaraokeColors.textSecondary, fontSize = 14.sp)
-                                        }
-                                        FocusSurface(
-                                            onClick = { vm.addToQueue(song) },
-                                            corner = 8.dp,
-                                        ) {
-                                            Text(
-                                                "点歌",
-                                                color = KaraokeColors.textPrimary,
-                                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                                fontSize = 14.sp,
-                                            )
-                                        }
+                                // 行本身不可点；仅「点歌」可聚焦点击，避免嵌套 FocusSurface 吞事件
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(64.dp)
+                                        .background(KaraokeColors.surface, RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(song.displayTitle, color = KaraokeColors.textPrimary, fontSize = 18.sp)
+                                        Text(song.artist, color = KaraokeColors.textSecondary, fontSize = 14.sp)
+                                    }
+                                    FocusSurface(
+                                        onClick = { vm.addToQueue(song) },
+                                        corner = 8.dp,
+                                    ) { focused ->
+                                        Text(
+                                            "点歌",
+                                            color = if (focused) KaraokeColors.textPrimary else KaraokeColors.accentSoft,
+                                            modifier = Modifier
+                                                .background(
+                                                    if (focused) KaraokeColors.surfaceStrong
+                                                    else KaraokeColors.surface.copy(alpha = 0f),
+                                                    RoundedCornerShape(8.dp),
+                                                )
+                                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                                            fontSize = 14.sp,
+                                        )
                                     }
                                 }
                             }

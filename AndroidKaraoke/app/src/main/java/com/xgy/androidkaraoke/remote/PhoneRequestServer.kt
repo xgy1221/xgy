@@ -8,8 +8,6 @@ import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
-import java.net.Inet4Address
-import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URLDecoder
@@ -66,10 +64,15 @@ class PhoneRequestServer(
         serverSocket = null
     }
 
-    fun publicBaseUrl(): String? {
-        val ip = localIpv4() ?: return null
+    fun publicBaseUrl(preferredHost: String? = null): String? {
+        val ip = preferredHost?.takeIf { it.isNotBlank() }
+            ?: LanAddresses.bestIpv4()
+            ?: return null
         return "http://$ip:$port/"
     }
+
+    /** @deprecated 使用 [LanAddresses.bestIpv4] */
+    fun localIpv4Preferred(): String? = LanAddresses.bestIpv4()
 
     private fun handleClient(socket: Socket) {
         socket.soTimeout = 15_000
@@ -212,16 +215,7 @@ class PhoneRequestServer(
         const val DEFAULT_PORT = 8765
         private const val TAG = "PhoneRequestServer"
 
-        fun localIpv4(): String? {
-            return try {
-                NetworkInterface.getNetworkInterfaces()?.toList()
-                    ?.flatMap { it.inetAddresses.toList() }
-                    ?.firstOrNull { !it.isLoopbackAddress && it is Inet4Address }
-                    ?.hostAddress
-            } catch (_: Exception) {
-                null
-            }
-        }
+        fun localIpv4(): String? = LanAddresses.bestIpv4()
 
         private fun escapeJson(s: String): String =
             s.replace("\\", "\\\\").replace("\"", "\\\"")

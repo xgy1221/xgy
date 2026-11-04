@@ -62,6 +62,16 @@ data class Singer(
     val isFeaturedWide: Boolean = false,
 )
 
+/** 曲库聚合歌星（NAS/USB 真实元数据）。 */
+data class LibraryArtist(
+    val name: String,
+    val songCount: Int,
+    val coverColor: Color,
+    val habitWeight: Float = 0f,
+) {
+    val id: String get() = "artist:${name.lowercase()}"
+}
+
 enum class HomeTileKind {
     Daily, SongOrder, SingerOrder, CategoryOrder,
     FreeZone, MyQueue, Favorites, KRecommend, Ranking,
@@ -88,5 +98,5 @@ enum class VocalMode { Accompaniment, Original }
 enum class PlayOrderMode { Sequential, Shuffle, Loop }
 
 enum class Overlay {
-    None, Playback, Guess, Queue, Settings, NasLibrary, PhoneOrder, Search,
+    None, Playback, Guess, Queue, Settings, NasLibrary, PhoneOrder, Search, ArtistSongs,
 }

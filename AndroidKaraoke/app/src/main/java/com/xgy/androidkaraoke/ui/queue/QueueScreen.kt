@@ -44,7 +44,7 @@ fun QueueScreen(vm: AppViewModel) {
                 .padding(28.dp),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                ShelfHeader("已点队列", "共 ${vm.queue.size} 首")
+                ShelfHeader("已点队列", "待唱 ${vm.queue.size} 首")
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
@@ -68,23 +68,33 @@ fun QueueScreen(vm: AppViewModel) {
                 }
 
                 vm.nowPlaying?.let { playing ->
-                    Text(
-                        "正在播放：${playing.displayTitle}",
-                        color = KaraokeColors.accentSoft,
-                        fontSize = 15.sp,
-                        modifier = Modifier.padding(bottom = 8.dp),
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(KaraokeColors.accentSoft.copy(alpha = 0.14f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 14.dp, vertical = 12.dp)
+                            .padding(bottom = 4.dp),
+                    ) {
+                        Text("正在播放", color = KaraokeColors.accentSoft, fontSize = 13.sp)
+                        Text(playing.displayTitle, color = KaraokeColors.textPrimary, fontSize = 17.sp)
+                        Text(playing.artist, color = KaraokeColors.textSecondary, fontSize = 13.sp)
+                    }
                 }
 
                 if (vm.queue.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .fillMaxHeight(),
+                            .weight(1f),
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("还没有点歌", color = KaraokeColors.textSecondary, fontSize = 18.sp)
+                            Text(
+                                if (vm.nowPlaying != null) "暂无待唱，唱完可再点歌"
+                                else "还没有点歌",
+                                color = KaraokeColors.textSecondary,
+                                fontSize = 18.sp,
+                            )
                             FocusSurface(onClick = { vm.openSearch() }, corner = 10.dp) {
                                 Text(
                                     "去搜索点歌",
@@ -98,60 +108,61 @@ fun QueueScreen(vm: AppViewModel) {
                 } else {
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+                        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         itemsIndexed(vm.queue, key = { _, s -> s.id }) { index, song ->
-                            val isNext = index == 0
-                            val isPlayingNow = vm.nowPlaying?.id == song.id
-                            FocusSurface(
-                                onClick = { vm.openPlayback(song) },
-                                corner = 12.dp,
-                            ) { focused ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(72.dp)
-                                        .background(
-                                            when {
-                                                focused -> KaraokeColors.surfaceStrong
-                                                isPlayingNow -> KaraokeColors.accentSoft.copy(alpha = 0.18f)
-                                                else -> KaraokeColors.surface
-                                            },
-                                            RoundedCornerShape(12.dp),
-                                        )
-                                        .padding(horizontal = 14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
+                            // 避免行与按钮嵌套 FocusSurface（TV 上易吞点击）
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(72.dp)
+                                    .background(KaraokeColors.surface, RoundedCornerShape(12.dp))
+                                    .padding(horizontal = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                FocusSurface(
+                                    onClick = { vm.openPlayback(song) },
+                                    modifier = Modifier.weight(1f),
+                                    corner = 8.dp,
+                                ) { focused ->
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                if (focused) KaraokeColors.surfaceStrong
+                                                else KaraokeColors.surface.copy(alpha = 0f),
+                                                RoundedCornerShape(8.dp),
+                                            )
+                                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                                    ) {
                                         Text(
                                             buildString {
                                                 append("${index + 1}. ${song.displayTitle}")
-                                                if (isPlayingNow) append(" · 正在播")
-                                                else if (isNext) append(" · 下一首")
+                                                if (index == 0) append(" · 下一首")
                                             },
                                             color = KaraokeColors.textPrimary,
                                             fontSize = 17.sp,
                                         )
                                         Text(song.artist, color = KaraokeColors.textSecondary, fontSize = 13.sp)
                                     }
-                                    FocusSurface(onClick = { vm.moveQueueToTop(song) }, corner = 8.dp) {
-                                        Text(
-                                            "置顶",
-                                            color = KaraokeColors.textPrimary,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                            fontSize = 13.sp,
-                                        )
-                                    }
-                                    FocusSurface(onClick = { vm.removeFromQueue(song) }, corner = 8.dp) {
-                                        Text(
-                                            "删除",
-                                            color = KaraokeColors.danger,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                            fontSize = 13.sp,
-                                        )
-                                    }
+                                }
+                                FocusSurface(onClick = { vm.moveQueueToTop(song) }, corner = 8.dp) {
+                                    Text(
+                                        "置顶",
+                                        color = KaraokeColors.textPrimary,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        fontSize = 13.sp,
+                                    )
+                                }
+                                FocusSurface(onClick = { vm.removeFromQueue(song) }, corner = 8.dp) {
+                                    Text(
+                                        "删除",
+                                        color = KaraokeColors.danger,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        fontSize = 13.sp,
+                                    )
                                 }
                             }
                         }

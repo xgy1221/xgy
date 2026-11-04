@@ -17,6 +17,8 @@ import com.xgy.androidkaraoke.library.LibraryEntryKind
 import com.xgy.androidkaraoke.library.LibrarySource
 import com.xgy.androidkaraoke.library.LibrarySourceKind
 import com.xgy.androidkaraoke.library.LocalLibraryError
+import androidx.compose.ui.graphics.Color
+import com.xgy.androidkaraoke.model.LibraryArtist
 import com.xgy.androidkaraoke.model.MainTab
 import com.xgy.androidkaraoke.model.MediaSource
 import com.xgy.androidkaraoke.model.Overlay
@@ -28,12 +30,14 @@ import com.xgy.androidkaraoke.nas.NasEntryKind
 import com.xgy.androidkaraoke.nas.NasError
 import com.xgy.androidkaraoke.nas.SynologyFileStation
 import com.xgy.androidkaraoke.recommend.RecommendationEngine
+import com.xgy.androidkaraoke.remote.LanAddresses
 import com.xgy.androidkaraoke.remote.PhoneRequestServer
 import com.xgy.androidkaraoke.search.SongSearch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
+import kotlin.math.absoluteValue
 
 class AppViewModel(private val container: AppContainer) : ViewModel() {
     private val player get() = container.player
@@ -49,7 +53,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     var nowPlaying by mutableStateOf<Song?>(null)
         private set
-    var nextSong by mutableStateOf<Song?>(MockData.nextSong)
+    var nextSong by mutableStateOf<Song?>(null)
         private set
     var isPlaying by mutableStateOf(false)
         private set
@@ -156,6 +160,13 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         private set
     var phoneServerRunning by mutableStateOf(false)
         private set
+    var phoneServerError by mutableStateOf<String?>(null)
+        private set
+    var phoneOrderHost by mutableStateOf<String?>(null)
+        private set
+    val phoneOrderCandidates = mutableStateListOf<LanAddresses.Candidate>()
+    var phoneOrderTip by mutableStateOf<String?>(null)
+        private set
 
     // ——— 搜索 ———
     var searchQuery by mutableStateOf("")
@@ -189,6 +200,60 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             }
         }
 
+    /** 真实曲库（NAS/USB）；无真实曲目时为空，歌星页显示空态。 */
+    val libraryCatalog: List<Song>
+        get() = catalog.filter { it.source != MediaSource.Mock }
+
+    /** 曲库聚合歌星，习惯权重高的靠前。 */
+    val libraryArtists: List<LibraryArtist>
+        get() {
+            prefsEpoch
+            val songs = libraryCatalog
+            if (songs.isEmpty()) return emptyList()
+            val weights = listeningPrefs.artistWeights()
+            return songs
+                .groupBy { it.artist.trim().ifBlank { "未知歌星" } }
+                .map { (name, list) ->
+                    LibraryArtist(
+                        name = name,
+                        songCount = list.size,
+                        coverColor = artistColor(name),
+                        habitWeight = weights[name] ?: 0f,
+                    )
+                }
+                .sortedWith(
+                    compareByDescending<LibraryArtist> { it.habitWeight }
+                        .thenByDescending { it.songCount }
+                        .thenBy { it.name },
+                )
+        }
+
+    val recommendedArtists: List<LibraryArtist>
+        get() = libraryArtists.filter { it.habitWeight > 0f }.ifEmpty { libraryArtists.take(8) }
+
+    var artistSearchQuery by mutableStateOf("")
+        private set
+    var browsingArtist by mutableStateOf<String?>(null)
+        private set
+
+    val artistSearchResults: List<LibraryArtist>
+        get() {
+            val q = artistSearchQuery.trim()
+            val all = libraryArtists
+            if (q.isEmpty()) return all
+            return all.filter {
+                it.name.contains(q, ignoreCase = true) ||
+                    SongSearch.initials(it.name).contains(q, ignoreCase = true)
+            }
+        }
+
+    val browsingArtistSongs: List<Song>
+        get() {
+            val name = browsingArtist ?: return emptyList()
+            return libraryCatalog.filter { it.artist.trim().equals(name, ignoreCase = true) }
+                .sortedBy { it.title }
+        }
+
     val progress: Float
         get() {
             val total = durationSec.coerceAtLeast(1)
@@ -220,11 +285,6 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     init {
         migrateLegacyNasIfNeeded()
         reloadSources(scanUsb = true, announceUsb = false)
-        val seed = MockData.aiSongs.take(4)
-        queue.addAll(seed)
-        seed.forEach { song ->
-            listeningPrefs.recordQueued(song.artist, song.styleTags, song.id)
-        }
         bumpPrefs()
         player.addListener(playerListener)
         startPhoneServer()
@@ -575,28 +635,85 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         searchQuery = q
     }
 
+    fun updateArtistSearchQuery(q: String) {
+        artistSearchQuery = q
+    }
+
+    fun openArtistSearch() {
+        if (libraryCatalog.isEmpty()) {
+            showToast("请先添加曲库")
+            openSettings()
+            return
+        }
+        artistSearchQuery = ""
+        browsingArtist = null
+        overlay = Overlay.ArtistSongs
+    }
+
+    fun openArtistSongs(artistName: String) {
+        browsingArtist = artistName
+        artistSearchQuery = ""
+        overlay = Overlay.ArtistSongs
+    }
+
+    fun clearBrowsingArtist() {
+        browsingArtist = null
+    }
+
     fun dismissLibraryGuide() {
         libraryGuideDismissed = true
         sourceStore.setLibraryGuideDismissed(true)
     }
 
     fun openPhoneOrder() {
-        startPhoneServer()
-        phoneOrderUrl = phoneServer?.publicBaseUrl()
         overlay = Overlay.PhoneOrder
-        if (phoneOrderUrl == null) {
-            showToast("无法获取电视局域网 IP，请确认已连 Wi‑Fi")
+        startPhoneServer(refreshIp = true)
+    }
+
+    /** 在多个局域网地址间轮换（家用 Wi‑Fi vs VPN/虚拟网卡）。 */
+    fun cyclePhoneOrderAddress() {
+        refreshPhoneLanCandidates()
+        if (phoneOrderCandidates.isEmpty()) {
+            phoneOrderUrl = null
+            phoneOrderTip = null
+            showToast("未发现局域网 IP，请确认电视已连 Wi‑Fi")
+            return
+        }
+        val hosts = phoneOrderCandidates.map { it.host }
+        val current = phoneOrderHost
+        val idx = hosts.indexOf(current).let { if (it < 0) 0 else (it + 1) % hosts.size }
+        applyPhoneOrderHost(hosts[idx], announce = true)
+    }
+
+    private fun refreshPhoneLanCandidates() {
+        val list = LanAddresses.listIpv4()
+        phoneOrderCandidates.clear()
+        phoneOrderCandidates.addAll(list)
+    }
+
+    private fun applyPhoneOrderHost(host: String?, announce: Boolean = false) {
+        phoneOrderHost = host
+        phoneOrderUrl = host?.let { "http://$it:${PhoneRequestServer.DEFAULT_PORT}/" }
+        phoneOrderTip = LanAddresses.tipIfSuspicious(host, phoneOrderCandidates.toList())
+        if (announce && host != null) {
+            showToast("已切换：$host")
         }
     }
 
     fun openPlayback(song: Song? = null) {
-        if (song != null) {
-            play(song)
-        } else if (nowPlaying == null) {
-            play(MockData.nowPlaying)
-            nextSong = MockData.nextSong
-        } else {
-            player.resume()
+        when {
+            song != null -> play(song)
+            nowPlaying != null -> player.resume()
+            queue.isNotEmpty() -> play(queue.removeAt(0))
+            else -> {
+                val fallback = libraryCatalog.firstOrNull()
+                    ?: catalog.firstOrNull()
+                if (fallback != null) play(fallback)
+                else {
+                    showToast("没有可播放的歌曲，请先添加曲库")
+                    return
+                }
+            }
         }
         overlay = Overlay.Playback
     }
@@ -609,6 +726,16 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         when (overlay) {
             Overlay.Guess -> overlay = Overlay.Playback
             Overlay.NasLibrary -> overlay = Overlay.Settings
+            Overlay.ArtistSongs -> {
+                if (browsingArtist != null && artistSearchQuery.isEmpty()) {
+                    // 从某歌星歌曲列表返回歌星搜索/列表
+                    browsingArtist = null
+                } else {
+                    browsingArtist = null
+                    artistSearchQuery = ""
+                    overlay = Overlay.None
+                }
+            }
             Overlay.Settings -> {
                 when {
                     settingsEditorKind == LibrarySourceKind.Nas &&
@@ -626,14 +753,34 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun addToQueue(song: Song, fromPhone: Boolean = false) {
-        if (queue.none { it.id == song.id }) {
-            queue.add(song)
-        }
         mergeCatalog(listOf(song))
         listeningPrefs.recordQueued(song.artist, song.styleTags, song.id)
         bumpPrefs()
-        if (nextSong == null) nextSong = song
-        showToast(if (fromPhone) "手机点歌：${song.title}" else "已加入点唱：${song.title}")
+
+        if (nowPlaying?.id == song.id) {
+            showToast("正在演唱：${song.title}")
+            return
+        }
+        if (queue.any { it.id == song.id }) {
+            showToast("已在已点队列：${song.title}")
+            return
+        }
+
+        if (nowPlaying == null) {
+            // 空闲时直接开唱；不把「正在播」留在已点列表里
+            play(song)
+            showToast(
+                if (fromPhone) "手机点歌开始：${song.title}"
+                else "开始播放：${song.title}",
+            )
+        } else {
+            queue.add(song)
+            if (nextSong == null) nextSong = song
+            showToast(
+                if (fromPhone) "手机点歌：${song.title}"
+                else "已加入已点：${song.title}",
+            )
+        }
     }
 
     fun removeFromQueue(song: Song) {
@@ -663,6 +810,9 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             return
         }
         playbackError = null
+        // 进入「正在播」即移出已点队列（主流 K 歌：已点 = 待唱）
+        queue.removeAll { it.id == song.id }
+        nextSong = queue.firstOrNull()
         nowPlaying = song
         isFavorite = listeningPrefs.isFavorite(song.id)
         try {
@@ -683,9 +833,11 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     fun nextTrack() {
         val current = nowPlaying
-        if (current != null && durationSec > 0 && currentTimeSec >= durationSec * 0.6) {
+        if (current != null) {
+            // 切歌视为唱完/跳过：写入最近唱过，且不再留在已点
             listeningPrefs.recordPlayCompleted(current.artist, current.styleTags, current.id)
             bumpPrefs()
+            queue.removeAll { it.id == current.id }
         }
         advanceToNext()
     }
@@ -694,6 +846,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         nowPlaying?.let { song ->
             listeningPrefs.recordPlayCompleted(song.artist, song.styleTags, song.id)
             bumpPrefs()
+            queue.removeAll { it.id == song.id }
         }
         advanceToNext()
     }
@@ -707,30 +860,48 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 return
             }
             PlayOrderMode.Shuffle -> {
-                val pool = (queue.toList() + catalog.toList()).distinctBy { it.id }
-                    .filter { it.id != nowPlaying?.id }
-                val upcoming = pool.randomOrNull() ?: return
-                queue.removeAll { it.id == upcoming.id }
+                val upcoming = when {
+                    queue.isNotEmpty() -> queue.random().also { pick ->
+                        queue.removeAll { it.id == pick.id }
+                    }
+                    else -> null
+                }
+                if (upcoming == null) {
+                    finishQueue()
+                    return
+                }
                 nextSong = queue.randomOrNull()
-                    ?: forYouRecommendations.firstOrNull { it.id != upcoming.id }
                 play(upcoming)
             }
             PlayOrderMode.Sequential -> {
-                val upcoming = when {
-                    queue.isNotEmpty() -> queue.removeAt(0)
-                    nextSong != null && nextSong?.id != nowPlaying?.id -> nextSong
-                    else -> forYouRecommendations.firstOrNull { it.id != nowPlaying?.id }
-                        ?: catalog.firstOrNull { it.id != nowPlaying?.id }
-                } ?: run {
-                    showToast("队列已播完")
+                val upcoming = if (queue.isNotEmpty()) queue.removeAt(0) else null
+                if (upcoming == null) {
+                    finishQueue()
                     return
                 }
                 nextSong = queue.firstOrNull()
-                    ?: forYouRecommendations.firstOrNull { it.id != upcoming.id }
-                    ?: catalog.firstOrNull { it.id != upcoming.id }
                 play(upcoming)
             }
         }
+    }
+
+    private fun finishQueue() {
+        nextSong = null
+        nowPlaying = null
+        isPlaying = false
+        player.pause()
+        showToast("队列已播完")
+    }
+
+    private fun artistColor(name: String): Color {
+        val palette = listOf(
+            Color(0xFF2E5BB8), Color(0xFF8C5973), Color(0xFF267A66),
+            Color(0xFFB26659), Color(0xFF596699), Color(0xFF66594D),
+            Color(0xFF4066B3), Color(0xFF597366), Color(0xFF8C4D66),
+            Color(0xFF4D6680),
+        )
+        val idx = name.hashCode().absoluteValue % palette.size
+        return palette[idx]
     }
 
     fun clearPlaybackError() {
@@ -1032,12 +1203,30 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    private fun startPhoneServer() {
-        if (phoneServer?.isRunning == true) {
+    private fun startPhoneServer(refreshIp: Boolean = false) {
+        refreshPhoneLanCandidates()
+        if (phoneOrderHost == null || refreshIp ||
+            phoneOrderCandidates.none { it.host == phoneOrderHost }
+        ) {
+            applyPhoneOrderHost(phoneOrderCandidates.firstOrNull()?.host)
+        } else {
+            applyPhoneOrderHost(phoneOrderHost)
+        }
+
+        val existing = phoneServer
+        if (existing?.isRunning == true) {
             phoneServerRunning = true
-            phoneOrderUrl = phoneServer?.publicBaseUrl()
+            phoneServerError = null
+            if (phoneOrderUrl == null) {
+                phoneServerError = "无法获取电视局域网 IP，请确认已连 Wi‑Fi"
+                showToast(phoneServerError!!)
+            } else if (phoneOrderTip != null) {
+                showToast(phoneOrderTip!!)
+            }
             return
         }
+
+        phoneServerError = null
         val server = PhoneRequestServer(
             indexHtml = container.phoneOrderHtml,
             catalogProvider = { catalog.toList() },
@@ -1045,14 +1234,32 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             onAddSong = { song ->
                 viewModelScope.launch {
                     addToQueue(song, fromPhone = true)
-                    if (nowPlaying == null) openPlayback(song)
                 }
             },
         )
         phoneServer = server
         server.start()
+        // bind 在后台线程；稍候确认是否真正起来
         phoneServerRunning = true
-        phoneOrderUrl = server.publicBaseUrl()
+        viewModelScope.launch {
+            delay(350)
+            if (phoneServer !== server) return@launch
+            if (!server.isRunning) {
+                phoneServerRunning = false
+                phoneServerError = "点歌服务启动失败（端口 ${PhoneRequestServer.DEFAULT_PORT} 可能被占用）"
+                phoneOrderUrl = null
+                showToast(phoneServerError!!)
+            } else {
+                phoneServerRunning = true
+                phoneServerError = null
+                if (phoneOrderUrl == null) {
+                    phoneServerError = "无法获取电视局域网 IP，请确认已连 Wi‑Fi"
+                    showToast(phoneServerError!!)
+                } else if (phoneOrderTip != null) {
+                    showToast(phoneOrderTip!!)
+                }
+            }
+        }
     }
 
     private fun startTicker() {

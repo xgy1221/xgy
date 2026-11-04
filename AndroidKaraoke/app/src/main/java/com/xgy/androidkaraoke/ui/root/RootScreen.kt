@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import com.xgy.androidkaraoke.model.MainTab
@@ -31,6 +32,7 @@ import com.xgy.androidkaraoke.ui.queue.QueueScreen
 import com.xgy.androidkaraoke.ui.remote.PhoneOrderScreen
 import com.xgy.androidkaraoke.ui.search.SearchScreen
 import com.xgy.androidkaraoke.ui.settings.SettingsScreen
+import com.xgy.androidkaraoke.ui.singers.ArtistSongsScreen
 import com.xgy.androidkaraoke.ui.singers.SingersScreen
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -90,14 +92,17 @@ fun RootScreen(vm: AppViewModel) {
                 Overlay.Settings -> SettingsScreen(vm)
                 Overlay.PhoneOrder -> PhoneOrderScreen(vm)
                 Overlay.Search -> SearchScreen(vm)
+                Overlay.ArtistSongs -> ArtistSongsScreen(vm)
                 else -> Unit
             }
         }
 
+        // zIndex 须高于 BlockingOverlay(10)，否则搜索/已点里的 toast 被挡住
         vm.toastMessage?.let { msg ->
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .zIndex(20f)
                     .padding(bottom = 48.dp)
                     .background(KaraokeColors.surfaceStrong, RoundedCornerShape(12.dp))
                     .padding(horizontal = 24.dp, vertical = 12.dp),

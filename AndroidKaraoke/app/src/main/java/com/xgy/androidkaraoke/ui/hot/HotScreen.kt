@@ -15,13 +15,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
-import com.xgy.androidkaraoke.data.MockData
 import com.xgy.androidkaraoke.playback.AppViewModel
 import com.xgy.androidkaraoke.theme.KaraokeColors
 import com.xgy.androidkaraoke.ui.components.FocusSurface
@@ -53,7 +53,6 @@ fun HotScreen(vm: AppViewModel) {
                 items(vm.forYouRecommendations, key = { it.id }) { song ->
                     FocusSurface(onClick = {
                         vm.addToQueue(song)
-                        vm.openPlayback(song)
                     }, corner = 12.dp) { focused ->
                         Column(
                             modifier = Modifier
@@ -85,24 +84,28 @@ fun HotScreen(vm: AppViewModel) {
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            val hotSongs = remember(vm.catalog.size, vm.prefsEpoch) {
+                vm.catalog.sortedByDescending { it.hotScore }.distinctBy { it.id }.take(12)
+            }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                items(MockData.hotPosters, key = { it.id }) { card ->
+                items(hotSongs.take(6), key = { it.id }) { song ->
                     PosterCard(
-                        title = card.title,
-                        subtitle = card.subtitle,
-                        tint = card.tint,
-                        badge = card.badge,
-                        onClick = { vm.showToast(card.title) },
+                        title = song.displayTitle,
+                        subtitle = song.artist,
+                        tint = song.coverColor,
+                        badge = song.tag,
+                        onClick = { vm.addToQueue(song) },
                         modifier = Modifier.width(180.dp).height(240.dp),
                     )
                 }
             }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(MockData.hotBottom, key = { it.id }) { card ->
+                items(hotSongs.drop(6), key = { "b-${it.id}" }) { song ->
                     PosterCard(
-                        title = card.title,
-                        tint = card.tint,
-                        onClick = { vm.showToast(card.title) },
+                        title = song.displayTitle,
+                        subtitle = song.artist,
+                        tint = song.coverColor,
+                        onClick = { vm.addToQueue(song) },
                         modifier = Modifier.width(180.dp).height(90.dp),
                     )
                 }
