@@ -11,6 +11,7 @@ import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URL
 import java.util.Base64
+import java.util.concurrent.atomic.AtomicReference
 import java.util.regex.Pattern
 
 sealed class NasError(message: String) : Exception(message) {
@@ -18,12 +19,17 @@ sealed class NasError(message: String) : Exception(message) {
     data object InvalidUrl : NasError("NAS 地址无效，请检查 Base URL 与路径")
     data object Unauthorized : NasError("认证失败：请在设置中填写正确的账号和密码")
     data object Forbidden : NasError("没有权限访问该目录")
-    data object NotFound : NasError("找不到该路径，请确认曲库目录是否正确")
+    data object NotFound : NasError(
+        "找不到该路径。若 Base URL 是群晖 DSM（如 :9527），请用 File Station 路径如 /volume1/music，并填写账号密码；直链 HTTP 目录请改用 WebDAV/文件服务地址。",
+    )
     data object Timeout : NasError("连接超时，请检查网络或 NAS 是否在线")
     class Server(code: Int, msg: String) : NasError("服务器错误（$code）：$msg")
     class Transport(msg: String) : NasError("无法连接 NAS：$msg")
     data object EmptyListing : NasError("目录为空，或服务器未开启目录列表")
     data object UnsupportedContent : NasError("无法解析目录页（可尝试放置 library.json 清单）")
+    data object DsmNeedsCredentials : NasError(
+        "当前地址是群晖 DSM 入口。请填写 NAS 账号密码后重试；曲库路径填 File Station 路径（如 /volume1/music），不要当成网页路径硬拼。",
+    )
 }
 
 enum class NasEntryKind { Folder, Audio, Video, Manifest, Other }
@@ -43,8 +49,13 @@ class HttpsNasMediaSource(
     @Volatile
     var config: NasConfig = configStore.load()
 
+    private val synologyMode = AtomicReference<Boolean?>(null)
+    private var fileStation: SynologyFileStation? = null
+
     fun reloadConfig() {
         config = configStore.load()
+        synologyMode.set(null)
+        fileStation = null
     }
 
     suspend fun testConnection(): String = withContext(Dispatchers.IO) {
@@ -54,14 +65,25 @@ class HttpsNasMediaSource(
 
     /** 仅验证 URL/认证可达；目录空也算成功（用于「先连接再选目录」）。 */
     suspend fun probeConnection(atPath: String = "/"): String = withContext(Dispatchers.IO) {
-        val url = makeUrl(atPath, directory = true)
+        ensureBackend()
+        if (synologyMode.get() == true) {
+            fs().ensureSession()
+            // 再尝试列一下目标路径（空也算通）
+            try {
+                listDirectory(atPath)
+            } catch (_: NasError.EmptyListing) {
+            } catch (_: NasError.NotFound) {
+                // 根可能不可列，登录成功即可
+            }
+            return@withContext "已连接群晖 File Station"
+        }
+        val url = makeHttpUrl(atPath, directory = true)
         try {
             fetchText(url)
             "连接成功"
-        } catch (e: NasError.EmptyListing) {
+        } catch (_: NasError.EmptyListing) {
             "连接成功"
-        } catch (e: NasError.UnsupportedContent) {
-            // 部分 NAS 根路径非 HTML 列表，但认证已过
+        } catch (_: NasError.UnsupportedContent) {
             "连接成功"
         }
     }
@@ -73,8 +95,24 @@ class HttpsNasMediaSource(
     }
 
     suspend fun listDirectory(atPath: String): List<NasEntry> = withContext(Dispatchers.IO) {
-        val url = makeUrl(atPath, directory = true)
+        ensureBackend()
+        if (synologyMode.get() == true) {
+            return@withContext fs().list(atPath).sortedWith(
+                compareBy<NasEntry> { it.kind != NasEntryKind.Folder }
+                    .thenBy { it.name.lowercase() },
+            )
+        }
+        val url = makeHttpUrl(atPath, directory = true)
         val data = fetchText(url)
+        // 误把 DSM 登录页当目录
+        if (looksLikeDsmHtml(data)) {
+            synologyMode.set(true)
+            rebuildFileStation()
+            return@withContext fs().list(atPath).sortedWith(
+                compareBy<NasEntry> { it.kind != NasEntryKind.Folder }
+                    .thenBy { it.name.lowercase() },
+            )
+        }
         val entries = parseListing(data, url, normalizePath(atPath))
         if (entries.isEmpty()) throw NasError.EmptyListing
         entries.sortedWith(
@@ -92,31 +130,41 @@ class HttpsNasMediaSource(
             }
         }
 
-    /** 优先读取曲库根目录 library.json（含 mv/original/accompaniment）。 */
     suspend fun loadLibraryJson(atPath: String = config.normalizedPath): List<Song> =
         withContext(Dispatchers.IO) {
+            ensureBackend()
+            if (synologyMode.get() == true) {
+                // File Station：尝试下载 library.json / songs.json
+                val dir = SynologyFileStation.normalizeFsPath(atPath)
+                for (name in listOf("library.json", "songs.json")) {
+                    val filePath = "$dir/$name"
+                    try {
+                        val url = fs().downloadUrl(filePath)
+                        val body = fetchText(url, allowRedirect = true)
+                        decodeJsonManifest(body)?.takeIf { it.isNotEmpty() }?.let { return@withContext it }
+                    } catch (_: Exception) {
+                    }
+                }
+                return@withContext emptyList()
+            }
             val candidates = listOf(
                 "${normalizePath(atPath).trimEnd('/')}/library.json",
                 "${normalizePath(atPath).trimEnd('/')}/songs.json",
             )
-            var lastError: Exception? = null
             for (rel in candidates) {
                 try {
-                    val url = makeUrl(rel, directory = false)
+                    val url = makeHttpUrl(rel, directory = false)
                     val body = fetchText(url)
                     val songs = decodeJsonManifest(body)
                     if (!songs.isNullOrEmpty()) return@withContext songs
-                } catch (e: Exception) {
-                    lastError = e
+                } catch (_: Exception) {
                 }
             }
-            // 若目录页本身就是 JSON 清单
             try {
-                val url = makeUrl(atPath, directory = true)
+                val url = makeHttpUrl(atPath, directory = true)
                 val body = fetchText(url)
                 decodeJsonManifest(body)?.takeIf { it.isNotEmpty() }?.let { return@withContext it }
-            } catch (e: Exception) {
-                lastError = e
+            } catch (_: Exception) {
             }
             emptyList()
         }
@@ -143,7 +191,6 @@ class HttpsNasMediaSource(
         )
     }
 
-    /** 将同目录下的 mv / 原唱 / 伴唱文件合成一首歌。 */
     suspend fun songFromFolder(folderPath: String, folderName: String): Song? {
         val entries = listDirectory(folderPath)
         var mv: String? = null
@@ -174,14 +221,48 @@ class HttpsNasMediaSource(
         )
     }
 
-    private fun makeUrl(path: String, directory: Boolean): String {
+    private suspend fun ensureBackend() {
+        if (synologyMode.get() != null && (synologyMode.get() == false || fileStation != null)) return
+        val base = config.normalizedBaseUrl
+        if (base.isBlank()) throw NasError.NotConfigured
+        val isSyno = SynologyFileStation.isSynologyDsm(base)
+        synologyMode.set(isSyno)
+        if (isSyno) {
+            if (credentials.username().isBlank()) throw NasError.DsmNeedsCredentials
+            rebuildFileStation()
+        }
+    }
+
+    private fun rebuildFileStation() {
+        fileStation = SynologyFileStation(
+            baseUrl = config.normalizedBaseUrl,
+            username = credentials.username(),
+            password = credentials.password(),
+        )
+    }
+
+    private fun fs(): SynologyFileStation =
+        fileStation ?: run {
+            rebuildFileStation()
+            fileStation!!
+        }
+
+    private fun makeHttpUrl(path: String, directory: Boolean): String {
         val base = config.normalizedBaseUrl
         if (base.isBlank()) throw NasError.NotConfigured
         if (!base.startsWith("http://") && !base.startsWith("https://")) {
             throw NasError.InvalidUrl
         }
         val rel = normalizePath(path).trim('/')
-        var url = if (rel.isEmpty()) "$base/" else "$base/$rel"
+        // 分段编码路径，避免中文目录 404
+        val encoded = if (rel.isEmpty()) {
+            ""
+        } else {
+            rel.split('/').joinToString("/") { segment ->
+                java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20")
+            }
+        }
+        var url = if (encoded.isEmpty()) "$base/" else "$base/$encoded"
         if (directory && !url.endsWith("/")) url += "/"
         return url
     }
@@ -193,13 +274,21 @@ class HttpsNasMediaSource(
         return p
     }
 
-    private fun fetchText(urlString: String): String {
+    private fun looksLikeDsmHtml(body: String): Boolean {
+        val lower = body.lowercase()
+        return lower.contains("synology") ||
+            lower.contains("webman/") ||
+            lower.contains("syno.api") ||
+            (lower.contains("<title>") && lower.contains("dsm"))
+    }
+
+    private fun fetchText(urlString: String, allowRedirect: Boolean = true): String {
         val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 20_000
             readTimeout = 30_000
             setRequestProperty("Accept", "text/html,application/json,*/*")
-            instanceFollowRedirects = true
+            instanceFollowRedirects = allowRedirect
             basicAuthHeader()?.let { setRequestProperty("Authorization", it) }
         }
         try {

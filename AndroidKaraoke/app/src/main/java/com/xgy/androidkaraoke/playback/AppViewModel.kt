@@ -379,11 +379,14 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 settingsIsError = false
                 showToast(msg)
                 nasWizardStep = NasWizardStep.PickDirectory
-                val start = BrandConfig.defaultNasLibraryPath
-                    .trimEnd('/')
-                    .substringBeforeLast('/', missingDelimiterValue = "/")
-                    .ifBlank { "/" }
-                refreshDirPicker(start.ifBlank { "/" })
+                // 群晖：优先从 /volume1 或曲库默认父目录开始选
+                val start = listOf(
+                    BrandConfig.defaultNasLibraryPath.trimEnd('/')
+                        .substringBeforeLast('/', missingDelimiterValue = "/"),
+                    "/volume1",
+                    "/",
+                ).first { it.isNotBlank() }
+                refreshDirPicker(start)
             } catch (e: Exception) {
                 settingsIsError = true
                 settingsMessage = (e as? NasError)?.message ?: (e.message ?: "连接失败")

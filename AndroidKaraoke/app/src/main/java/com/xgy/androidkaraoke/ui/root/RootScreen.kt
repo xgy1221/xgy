@@ -40,47 +40,58 @@ fun RootScreen(vm: AppViewModel) {
         vm.dismissOverlay()
     }
 
-    val overlayOpen = vm.overlay != Overlay.None
+    val overlay = vm.overlay
+    // 整屏目的地：完全替换主壳，禁止与首页叠层
+    val fullScreenReplace = overlay == Overlay.NasLibrary ||
+        overlay == Overlay.Playback ||
+        overlay == Overlay.Guess
 
     Box(modifier = Modifier.fillMaxSize()) {
         AmbientBackground()
-        // 弹窗打开时禁用背景获焦，防止 DPAD 落到首页
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .focusProperties { canFocus = !overlayOpen },
-        ) {
-            TopBar(
-                queueCount = vm.queue.size,
-                onSearch = { vm.openSearch() },
-                onQueue = { vm.openQueue() },
-                onWechat = { vm.openPhoneOrder() },
-                onSettings = { vm.openSettings() },
-            )
-            CategoryTabs(
-                selected = vm.selectedTab,
-                onSelect = vm::selectTab,
-            )
-            Spacer(modifier = Modifier.height(18.dp))
-            Box(modifier = Modifier.weight(1f)) {
-                when (vm.selectedTab) {
-                    MainTab.FreeSing -> HomeScreen(vm)
-                    MainTab.Singers -> SingersScreen(vm)
-                    MainTab.Hot -> HotScreen(vm)
-                    else -> HomeScreen(vm)
+
+        if (fullScreenReplace) {
+            when (overlay) {
+                Overlay.NasLibrary -> NasLibraryScreen(vm)
+                Overlay.Playback -> PlaybackScreen(vm)
+                Overlay.Guess -> GuessYouWantScreen(vm)
+                else -> Unit
+            }
+        } else {
+            val modalOpen = overlay != Overlay.None
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusProperties { canFocus = !modalOpen },
+            ) {
+                TopBar(
+                    queueCount = vm.queue.size,
+                    onSearch = { vm.openSearch() },
+                    onQueue = { vm.openQueue() },
+                    onWechat = { vm.openPhoneOrder() },
+                    onSettings = { vm.openSettings() },
+                )
+                CategoryTabs(
+                    selected = vm.selectedTab,
+                    onSelect = vm::selectTab,
+                )
+                Spacer(modifier = Modifier.height(18.dp))
+                Box(modifier = Modifier.weight(1f)) {
+                    when (vm.selectedTab) {
+                        MainTab.FreeSing -> HomeScreen(vm)
+                        MainTab.Singers -> SingersScreen(vm)
+                        MainTab.Hot -> HotScreen(vm)
+                        else -> HomeScreen(vm)
+                    }
                 }
             }
-        }
 
-        when (vm.overlay) {
-            Overlay.Playback -> PlaybackScreen(vm)
-            Overlay.Guess -> GuessYouWantScreen(vm)
-            Overlay.Queue -> QueueScreen(vm)
-            Overlay.Settings -> SettingsScreen(vm)
-            Overlay.NasLibrary -> NasLibraryScreen(vm)
-            Overlay.PhoneOrder -> PhoneOrderScreen(vm)
-            Overlay.Search -> SearchScreen(vm)
-            Overlay.None -> Unit
+            when (overlay) {
+                Overlay.Queue -> QueueScreen(vm)
+                Overlay.Settings -> SettingsScreen(vm)
+                Overlay.PhoneOrder -> PhoneOrderScreen(vm)
+                Overlay.Search -> SearchScreen(vm)
+                else -> Unit
+            }
         }
 
         vm.toastMessage?.let { msg ->

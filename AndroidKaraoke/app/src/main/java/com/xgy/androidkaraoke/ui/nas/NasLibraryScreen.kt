@@ -33,6 +33,9 @@ import com.xgy.androidkaraoke.theme.KaraokeColors
 import com.xgy.androidkaraoke.ui.components.FocusSurface
 import com.xgy.androidkaraoke.ui.components.ShelfHeader
 
+/**
+ * 曲库浏览：整屏不透明替换主界面（禁止半透明叠在首页上）。
+ */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun NasLibraryScreen(vm: AppViewModel) {
@@ -51,13 +54,22 @@ fun NasLibraryScreen(vm: AppViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 40.dp, vertical = 8.dp),
+            .background(KaraokeColors.background)
+            .padding(horizontal = 40.dp, vertical = 20.dp),
     ) {
         ShelfHeader(title, subtitle)
         Row(
             modifier = Modifier.padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            FocusSurface(onClick = { vm.dismissOverlay() }, corner = 10.dp) {
+                Text(
+                    "返回设置",
+                    color = KaraokeColors.textPrimary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    fontSize = 16.sp,
+                )
+            }
             FocusSurface(onClick = { vm.libraryGoUp() }, corner = 10.dp) {
                 Text(
                     "上级目录",
@@ -86,30 +98,60 @@ fun NasLibraryScreen(vm: AppViewModel) {
 
         when {
             vm.libraryLoading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("正在加载曲库…", color = KaraokeColors.textSecondary, fontSize = 20.sp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(KaraokeColors.background),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("正在加载曲库…", color = KaraokeColors.textSecondary, fontSize = 22.sp)
                 }
             }
             vm.libraryError != null -> {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .background(KaraokeColors.danger.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
-                        .padding(24.dp),
+                        .fillMaxSize()
+                        .background(KaraokeColors.background),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("无法浏览曲库", color = KaraokeColors.textPrimary, fontSize = 22.sp)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth(0.72f)
+                            .background(KaraokeColors.danger.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
+                            .padding(28.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text("无法浏览曲库", color = KaraokeColors.textPrimary, fontSize = 26.sp)
                         Text(vm.libraryError.orEmpty(), color = KaraokeColors.danger, fontSize = 18.sp)
                         Text(
                             when (source?.kind) {
                                 LibrarySourceKind.Usb ->
                                     "请确认 U 盘已插入、已授予存储权限，或返回设置重新扫描。"
                                 else ->
-                                    "请检查网络、地址，或在设置中填写账号密码后重试。"
+                                    "群晖请用 DSM 地址（含端口）+ File Station 路径（如 /volume1/music）并填写账号密码；" +
+                                        "若是 WebDAV/直链目录，请把 Base URL 改成文件服务地址。"
                             },
                             color = KaraokeColors.textSecondary,
                             fontSize = 15.sp,
                         )
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            FocusSurface(onClick = { vm.refreshLibrary() }, corner = 10.dp) {
+                                Text(
+                                    "重试",
+                                    color = KaraokeColors.textPrimary,
+                                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                                    fontSize = 16.sp,
+                                )
+                            }
+                            FocusSurface(onClick = { vm.openSettings() }, corner = 10.dp) {
+                                Text(
+                                    "去设置",
+                                    color = KaraokeColors.textPrimary,
+                                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                                    fontSize = 16.sp,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -117,6 +159,9 @@ fun NasLibraryScreen(vm: AppViewModel) {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 32.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(KaraokeColors.background),
                 ) {
                     items(vm.libraryEntries, key = { it.id }) { entry ->
                         FocusSurface(onClick = { vm.openLibraryEntry(entry) }, corner = 12.dp) { focused ->

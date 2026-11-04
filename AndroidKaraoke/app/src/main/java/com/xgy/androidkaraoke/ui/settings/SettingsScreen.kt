@@ -197,7 +197,7 @@ private fun SourceRow(vm: AppViewModel, source: LibrarySource) {
 private fun NasConnectPane(vm: AppViewModel) {
     ShelfHeader(
         if (vm.editingSourceId == null) "添加曲库 · 连接 NAS" else "编辑 NAS · 重新连接",
-        "先连接成功，再选择曲库目录（无需手打路径）",
+        "群晖 DSM（如 :9527）请填账号密码；连接后选 File Station 目录（如 /volume1/music）",
     )
     SettingField("显示名称", vm.settingsDisplayName, singleLine = true) { vm.settingsDisplayName = it }
     SettingField("Base URL", vm.settingsBaseUrl, singleLine = true) { vm.settingsBaseUrl = it }
