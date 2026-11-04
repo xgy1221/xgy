@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -23,12 +24,12 @@ import com.xgy.androidkaraoke.theme.AmbientBackground
 import com.xgy.androidkaraoke.theme.KaraokeColors
 import com.xgy.androidkaraoke.ui.home.HomeScreen
 import com.xgy.androidkaraoke.ui.hot.HotScreen
-import com.xgy.androidkaraoke.ui.kids.KidsScreen
 import com.xgy.androidkaraoke.ui.nas.NasLibraryScreen
 import com.xgy.androidkaraoke.ui.playback.GuessYouWantScreen
 import com.xgy.androidkaraoke.ui.playback.PlaybackScreen
 import com.xgy.androidkaraoke.ui.queue.QueueScreen
 import com.xgy.androidkaraoke.ui.remote.PhoneOrderScreen
+import com.xgy.androidkaraoke.ui.search.SearchScreen
 import com.xgy.androidkaraoke.ui.settings.SettingsScreen
 import com.xgy.androidkaraoke.ui.singers.SingersScreen
 
@@ -39,15 +40,21 @@ fun RootScreen(vm: AppViewModel) {
         vm.dismissOverlay()
     }
 
+    val overlayOpen = vm.overlay != Overlay.None
+
     Box(modifier = Modifier.fillMaxSize()) {
         AmbientBackground()
-        Column(modifier = Modifier.fillMaxSize()) {
+        // 弹窗打开时禁用背景获焦，防止 DPAD 落到首页
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .focusProperties { canFocus = !overlayOpen },
+        ) {
             TopBar(
                 queueCount = vm.queue.size,
-                onSearch = { vm.showToast("搜索即将推出，可用手机扫码点歌") },
+                onSearch = { vm.openSearch() },
                 onQueue = { vm.openQueue() },
                 onWechat = { vm.openPhoneOrder() },
-                onProfile = { vm.showToast("无需登录，直接点歌即可") },
                 onSettings = { vm.openSettings() },
             )
             CategoryTabs(
@@ -60,7 +67,6 @@ fun RootScreen(vm: AppViewModel) {
                     MainTab.FreeSing -> HomeScreen(vm)
                     MainTab.Singers -> SingersScreen(vm)
                     MainTab.Hot -> HotScreen(vm)
-                    MainTab.Kids -> KidsScreen(vm)
                     else -> HomeScreen(vm)
                 }
             }
@@ -73,6 +79,7 @@ fun RootScreen(vm: AppViewModel) {
             Overlay.Settings -> SettingsScreen(vm)
             Overlay.NasLibrary -> NasLibraryScreen(vm)
             Overlay.PhoneOrder -> PhoneOrderScreen(vm)
+            Overlay.Search -> SearchScreen(vm)
             Overlay.None -> Unit
         }
 

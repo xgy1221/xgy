@@ -34,9 +34,16 @@ class LibrarySourceStore(context: Context) {
         prefs.edit().putString(KEY_ACTIVE, id).apply()
     }
 
+    fun isLibraryGuideDismissed(): Boolean = prefs.getBoolean(KEY_GUIDE_DISMISSED, false)
+
+    fun setLibraryGuideDismissed(dismissed: Boolean) {
+        prefs.edit().putBoolean(KEY_GUIDE_DISMISSED, dismissed).apply()
+    }
+
     companion object {
         private const val PREFS = "library_sources"
         private const val KEY_SOURCES = "sources"
         private const val KEY_ACTIVE = "active_id"
+        private const val KEY_GUIDE_DISMISSED = "guide_dismissed"
     }
 }

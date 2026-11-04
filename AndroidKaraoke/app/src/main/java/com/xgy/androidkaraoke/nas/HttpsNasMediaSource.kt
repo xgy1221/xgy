@@ -52,6 +52,26 @@ class HttpsNasMediaSource(
         "已连接，共 ${entries.size} 项"
     }
 
+    /** 仅验证 URL/认证可达；目录空也算成功（用于「先连接再选目录」）。 */
+    suspend fun probeConnection(atPath: String = "/"): String = withContext(Dispatchers.IO) {
+        val url = makeUrl(atPath, directory = true)
+        try {
+            fetchText(url)
+            "连接成功"
+        } catch (e: NasError.EmptyListing) {
+            "连接成功"
+        } catch (e: NasError.UnsupportedContent) {
+            // 部分 NAS 根路径非 HTML 列表，但认证已过
+            "连接成功"
+        }
+    }
+
+    suspend fun listFolders(atPath: String): List<NasEntry> = try {
+        listDirectory(atPath).filter { it.kind == NasEntryKind.Folder }
+    } catch (_: NasError.EmptyListing) {
+        emptyList()
+    }
+
     suspend fun listDirectory(atPath: String): List<NasEntry> = withContext(Dispatchers.IO) {
         val url = makeUrl(atPath, directory = true)
         val data = fetchText(url)

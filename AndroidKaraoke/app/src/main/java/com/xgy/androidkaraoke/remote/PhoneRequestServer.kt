@@ -2,6 +2,7 @@ package com.xgy.androidkaraoke.remote
 
 import android.util.Log
 import com.xgy.androidkaraoke.model.Song
+import com.xgy.androidkaraoke.search.SongSearch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -165,6 +166,7 @@ class PhoneRequestServer(
                     .put("id", song.id)
                     .put("title", song.title)
                     .put("artist", song.artist)
+                    .put("initials", SongSearch.initials(song.title + song.artist))
                     .put("hasMv", song.hasMv)
                     .put("hasOriginal", song.hasOriginal)
                     .put("hasAccompaniment", song.hasAccompaniment),

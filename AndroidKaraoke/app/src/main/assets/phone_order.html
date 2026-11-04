@@ -28,12 +28,12 @@
 <body>
 <header>
   <h1>手机点歌</h1>
-  <input id="q" placeholder="搜索歌名 / 歌星" oninput="render()"/>
+  <input id="q" placeholder="搜索歌名 / 歌星 / 首拼" oninput="render()"/>
 </header>
 <div id="status"></div>
 <div id="list"></div>
 <div class="queue">
-  <h1 style="font-size:16px;margin:0 0 8px 4px">电视已点</h1>
+  <h1 style="font-size:16px;margin:0 0 8px 4px">电视已点（约 3 秒刷新）</h1>
   <div id="queue"></div>
 </div>
 <script>
@@ -49,9 +49,14 @@ async function load() {
   }
 }
 function render() {
-  const q = (document.getElementById('q').value || '').trim().toLowerCase();
+  const q = (document.getElementById('q').value || '').trim().toLowerCase().replace(/\s+/g,'');
   const list = document.getElementById('list');
-  const filtered = songs.filter(s => !q || (s.title+s.artist).toLowerCase().includes(q));
+  const filtered = songs.filter(s => {
+    if (!q) return true;
+    const hay = ((s.title||'')+(s.artist||'')).toLowerCase();
+    const py = (s.initials||'').toLowerCase();
+    return hay.includes(q) || py.includes(q) || py.startsWith(q);
+  });
   list.innerHTML = filtered.map(s => `
     <div class="song">
       <div class="meta">

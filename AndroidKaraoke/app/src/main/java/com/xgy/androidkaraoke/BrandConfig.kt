@@ -7,6 +7,6 @@ object BrandConfig {
     const val tagline = "Apple 风 · Android TV"
     const val applicationId = "com.xgy.androidkaraoke"
 
-    const val defaultNasBaseUrl = "https://nas.xgy1221.top"
+    const val defaultNasBaseUrl = "https://nas.xgy1221.top:9527"
     const val defaultNasLibraryPath = "/volume1/music"
 }

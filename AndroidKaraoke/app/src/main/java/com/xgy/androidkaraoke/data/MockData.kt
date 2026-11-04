@@ -23,11 +23,11 @@ object MockData {
         HomeTile("song", HomeTileKind.SongOrder, "歌曲点歌", Color(0xFF3373F2)),
         HomeTile("singer", HomeTileKind.SingerOrder, "歌手点歌", Color(0xFFD93347)),
         HomeTile("category", HomeTileKind.CategoryOrder, "分类点歌", Color(0xFF2647B8)),
-        HomeTile("free", HomeTileKind.FreeZone, "免费专区·即刻开唱", Color(0xFF2E6BE0)),
+        // 「免费专区」瓷砖已按雷电反馈移除
         HomeTile("queue", HomeTileKind.MyQueue, "我的点唱", Color(0xFFE85A8C), badgeCount = 4),
         HomeTile("fav", HomeTileKind.Favorites, "收藏歌曲", Color(0xFFEBB847)),
         HomeTile("krec", HomeTileKind.KRecommend, "K歌推荐", Color(0xFF73B2F2)),
-        HomeTile("rank", HomeTileKind.Ranking, "排行榜", Color(0xFF40B873)),
+        // 排行榜 Tab 已移除；首页不再展示排行榜瓷砖
     )
 
     val featuredSingers = listOf(

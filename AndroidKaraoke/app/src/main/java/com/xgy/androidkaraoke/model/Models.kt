@@ -6,7 +6,8 @@ enum class MainTab(val title: String, val implemented: Boolean = true) {
     FreeSing("随心唱"),
     Singers("歌星"),
     Hot("热门"),
-    Kids("儿童"),
+    // 儿童 / 排行榜 / 玩法 已从顶部分类移除（雷电反馈）
+    Kids("儿童", implemented = false),
     Ranking("排行榜", implemented = false),
     Features("玩法", implemented = false),
 }
@@ -87,5 +88,5 @@ enum class VocalMode { Accompaniment, Original }
 enum class PlayOrderMode { Sequential, Shuffle, Loop }
 
 enum class Overlay {
-    None, Playback, Guess, Queue, Settings, NasLibrary, PhoneOrder,
+    None, Playback, Guess, Queue, Settings, NasLibrary, PhoneOrder, Search,
 }

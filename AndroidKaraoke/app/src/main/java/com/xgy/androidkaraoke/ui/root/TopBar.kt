@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.QueueMusic
 import androidx.compose.material.icons.outlined.Search
@@ -34,7 +33,6 @@ fun TopBar(
     onSearch: () -> Unit,
     onQueue: () -> Unit,
     onWechat: () -> Unit,
-    onProfile: () -> Unit,
     onSettings: () -> Unit,
 ) {
     Row(
@@ -60,7 +58,6 @@ fun TopBar(
             TopAction("搜索", Icons.Outlined.Search, onSearch)
             TopAction("已点${if (queueCount > 0) " · $queueCount" else ""}", Icons.Outlined.QueueMusic, onQueue)
             TopAction("扫码点歌", Icons.Outlined.PhoneAndroid, onWechat)
-            TopAction("我的", Icons.Outlined.Person, onProfile)
             TopAction("设置", Icons.Outlined.Settings, onSettings)
         }
     }

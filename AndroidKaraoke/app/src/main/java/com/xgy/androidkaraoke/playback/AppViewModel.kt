@@ -28,6 +28,7 @@ import com.xgy.androidkaraoke.nas.NasEntryKind
 import com.xgy.androidkaraoke.nas.NasError
 import com.xgy.androidkaraoke.recommend.RecommendationEngine
 import com.xgy.androidkaraoke.remote.PhoneRequestServer
+import com.xgy.androidkaraoke.search.SongSearch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -138,10 +139,54 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     var settingsEditorKind by mutableStateOf<LibrarySourceKind?>(null)
         private set
 
+    /** NAS 添加向导：先连接，再选目录 */
+    enum class NasWizardStep { Connect, PickDirectory }
+    var nasWizardStep by mutableStateOf(NasWizardStep.Connect)
+        private set
+    var dirPickPath by mutableStateOf("/")
+        private set
+    val dirPickFolders = mutableStateListOf<com.xgy.androidkaraoke.nas.NasEntry>()
+    var dirPickLoading by mutableStateOf(false)
+        private set
+    var dirPickError by mutableStateOf<String?>(null)
+        private set
+
     var phoneOrderUrl by mutableStateOf<String?>(null)
         private set
     var phoneServerRunning by mutableStateOf(false)
         private set
+
+    // ——— 搜索 ———
+    var searchQuery by mutableStateOf("")
+        private set
+    val searchResults: List<Song>
+        get() = SongSearch.filter(catalog.toList(), searchQuery)
+
+    var playbackError by mutableStateOf<String?>(null)
+        private set
+
+    var libraryGuideDismissed by mutableStateOf(sourceStore.isLibraryGuideDismissed())
+        private set
+
+    /** 尚无非 Mock 曲库且用户未关掉引导 */
+    val shouldShowLibraryGuide: Boolean
+        get() = !libraryGuideDismissed && catalog.none { it.source != MediaSource.Mock }
+
+    val recentSongs: List<Song>
+        get() {
+            prefsEpoch
+            return listeningPrefs.historySongIds().mapNotNull { id ->
+                catalog.firstOrNull { it.id == id }
+            }.take(12)
+        }
+
+    val favoriteSongs: List<Song>
+        get() {
+            prefsEpoch
+            return listeningPrefs.favoriteIds().mapNotNull { id ->
+                catalog.firstOrNull { it.id == id }
+            }
+        }
 
     val progress: Float
         get() {
@@ -163,6 +208,11 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             if (playbackState == Player.STATE_ENDED) {
                 completeCurrentAndNext()
             }
+        }
+
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            playbackError = "播放失败：${error.message?.take(80) ?: "媒体无法加载"}"
+            showToast(playbackError!!)
         }
     }
 
@@ -251,6 +301,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         settingsEditorKind = null
         editingSourceId = null
         settingsMessage = null
+        nasWizardStep = NasWizardStep.Connect
         settingsUsername = container.credentialStore.username()
         settingsPassword = ""
         overlay = Overlay.Settings
@@ -259,12 +310,17 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     fun beginAddNas() {
         editingSourceId = null
         settingsEditorKind = LibrarySourceKind.Nas
+        nasWizardStep = NasWizardStep.Connect
         settingsDisplayName = "NAS"
         settingsBaseUrl = BrandConfig.defaultNasBaseUrl
         settingsPath = BrandConfig.defaultNasLibraryPath
         settingsUsername = container.credentialStore.username()
         settingsPassword = ""
         settingsMessage = null
+        settingsIsError = false
+        dirPickFolders.clear()
+        dirPickError = null
+        dirPickPath = "/"
     }
 
     fun beginEditSource(source: LibrarySource) {
@@ -277,12 +333,132 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         settingsUsername = container.credentialStore.username()
         settingsPassword = ""
         settingsMessage = null
+        settingsIsError = false
+        if (source.kind == LibrarySourceKind.Nas) {
+            nasWizardStep = NasWizardStep.Connect
+            dirPickPath = source.nasLibraryPath ?: "/"
+            dirPickFolders.clear()
+            dirPickError = null
+        }
     }
 
     fun cancelSourceEditor() {
         settingsEditorKind = null
         editingSourceId = null
         settingsMessage = null
+        nasWizardStep = NasWizardStep.Connect
+        dirPickFolders.clear()
+        dirPickError = null
+    }
+
+    fun backToNasConnect() {
+        nasWizardStep = NasWizardStep.Connect
+        settingsMessage = null
+        dirPickError = null
+    }
+
+    /** 步骤 1：保存认证并探测连接，成功后进入目录选择。 */
+    fun connectNasThenPickDirectory() {
+        viewModelScope.launch {
+            settingsBusy = true
+            settingsMessage = null
+            settingsIsError = false
+            try {
+                val cfg = NasConfig(
+                    baseUrlString = settingsBaseUrl.trim(),
+                    libraryPath = "/",
+                )
+                container.nasConfigStore.save(cfg)
+                val passToStore = settingsPassword.ifEmpty {
+                    container.credentialStore.password()
+                }
+                container.credentialStore.save(settingsUsername.trim(), passToStore)
+                container.nasSource.reloadConfig()
+                val msg = container.nasSource.probeConnection("/")
+                settingsMessage = msg
+                settingsIsError = false
+                showToast(msg)
+                nasWizardStep = NasWizardStep.PickDirectory
+                val start = BrandConfig.defaultNasLibraryPath
+                    .trimEnd('/')
+                    .substringBeforeLast('/', missingDelimiterValue = "/")
+                    .ifBlank { "/" }
+                refreshDirPicker(start.ifBlank { "/" })
+            } catch (e: Exception) {
+                settingsIsError = true
+                settingsMessage = (e as? NasError)?.message ?: (e.message ?: "连接失败")
+            } finally {
+                settingsBusy = false
+            }
+        }
+    }
+
+    fun refreshDirPicker(path: String = dirPickPath) {
+        viewModelScope.launch {
+            dirPickLoading = true
+            dirPickError = null
+            try {
+                dirPickPath = path
+                val folders = container.nasSource.listFolders(path)
+                dirPickFolders.clear()
+                dirPickFolders.addAll(folders)
+            } catch (e: Exception) {
+                dirPickFolders.clear()
+                dirPickError = (e as? NasError)?.message ?: (e.message ?: "无法列出目录")
+            } finally {
+                dirPickLoading = false
+            }
+        }
+    }
+
+    fun dirPickerGoUp() {
+        val parent = dirPickPath.trimEnd('/').substringBeforeLast('/', missingDelimiterValue = "/")
+        refreshDirPicker(if (parent.isEmpty()) "/" else parent)
+    }
+
+    fun dirPickerEnter(folderPath: String) {
+        refreshDirPicker(folderPath)
+    }
+
+    /** 步骤 2：确认当前浏览路径为曲库根目录并保存来源。 */
+    fun confirmNasLibraryDirectory() {
+        viewModelScope.launch {
+            settingsBusy = true
+            try {
+                val path = dirPickPath.ifBlank { "/" }
+                settingsPath = path
+                val id = editingSourceId ?: ("nas-" + UUID.randomUUID().toString().take(8))
+                val source = LibrarySource(
+                    id = id,
+                    kind = LibrarySourceKind.Nas,
+                    displayName = settingsDisplayName.trim().ifBlank { "NAS" },
+                    enabled = true,
+                    nasBaseUrl = settingsBaseUrl.trim(),
+                    nasLibraryPath = path,
+                )
+                sourceStore.upsert(source)
+                container.nasConfigStore.save(
+                    NasConfig(
+                        baseUrlString = settingsBaseUrl.trim(),
+                        libraryPath = path,
+                    ),
+                )
+                container.nasSource.reloadConfig()
+                activeSourceId = id
+                sourceStore.setActiveSourceId(id)
+                reloadSources(scanUsb = false)
+                showToast("已添加曲库：$path")
+                dismissLibraryGuide()
+                settingsEditorKind = null
+                nasWizardStep = NasWizardStep.Connect
+                settingsMessage = null
+            } catch (e: Exception) {
+                settingsIsError = true
+                settingsMessage = e.message ?: "保存失败"
+            } finally {
+                settingsBusy = false
+            }
+        }
     }
 
     fun scanUsbNow() {
@@ -344,6 +520,20 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         overlay = Overlay.Queue
     }
 
+    fun openSearch() {
+        searchQuery = ""
+        overlay = Overlay.Search
+    }
+
+    fun updateSearchQuery(q: String) {
+        searchQuery = q
+    }
+
+    fun dismissLibraryGuide() {
+        libraryGuideDismissed = true
+        sourceStore.setLibraryGuideDismissed(true)
+    }
+
     fun openPhoneOrder() {
         startPhoneServer()
         phoneOrderUrl = phoneServer?.publicBaseUrl()
@@ -370,11 +560,22 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun dismissOverlay() {
-        overlay = when (overlay) {
-            Overlay.Guess -> Overlay.Playback
-            Overlay.NasLibrary -> Overlay.Settings
-            Overlay.Playback, Overlay.Queue, Overlay.Settings, Overlay.PhoneOrder -> Overlay.None
-            Overlay.None -> Overlay.None
+        when (overlay) {
+            Overlay.Guess -> overlay = Overlay.Playback
+            Overlay.NasLibrary -> overlay = Overlay.Settings
+            Overlay.Settings -> {
+                when {
+                    settingsEditorKind == LibrarySourceKind.Nas &&
+                        nasWizardStep == NasWizardStep.PickDirectory -> {
+                        nasWizardStep = NasWizardStep.Connect
+                        settingsMessage = null
+                    }
+                    settingsEditorKind != null -> cancelSourceEditor()
+                    else -> overlay = Overlay.None
+                }
+            }
+            Overlay.Playback, Overlay.Queue, Overlay.PhoneOrder, Overlay.Search -> overlay = Overlay.None
+            Overlay.None -> Unit
         }
     }
 
@@ -392,15 +593,41 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     fun removeFromQueue(song: Song) {
         queue.removeAll { it.id == song.id }
         if (nextSong?.id == song.id) nextSong = queue.firstOrNull()
+        showToast("已移除：${song.title}")
+    }
+
+    fun moveQueueToTop(song: Song) {
+        val existing = queue.firstOrNull { it.id == song.id } ?: return
+        queue.removeAll { it.id == song.id }
+        queue.add(0, existing)
+        nextSong = existing
+        showToast("已置顶：${song.title}")
+    }
+
+    fun clearQueue() {
+        queue.clear()
+        nextSong = null
+        showToast("已清空已点队列")
     }
 
     fun play(song: Song) {
+        if (song.anyPlayableUrl().isNullOrBlank()) {
+            playbackError = "无法播放「${song.title}」：缺少 MV / 原唱 / 伴唱"
+            showToast(playbackError!!)
+            return
+        }
+        playbackError = null
         nowPlaying = song
         isFavorite = listeningPrefs.isFavorite(song.id)
-        player.play(song, vocalMode, autoPlay = true)
-        isPlaying = true
-        durationSec = song.durationSec
-        currentTimeSec = 0
+        try {
+            player.play(song, vocalMode, autoPlay = true)
+            isPlaying = true
+            durationSec = song.durationSec
+            currentTimeSec = 0
+        } catch (e: Exception) {
+            playbackError = "播放失败：${e.message ?: "未知错误"}"
+            showToast(playbackError!!)
+        }
     }
 
     fun togglePlayPause() {
@@ -426,16 +653,42 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     private fun advanceToNext() {
-        val upcoming = when {
-            queue.isNotEmpty() -> queue.removeAt(0)
-            nextSong != null -> nextSong
-            else -> forYouRecommendations.firstOrNull { it.id != nowPlaying?.id }
-                ?: catalog.randomOrNull()
-        } ?: return
-        nextSong = queue.firstOrNull()
-            ?: forYouRecommendations.firstOrNull { it.id != upcoming.id }
-            ?: catalog.filter { it.id != upcoming.id }.randomOrNull()
-        play(upcoming)
+        when (orderMode) {
+            PlayOrderMode.Loop -> {
+                val cur = nowPlaying ?: return
+                replay()
+                showToast("单曲循环：${cur.title}")
+                return
+            }
+            PlayOrderMode.Shuffle -> {
+                val pool = (queue.toList() + catalog.toList()).distinctBy { it.id }
+                    .filter { it.id != nowPlaying?.id }
+                val upcoming = pool.randomOrNull() ?: return
+                queue.removeAll { it.id == upcoming.id }
+                nextSong = queue.randomOrNull()
+                    ?: forYouRecommendations.firstOrNull { it.id != upcoming.id }
+                play(upcoming)
+            }
+            PlayOrderMode.Sequential -> {
+                val upcoming = when {
+                    queue.isNotEmpty() -> queue.removeAt(0)
+                    nextSong != null && nextSong?.id != nowPlaying?.id -> nextSong
+                    else -> forYouRecommendations.firstOrNull { it.id != nowPlaying?.id }
+                        ?: catalog.firstOrNull { it.id != nowPlaying?.id }
+                } ?: run {
+                    showToast("队列已播完")
+                    return
+                }
+                nextSong = queue.firstOrNull()
+                    ?: forYouRecommendations.firstOrNull { it.id != upcoming.id }
+                    ?: catalog.firstOrNull { it.id != upcoming.id }
+                play(upcoming)
+            }
+        }
+    }
+
+    fun clearPlaybackError() {
+        playbackError = null
     }
 
     fun replay() {

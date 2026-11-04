@@ -117,6 +117,14 @@ fun PlaybackScreen(vm: AppViewModel) {
                 color = KaraokeColors.textSecondary,
                 fontSize = 15.sp,
             )
+            vm.playbackError?.let { err ->
+                Text(
+                    text = err,
+                    color = KaraokeColors.danger,
+                    fontSize = 16.sp,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
         }
 
         Column(
