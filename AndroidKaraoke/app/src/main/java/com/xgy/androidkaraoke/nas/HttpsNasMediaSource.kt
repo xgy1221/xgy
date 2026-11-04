@@ -223,14 +223,10 @@ class HttpsNasMediaSource(
     private fun songFrom(entry: NasEntry, lyricsUrl: String? = null): Song {
         val parsed = KaraokeFileNames.parseTitleArtist(entry.name)
         val url = entry.absoluteUrl
-        val lower = entry.name.lowercase()
-        val isExplicitOriginal = lower.contains("original") || lower.contains("原唱") || lower.startsWith("voc")
-        val isExplicitAcc = lower.contains("accompaniment") || lower.contains("伴唱") ||
-            lower.contains("inst") || lower.startsWith("acc")
-        val isExplicitMv = lower.startsWith("mv") || lower.contains(".mv.")
+        val role = TrackRoles.classify(entry.name)
         // 扁平原 MP4：只挂 MV，不假装「有原唱/有伴唱」
         val flatKaraokeVideo = entry.kind == NasEntryKind.Video &&
-            !isExplicitOriginal && !isExplicitAcc && !isExplicitMv && url != null
+            role == TrackRole.Other && url != null
         return Song(
             id = entry.id,
             title = parsed.first,
@@ -238,16 +234,18 @@ class HttpsNasMediaSource(
             source = MediaSource.Nas,
             relativePath = entry.path,
             mvUrl = when {
-                flatKaraokeVideo || isExplicitMv || (entry.kind == NasEntryKind.Video && !isExplicitOriginal && !isExplicitAcc) -> url
+                flatKaraokeVideo || role == TrackRole.Mv ||
+                    (entry.kind == NasEntryKind.Video && role != TrackRole.Original && role != TrackRole.Accompaniment) -> url
                 else -> null
             },
             originalUrl = when {
-                isExplicitOriginal -> url
-                entry.kind == NasEntryKind.Audio && !isExplicitAcc -> url
+                role == TrackRole.Original -> url
+                // 未标注角色的纯音频：当作可播原曲混音，不当伴奏
+                entry.kind == NasEntryKind.Audio && role == TrackRole.Other -> url
                 else -> null
             },
             accompanimentUrl = when {
-                isExplicitAcc -> url
+                role == TrackRole.Accompaniment -> url
                 else -> null
             },
             lyricsUrl = lyricsUrl,
@@ -271,18 +269,16 @@ class HttpsNasMediaSource(
         var original: String? = null
         var acc: String? = null
         for (e in entries) {
-            val lower = e.name.lowercase()
             val url = e.absoluteUrl ?: continue
-            when {
-                e.kind == NasEntryKind.Lyrics || lower.endsWith(".lrc") -> Unit
-                lower.startsWith("mv") || lower.contains(".mv.") ||
-                    (e.kind == NasEntryKind.Video && mv == null &&
-                        !lower.contains("original") && !lower.contains("原唱") &&
-                        !lower.contains("accompaniment") && !lower.contains("伴唱")) -> mv = url
-                lower.contains("original") || lower.contains("原唱") || lower.startsWith("voc") ->
-                    original = url
-                lower.contains("accompaniment") || lower.contains("伴唱") ||
-                    lower.contains("inst") || lower.startsWith("acc") -> acc = url
+            when (TrackRoles.classify(e.name)) {
+                TrackRole.Lyrics, TrackRole.Ignore -> Unit
+                TrackRole.Mv -> if (mv == null) mv = url
+                TrackRole.Original -> if (original == null) original = url
+                TrackRole.Accompaniment -> if (acc == null) acc = url
+                TrackRole.Other -> {
+                    // 未命名视频可作 MV；不把未命名音频猜成原唱干声
+                    if (e.kind == NasEntryKind.Video && mv == null) mv = url
+                }
             }
         }
         if (mv == null && original == null && acc == null) return null
@@ -552,7 +548,8 @@ class HttpsNasMediaSource(
                         return if (raw.startsWith("http")) raw else config.urlForRelativePath(raw)
                     }
                     val mv = abs("mv") ?: abs("mvUrl") ?: abs("video")
-                    val original = abs("original") ?: abs("originalUrl") ?: abs("vocal")
+                    // original = 完整混音；不要把 vocal/vocals 干声映射进来
+                    val original = abs("original") ?: abs("originalUrl") ?: abs("fullmix")
                     val acc = abs("accompaniment") ?: abs("accompanimentUrl") ?: abs("instrumental")
                     val lyrics = abs("lyrics") ?: abs("lyricsUrl") ?: abs("lrc")
                     val legacy = abs("url") ?: rel?.let { config.urlForRelativePath(it) }

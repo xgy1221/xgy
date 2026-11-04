@@ -11,6 +11,7 @@ import com.xgy.androidkaraoke.model.VocalMode
 
 /**
  * MV（视频）+ 原唱/伴唱（音频）播放。
+ * 原唱 = 完整混音；伴唱 = 纯伴奏（非人声干声）。
  * 有独立音频轨时：视频静音播 MV，音频播选中轨；仅有 MV 时直接播 MV 音画。
  */
 class KaraokePlayer(context: Context) {

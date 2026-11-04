@@ -16,6 +16,8 @@ enum class MediaSource { Mock, Nas, Usb, RemoteHttp }
 
 /**
  * 一首歌 = MV + 原唱 + 伴唱（任一轨可缺，播放器按可用轨降级）。
+ * - **原唱** = 完整混音（源 MV 音轨），不是 Demucs 人声干声
+ * - **伴唱** = 纯伴奏
  * 不强制账号登录。
  */
 data class Song(

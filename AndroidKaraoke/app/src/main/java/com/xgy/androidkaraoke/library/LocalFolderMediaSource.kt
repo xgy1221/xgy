@@ -5,6 +5,8 @@ import com.xgy.androidkaraoke.model.MediaSource
 import com.xgy.androidkaraoke.model.Song
 import com.xgy.androidkaraoke.nas.KaraokeFileNames
 import com.xgy.androidkaraoke.nas.NasConfig
+import com.xgy.androidkaraoke.nas.TrackRole
+import com.xgy.androidkaraoke.nas.TrackRoles
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -13,6 +15,7 @@ import java.net.URI
 
 /**
  * 本地/U 盘目录浏览：与 NAS 相同的文件夹三轨约定 + library.json + `.lrc`。
+ * 原唱 = 完整混音；伴唱 = 纯伴奏；忽略 Demucs vocals 干声。
  */
 class LocalFolderMediaSource {
     private val audioExt = NasConfig.defaultAudioExtensions.toSet()
@@ -59,21 +62,15 @@ class LocalFolderMediaSource {
             var acc: String? = null
             val files = dir.listFiles()?.filter { it.isFile } ?: emptyList()
             files.forEach { f ->
-                val lower = f.name.lowercase()
-                val ext = f.extension.lowercase()
                 val uri = f.toURI().toString()
-                when {
-                    lower.endsWith(".lrc") -> Unit
-                    lower.startsWith("mv") || lower.contains(".mv.") ||
-                        (ext in videoExt && mv == null &&
-                            !lower.contains("original") && !lower.contains("伴唱") &&
-                            !lower.contains("accompaniment")) ->
-                        mv = uri
-                    lower.contains("original") || lower.contains("原唱") || lower.startsWith("voc") ->
-                        original = uri
-                    lower.contains("accompaniment") || lower.contains("伴唱") ||
-                        lower.contains("inst") || lower.startsWith("acc") ->
-                        acc = uri
+                when (TrackRoles.classify(f.name)) {
+                    TrackRole.Lyrics, TrackRole.Ignore -> Unit
+                    TrackRole.Mv -> if (mv == null) mv = uri
+                    TrackRole.Original -> if (original == null) original = uri
+                    TrackRole.Accompaniment -> if (acc == null) acc = uri
+                    TrackRole.Other -> {
+                        if (f.extension.lowercase() in videoExt && mv == null) mv = uri
+                    }
                 }
             }
             if (mv == null && original == null && acc == null) return@withContext null
@@ -120,25 +117,28 @@ class LocalFolderMediaSource {
         for (file in files) {
             val kind = classify(file)
             if (kind !in setOf(LibraryEntryKind.Audio, LibraryEntryKind.Video)) continue
-            val lower = file.name.lowercase()
+            val role = TrackRoles.classify(file.name)
+            if (role == TrackRole.Ignore) continue
             val uri = file.toURI().toString()
-            val isMv = kind == LibraryEntryKind.Video || lower.contains("mv")
-            val isOriginal = lower.contains("original") || lower.contains("原唱")
-            val isAcc = lower.contains("accompaniment") || lower.contains("伴唱")
             val parsed = KaraokeFileNames.parseTitleArtist(file.name)
             val prefer = LyricsFiles.preferredNames(parsed.first, parsed.second, file.name)
             val lyricsName = LyricsFiles.pickLyricsName(files.map { it.name }, prefer)
             val lyricsUrl = files.firstOrNull { it.name.equals(lyricsName, ignoreCase = true) }
                 ?.toURI()?.toString()
+            val isMv = kind == LibraryEntryKind.Video || role == TrackRole.Mv
             songs += Song(
                 id = file.absolutePath,
                 title = parsed.first,
                 artist = if (parsed.second != "NAS") parsed.second else "U盘",
                 source = MediaSource.Usb,
                 relativePath = file.absolutePath,
-                mvUrl = if (isMv) uri else null,
-                originalUrl = if (isOriginal || (!isMv && !isAcc)) uri else null,
-                accompanimentUrl = if (isAcc) uri else null,
+                mvUrl = if (isMv && role != TrackRole.Accompaniment && role != TrackRole.Original) uri else null,
+                originalUrl = when {
+                    role == TrackRole.Original -> uri
+                    !isMv && role == TrackRole.Other -> uri
+                    else -> null
+                },
+                accompanimentUrl = if (role == TrackRole.Accompaniment) uri else null,
                 lyricsUrl = lyricsUrl,
             )
         }
@@ -214,8 +214,8 @@ class LocalFolderMediaSource {
                             durationSec = item.optLong("duration", 240),
                             source = MediaSource.Usb,
                             mvUrl = abs("mv") ?: abs("mvUrl"),
-                            originalUrl = abs("original") ?: abs("originalUrl") ?: abs("url"),
-                            accompanimentUrl = abs("accompaniment") ?: abs("accompanimentUrl"),
+                            originalUrl = abs("original") ?: abs("originalUrl") ?: abs("fullmix") ?: abs("url"),
+                            accompanimentUrl = abs("accompaniment") ?: abs("accompanimentUrl") ?: abs("instrumental"),
                             lyricsUrl = abs("lyrics") ?: abs("lyricsUrl") ?: abs("lrc"),
                         ),
                     )
