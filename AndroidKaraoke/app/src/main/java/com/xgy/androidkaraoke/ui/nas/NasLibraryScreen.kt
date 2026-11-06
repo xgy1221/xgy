@@ -62,7 +62,7 @@ fun NasLibraryScreen(vm: AppViewModel) {
             modifier = Modifier.padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            FocusSurface(onClick = { vm.dismissOverlay() }, corner = 10.dp) {
+            FocusSurface(onClick = { vm.dismissOverlay() }, corner = 10.dp, requestFocus = true) {
                 Text(
                     "返回设置",
                     color = KaraokeColors.textPrimary,

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -42,19 +44,29 @@ import androidx.tv.material3.Text
 import com.xgy.androidkaraoke.theme.KaraokeColors
 import com.xgy.androidkaraoke.theme.KaraokeDimens
 
+/** 弹层打开时，背后的首页按钮设为 false，方向键就不能穿过去。 */
+val LocalTvFocusEnabled = compositionLocalOf { true }
+
 @Composable
 fun FocusSurface(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     corner: Dp = KaraokeDimens.cardRadius,
     requestFocus: Boolean = false,
+    focusRequester: FocusRequester? = null,
+    navigateUp: FocusRequester? = null,
+    navigateDown: FocusRequester? = null,
+    navigateLeft: FocusRequester? = null,
+    navigateRight: FocusRequester? = null,
     content: @Composable (focused: Boolean) -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
-    val requester = remember { FocusRequester() }
+    val fallback = remember { FocusRequester() }
+    val requester = focusRequester ?: fallback
+    val tvFocusEnabled = LocalTvFocusEnabled.current
     val shape = RoundedCornerShape(corner)
-    LaunchedEffect(requestFocus) {
-        if (requestFocus) {
+    LaunchedEffect(requestFocus, tvFocusEnabled) {
+        if (requestFocus && tvFocusEnabled) {
             runCatching { requester.requestFocus() }
         }
     }
@@ -70,6 +82,14 @@ fun FocusSurface(
                 }
                 // 吃掉按下和抬起，避免 clickable 再触发一次。
                 true
+            }
+            // focusProperties 必须写在 clickable 前面，否则 canFocus 不生效，焦点会掉进空白。
+            .focusProperties {
+                canFocus = tvFocusEnabled
+                navigateUp?.let { up = it }
+                navigateDown?.let { down = it }
+                navigateLeft?.let { left = it }
+                navigateRight?.let { right = it }
             }
             .clickable(onClick = onClick)
             .clip(shape)
@@ -103,8 +123,21 @@ fun PosterCard(
     modifier: Modifier = Modifier,
     icon: ImageVector = Icons.Outlined.MusicNote,
     badge: String? = null,
+    focusRequester: FocusRequester? = null,
+    navigateUp: FocusRequester? = null,
+    navigateDown: FocusRequester? = null,
+    navigateLeft: FocusRequester? = null,
+    navigateRight: FocusRequester? = null,
 ) {
-    FocusSurface(onClick = onClick, modifier = modifier) { focused ->
+    FocusSurface(
+        onClick = onClick,
+        modifier = modifier,
+        focusRequester = focusRequester,
+        navigateUp = navigateUp,
+        navigateDown = navigateDown,
+        navigateLeft = navigateLeft,
+        navigateRight = navigateRight,
+    ) { focused ->
         Box(
             modifier = Modifier
                 .fillMaxSize()

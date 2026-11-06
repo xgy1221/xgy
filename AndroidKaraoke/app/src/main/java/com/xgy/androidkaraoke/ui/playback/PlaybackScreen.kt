@@ -4,6 +4,7 @@ import android.view.KeyEvent as AndroidKeyEvent
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,10 +29,13 @@ import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -58,11 +62,15 @@ fun PlaybackScreen(vm: AppViewModel) {
     val song = vm.nowPlaying
     val app = LocalContext.current.applicationContext as KaraokeApp
     val player = remember { app.container.player }
+    val playbackKeys = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { playbackKeys.requestFocus() } }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .focusRequester(playbackKeys)
+            .focusable()
             .onPreviewKeyEvent { event -> handlePlaybackKey(vm, event) },
     ) {
         AndroidView(

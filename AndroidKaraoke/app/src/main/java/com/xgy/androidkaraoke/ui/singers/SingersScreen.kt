@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.PersonSearch
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,7 +33,7 @@ import com.xgy.androidkaraoke.ui.components.ShelfHeader
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun SingersScreen(vm: AppViewModel) {
+fun SingersScreen(vm: AppViewModel, entryFocus: FocusRequester) {
     val artists = vm.libraryArtists
     val recommended = vm.recommendedArtists
     val hasLibrary = vm.libraryCatalog.isNotEmpty()
@@ -69,7 +70,11 @@ fun SingersScreen(vm: AppViewModel) {
                         fontSize = 14.sp,
                     )
                 }
-                FocusSurface(onClick = { vm.openSettingsLibrary() }, corner = 10.dp) {
+                FocusSurface(
+                    onClick = { vm.openSettingsLibrary() },
+                    corner = 10.dp,
+                    focusRequester = entryFocus,
+                ) {
                     Text(
                         "去添加媒体库",
                         color = KaraokeColors.textPrimary,
@@ -93,6 +98,7 @@ fun SingersScreen(vm: AppViewModel) {
                     onClick = { vm.openArtistSearch() },
                     modifier = Modifier.width(220.dp).height(180.dp),
                     icon = Icons.Outlined.PersonSearch,
+                    focusRequester = entryFocus,
                 )
             }
             items(recommended.take(6), key = { "rec-${it.id}" }) { artist ->

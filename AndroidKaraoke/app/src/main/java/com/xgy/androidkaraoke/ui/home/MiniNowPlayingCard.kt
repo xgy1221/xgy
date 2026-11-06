@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -48,6 +49,11 @@ fun MiniNowPlayingCard(
     vm: AppViewModel,
     modifier: Modifier = Modifier,
     requestFocus: Boolean = false,
+    focusRequester: FocusRequester? = null,
+    navigateUp: FocusRequester? = null,
+    navigateDown: FocusRequester? = null,
+    navigateLeft: FocusRequester? = null,
+    navigateRight: FocusRequester? = null,
 ) {
     val song = vm.continueSingSong
     val app = LocalContext.current.applicationContext as KaraokeApp
@@ -59,6 +65,11 @@ fun MiniNowPlayingCard(
         modifier = modifier,
         corner = KaraokeDimens.cardRadius,
         requestFocus = requestFocus,
+        focusRequester = focusRequester,
+        navigateUp = navigateUp,
+        navigateDown = navigateDown,
+        navigateLeft = navigateLeft,
+        navigateRight = navigateRight,
     ) { focused ->
         Box(
             modifier = Modifier

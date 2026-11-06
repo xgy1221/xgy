@@ -49,7 +49,7 @@ fun QueueScreen(vm: AppViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
                 ) {
-                    FocusSurface(onClick = { vm.clearQueue() }, corner = 10.dp) {
+                    FocusSurface(onClick = { vm.clearQueue() }, corner = 10.dp, requestFocus = true) {
                         Text(
                             "清空",
                             color = KaraokeColors.danger,

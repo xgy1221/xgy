@@ -31,13 +31,13 @@ fun BlockingOverlay(
             .fillMaxSize()
             .zIndex(10f)
             .background(scrimColor)
+            // 必须写在 clickable 前面，否则整屏遮罩自己会变成焦点，方向键就「掉到后面」。
+            .focusProperties { canFocus = false }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = { /* 吞掉点穿到首页的点击 */ },
-            )
-            // 遮罩不要抢走焦点，否则遥控确认键点在空白上，按钮要再按一次才到。
-            .focusProperties { canFocus = false },
+            ),
         contentAlignment = contentAlignment,
         content = content,
     )
@@ -51,12 +51,13 @@ fun ModalPanel(
 ) {
     Box(
         modifier = modifier
+            // 面板空白不要占焦点，否则白框消失，看起来像焦点跑到了背后的首页。
+            .focusProperties { canFocus = false }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = { /* 面板空白区域不穿透 */ },
-            )
-            .focusProperties { canFocus = true },
+            ),
     ) {
         content()
     }
