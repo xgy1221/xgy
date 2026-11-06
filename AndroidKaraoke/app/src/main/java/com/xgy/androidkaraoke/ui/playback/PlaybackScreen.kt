@@ -1,8 +1,10 @@
 package com.xgy.androidkaraoke.ui.playback
 
+import android.view.KeyEvent as AndroidKeyEvent
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,10 +29,17 @@ import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -53,16 +62,24 @@ fun PlaybackScreen(vm: AppViewModel) {
     val song = vm.nowPlaying
     val app = LocalContext.current.applicationContext as KaraokeApp
     val player = remember { app.container.player }
+    val playbackKeys = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { playbackKeys.requestFocus() } }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(Color.Black)
+            .focusRequester(playbackKeys)
+            .focusable()
+            .onPreviewKeyEvent { event -> handlePlaybackKey(vm, event) },
     ) {
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     useController = false
+                    isFocusable = false
+                    isFocusableInTouchMode = false
+                    descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
                     layoutParams = FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -75,7 +92,9 @@ fun PlaybackScreen(vm: AppViewModel) {
                     view.player = player.videoPlayer
                 }
             },
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .focusProperties { canFocus = false },
         )
 
         DisposableEffect(Unit) {
@@ -223,16 +242,56 @@ fun PlaybackScreen(vm: AppViewModel) {
                 ) { vm.toggleFavorite() }
             }
             Spacer(modifier = Modifier.height(14.dp))
-            FocusSurface(onClick = { vm.openGuess() }, corner = 10.dp) {
-                Text(
-                    text = "按【下键】或确认查看「猜你想唱」",
-                    color = KaraokeColors.textSecondary,
-                    fontSize = 15.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
+            Text(
+                text = "确定 暂停/播放    左 后退    右 快进    上 原唱/伴唱    下 切歌",
+                color = KaraokeColors.textSecondary,
+                fontSize = 15.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
         }
     }
+}
+
+private fun handlePlaybackKey(
+    vm: AppViewModel,
+    event: androidx.compose.ui.input.key.KeyEvent,
+): Boolean {
+    val native = event.nativeKeyEvent
+    val code = native.keyCode
+    val handled = code == AndroidKeyEvent.KEYCODE_DPAD_LEFT ||
+        code == AndroidKeyEvent.KEYCODE_DPAD_RIGHT ||
+        code == AndroidKeyEvent.KEYCODE_DPAD_UP ||
+        code == AndroidKeyEvent.KEYCODE_DPAD_DOWN ||
+        code == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
+        code == AndroidKeyEvent.KEYCODE_ENTER ||
+        code == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER ||
+        code == AndroidKeyEvent.KEYCODE_BUTTON_SELECT ||
+        code == AndroidKeyEvent.KEYCODE_BUTTON_A ||
+        code == AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE ||
+        code == AndroidKeyEvent.KEYCODE_MEDIA_PLAY ||
+        code == AndroidKeyEvent.KEYCODE_MEDIA_PAUSE ||
+        code == AndroidKeyEvent.KEYCODE_MEDIA_NEXT ||
+        code == AndroidKeyEvent.KEYCODE_MEDIA_PREVIOUS ||
+        code == AndroidKeyEvent.KEYCODE_MEDIA_REWIND ||
+        code == AndroidKeyEvent.KEYCODE_MEDIA_FAST_FORWARD
+    if (!handled) return false
+    if (event.type != KeyEventType.KeyDown) return true
+    val repeat = native.repeatCount > 0
+    when (code) {
+        AndroidKeyEvent.KEYCODE_DPAD_LEFT,
+        AndroidKeyEvent.KEYCODE_MEDIA_REWIND,
+        AndroidKeyEvent.KEYCODE_MEDIA_PREVIOUS,
+        -> vm.seekBy(-10_000)
+        AndroidKeyEvent.KEYCODE_DPAD_RIGHT,
+        AndroidKeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
+        -> vm.seekBy(10_000)
+        AndroidKeyEvent.KEYCODE_DPAD_UP -> if (!repeat) vm.toggleVocal()
+        AndroidKeyEvent.KEYCODE_DPAD_DOWN,
+        AndroidKeyEvent.KEYCODE_MEDIA_NEXT,
+        -> if (!repeat) vm.nextTrack()
+        else -> if (!repeat) vm.togglePlayPause()
+    }
+    return true
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)

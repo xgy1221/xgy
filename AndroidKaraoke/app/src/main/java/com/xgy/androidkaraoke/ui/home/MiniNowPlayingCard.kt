@@ -18,6 +18,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -46,6 +48,12 @@ import com.xgy.androidkaraoke.ui.components.FocusSurface
 fun MiniNowPlayingCard(
     vm: AppViewModel,
     modifier: Modifier = Modifier,
+    requestFocus: Boolean = false,
+    focusRequester: FocusRequester? = null,
+    navigateUp: FocusRequester? = null,
+    navigateDown: FocusRequester? = null,
+    navigateLeft: FocusRequester? = null,
+    navigateRight: FocusRequester? = null,
 ) {
     val song = vm.continueSingSong
     val app = LocalContext.current.applicationContext as KaraokeApp
@@ -56,6 +64,12 @@ fun MiniNowPlayingCard(
         onClick = { vm.openContinueSinging() },
         modifier = modifier,
         corner = KaraokeDimens.cardRadius,
+        requestFocus = requestFocus,
+        focusRequester = focusRequester,
+        navigateUp = navigateUp,
+        navigateDown = navigateDown,
+        navigateLeft = navigateLeft,
+        navigateRight = navigateRight,
     ) { focused ->
         Box(
             modifier = Modifier
@@ -74,6 +88,9 @@ fun MiniNowPlayingCard(
                         factory = { ctx ->
                             PlayerView(ctx).apply {
                                 useController = false
+                                isFocusable = false
+                                isFocusableInTouchMode = false
+                                descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
                                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                                 layoutParams = FrameLayout.LayoutParams(
                                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -87,7 +104,9 @@ fun MiniNowPlayingCard(
                                 view.player = player.videoPlayer
                             }
                         },
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .focusProperties { canFocus = false },
                     )
                 }
                 song != null -> {

@@ -1,10 +1,9 @@
 package com.xgy.androidkaraoke.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
+import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +14,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,14 +23,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
@@ -43,47 +44,73 @@ import androidx.tv.material3.Text
 import com.xgy.androidkaraoke.theme.KaraokeColors
 import com.xgy.androidkaraoke.theme.KaraokeDimens
 
+/** 弹层打开时，背后的首页按钮设为 false，方向键就不能穿过去。 */
+val LocalTvFocusEnabled = compositionLocalOf { true }
+
 @Composable
 fun FocusSurface(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     corner: Dp = KaraokeDimens.cardRadius,
+    requestFocus: Boolean = false,
+    focusRequester: FocusRequester? = null,
+    navigateUp: FocusRequester? = null,
+    navigateDown: FocusRequester? = null,
+    navigateLeft: FocusRequester? = null,
+    navigateRight: FocusRequester? = null,
     content: @Composable (focused: Boolean) -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (focused) KaraokeDimens.focusScale else 1f,
-        label = "focusScale",
-    )
+    val fallback = remember { FocusRequester() }
+    val requester = focusRequester ?: fallback
+    val tvFocusEnabled = LocalTvFocusEnabled.current
     val shape = RoundedCornerShape(corner)
+    LaunchedEffect(requestFocus, tvFocusEnabled) {
+        if (requestFocus && tvFocusEnabled) {
+            runCatching { requester.requestFocus() }
+        }
+    }
     Box(
         modifier = modifier
-            .scale(scale)
+            .focusRequester(requester)
             .onFocusChanged { focused = it.isFocused }
-            // clickable：模拟器 tap / 部分遥控点击也能触发；key 事件覆盖 DPAD 确认键。
-            .clickable(onClick = onClick)
-            .focusable()
+            // 只保留一个焦点。再套 focusable() 时，索尼遥控要按两次才动一格。
             .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp &&
-                    (event.key == Key.DirectionCenter || event.key == Key.Enter)
-                ) {
+                if (!event.isConfirmKey()) return@onKeyEvent false
+                if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.repeatCount == 0) {
                     onClick()
-                    true
-                } else {
-                    false
                 }
+                // 吃掉按下和抬起，避免 clickable 再触发一次。
+                true
             }
+            // focusProperties 必须写在 clickable 前面，否则 canFocus 不生效，焦点会掉进空白。
+            .focusProperties {
+                canFocus = tvFocusEnabled
+                navigateUp?.let { up = it }
+                navigateDown?.let { down = it }
+                navigateLeft?.let { left = it }
+                navigateRight?.let { right = it }
+            }
+            .clickable(onClick = onClick)
             .clip(shape)
-            .then(
-                if (focused) {
-                    Modifier.border(2.dp, Color.White.copy(alpha = 0.85f), shape)
-                } else {
-                    Modifier
-                },
+            .border(
+                width = if (focused) 3.dp else 0.dp,
+                color = if (focused) Color.White else Color.Transparent,
+                shape = shape,
             ),
     ) {
         content(focused)
     }
+}
+
+private fun androidx.compose.ui.input.key.KeyEvent.isConfirmKey(): Boolean {
+    val code = nativeKeyEvent.keyCode
+    return code == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
+        code == AndroidKeyEvent.KEYCODE_ENTER ||
+        code == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER ||
+        code == AndroidKeyEvent.KEYCODE_BUTTON_SELECT ||
+        code == AndroidKeyEvent.KEYCODE_BUTTON_A ||
+        code == AndroidKeyEvent.KEYCODE_SPACE
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -96,8 +123,21 @@ fun PosterCard(
     modifier: Modifier = Modifier,
     icon: ImageVector = Icons.Outlined.MusicNote,
     badge: String? = null,
+    focusRequester: FocusRequester? = null,
+    navigateUp: FocusRequester? = null,
+    navigateDown: FocusRequester? = null,
+    navigateLeft: FocusRequester? = null,
+    navigateRight: FocusRequester? = null,
 ) {
-    FocusSurface(onClick = onClick, modifier = modifier) { focused ->
+    FocusSurface(
+        onClick = onClick,
+        modifier = modifier,
+        focusRequester = focusRequester,
+        navigateUp = navigateUp,
+        navigateDown = navigateDown,
+        navigateLeft = navigateLeft,
+        navigateRight = navigateRight,
+    ) { focused ->
         Box(
             modifier = Modifier
                 .fillMaxSize()

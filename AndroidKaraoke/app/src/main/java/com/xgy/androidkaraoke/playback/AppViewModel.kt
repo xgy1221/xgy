@@ -1187,6 +1187,14 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         currentTimeSec = (player.currentPositionMs() / 1000)
     }
 
+    fun seekBy(deltaMs: Long) {
+        val duration = player.durationMs()
+        val target = (player.currentPositionMs() + deltaMs).coerceAtLeast(0)
+        val clamped = if (duration > 0) target.coerceAtMost(duration) else target
+        player.seekTo(clamped)
+        currentTimeSec = clamped / 1000
+    }
+
     fun toggleVocal() {
         val song = nowPlaying
         if (song == null) return

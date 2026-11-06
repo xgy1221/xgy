@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -20,8 +21,10 @@ import androidx.compose.material.icons.outlined.PersonSearch
 import androidx.compose.material.icons.outlined.QueueMusic
 import androidx.compose.material.icons.outlined.Recommend
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,7 +40,11 @@ import com.xgy.androidkaraoke.ui.components.ShelfHeader
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun HomeScreen(vm: AppViewModel) {
+fun HomeScreen(
+    vm: AppViewModel,
+    entryFocus: FocusRequester,
+    tabFocus: FocusRequester,
+) {
     // 明确排除 Daily：首页英雄位只能是迷你唱页，绝不再渲染「每日推荐」星标
     val top = MockData.homeTiles.filter {
         it.kind in setOf(
@@ -53,6 +60,16 @@ fun HomeScreen(vm: AppViewModel) {
         )
     }
     val recent = vm.recentSongs
+    val guide = vm.shouldShowLibraryGuide
+    val heroFocus = remember { FocusRequester() }
+    val songFocus = remember { FocusRequester() }
+    val singerFocus = remember { FocusRequester() }
+    val recentFocus = remember { FocusRequester() }
+    val bottomFocus = remember { FocusRequester() }
+    val miniKey = if (guide) heroFocus else entryFocus
+    val upFromHero = if (guide) entryFocus else tabFocus
+    val downFromHero = if (recent.isNotEmpty()) recentFocus else bottomFocus
+    val upFromBottom = if (recent.isNotEmpty()) recentFocus else miniKey
 
     Column(
         modifier = Modifier
@@ -64,7 +81,7 @@ fun HomeScreen(vm: AppViewModel) {
             ShelfHeader("随心唱", "挑选今晚的第一首歌")
         }
 
-        if (vm.shouldShowLibraryGuide) {
+        if (guide) {
             Row(
                 modifier = Modifier
                     .padding(horizontal = 40.dp)
@@ -72,17 +89,15 @@ fun HomeScreen(vm: AppViewModel) {
                     .background(KaraokeColors.surface, RoundedCornerShape(16.dp))
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("还没有可用曲库", color = KaraokeColors.textPrimary, fontSize = 18.sp)
-                    Text(
-                        "去设置添加 NAS（先连接再选目录）或扫描 U 盘，唱自己的歌。",
-                        color = KaraokeColors.textSecondary,
-                        fontSize = 14.sp,
-                    )
-                }
-                FocusSurface(onClick = { vm.openSettingsLibrary() }, corner = 10.dp) {
+                FocusSurface(
+                    onClick = { vm.openSettingsLibrary() },
+                    corner = 10.dp,
+                    requestFocus = true,
+                    focusRequester = entryFocus,
+                    navigateDown = miniKey,
+                ) {
                     Text(
                         "添加媒体库",
                         color = KaraokeColors.textPrimary,
@@ -90,11 +105,23 @@ fun HomeScreen(vm: AppViewModel) {
                         fontSize = 15.sp,
                     )
                 }
-                FocusSurface(onClick = { vm.dismissLibraryGuide() }, corner = 10.dp) {
+                FocusSurface(
+                    onClick = { vm.dismissLibraryGuide() },
+                    corner = 10.dp,
+                    navigateDown = miniKey,
+                ) {
                     Text(
                         "稍后",
                         color = KaraokeColors.textTertiary,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        fontSize = 14.sp,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("还没有可用曲库", color = KaraokeColors.textPrimary, fontSize = 18.sp)
+                    Text(
+                        "去设置添加 NAS（先连接再选目录）或扫描 U 盘，唱自己的歌。",
+                        color = KaraokeColors.textSecondary,
                         fontSize = 14.sp,
                     )
                 }
@@ -111,9 +138,15 @@ fun HomeScreen(vm: AppViewModel) {
                     modifier = Modifier
                         .width(400.dp)
                         .height(220.dp),
+                    requestFocus = !guide,
+                    focusRequester = miniKey,
+                    navigateUp = upFromHero,
+                    navigateDown = downFromHero,
+                    navigateRight = songFocus,
                 )
             }
-            items(top, key = { it.id }) { tile ->
+            itemsIndexed(top, key = { _, tile -> tile.id }) { index, tile ->
+                val mine = if (index == 0) songFocus else singerFocus
                 PosterCard(
                     title = tile.title,
                     tint = tile.tint,
@@ -122,6 +155,11 @@ fun HomeScreen(vm: AppViewModel) {
                         .width(200.dp)
                         .height(220.dp),
                     icon = iconFor(tile.kind),
+                    focusRequester = mine,
+                    navigateUp = upFromHero,
+                    navigateDown = downFromHero,
+                    navigateLeft = if (index == 0) miniKey else songFocus,
+                    navigateRight = if (index == 0 && top.size > 1) singerFocus else null,
                 )
             }
         }
@@ -134,13 +172,16 @@ fun HomeScreen(vm: AppViewModel) {
                 contentPadding = PaddingValues(horizontal = 40.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(recent, key = { it.id }) { song ->
+                itemsIndexed(recent, key = { _, song -> song.id }) { index, song ->
                     FocusSurface(
                         onClick = {
                             vm.addToQueue(song)
                             vm.openPlayback(song)
                         },
                         corner = 12.dp,
+                        focusRequester = if (index == 0) recentFocus else null,
+                        navigateUp = miniKey,
+                        navigateDown = bottomFocus,
                     ) { focused ->
                         Column(
                             modifier = Modifier
@@ -165,7 +206,7 @@ fun HomeScreen(vm: AppViewModel) {
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            items(bottom, key = { it.id }) { tile ->
+            itemsIndexed(bottom, key = { _, tile -> tile.id }) { index, tile ->
                 PosterCard(
                     title = tile.title,
                     tint = tile.tint,
@@ -178,6 +219,8 @@ fun HomeScreen(vm: AppViewModel) {
                         HomeTileKind.MyQueue -> vm.queue.size.takeIf { it > 0 }?.toString()
                         else -> null
                     },
+                    focusRequester = if (index == 0) bottomFocus else null,
+                    navigateUp = upFromBottom,
                 )
             }
         }

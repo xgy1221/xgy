@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Folder
@@ -20,12 +19,8 @@ import androidx.compose.material.icons.outlined.LibraryAdd
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -41,6 +36,7 @@ import com.xgy.androidkaraoke.ui.components.BlockingOverlay
 import com.xgy.androidkaraoke.ui.components.FocusSurface
 import com.xgy.androidkaraoke.ui.components.ModalPanel
 import com.xgy.androidkaraoke.ui.components.ShelfHeader
+import com.xgy.androidkaraoke.ui.components.TvSearchField
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -89,6 +85,7 @@ private fun SettingsRootPane(vm: AppViewModel) {
         subtitle = "NAS / U 盘曲库 · 已索引 ${vm.libraryCatalog.size} 首",
         icon = Icons.Outlined.LibraryAdd,
         onClick = { vm.openSettingsLibrary() },
+        requestFocus = true,
     )
     SettingsMenuRow(
         title = "关于",
@@ -114,8 +111,9 @@ private fun SettingsMenuRow(
     subtitle: String,
     icon: ImageVector,
     onClick: () -> Unit,
+    requestFocus: Boolean = false,
 ) {
-    FocusSurface(onClick = onClick, corner = 14.dp) { focused ->
+    FocusSurface(onClick = onClick, corner = 14.dp, requestFocus = requestFocus) { focused ->
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -166,7 +164,7 @@ private fun AboutPane(vm: AppViewModel) {
             fontSize = 14.sp,
         )
     }
-    FocusSurface(onClick = { vm.backToSettingsRoot() }, corner = 12.dp) {
+    FocusSurface(onClick = { vm.backToSettingsRoot() }, corner = 12.dp, requestFocus = true) {
         Text(
             "返回设置",
             color = KaraokeColors.textSecondary,
@@ -186,8 +184,8 @@ private fun LibraryPane(vm: AppViewModel) {
         fontSize = 14.sp,
     )
 
-    vm.librarySources.forEach { source ->
-        SourceRow(vm, source)
+    vm.librarySources.forEachIndexed { index, source ->
+        SourceRow(vm, source, requestFocus = index == 0)
     }
 
     if (vm.librarySources.isEmpty()) {
@@ -195,7 +193,11 @@ private fun LibraryPane(vm: AppViewModel) {
     }
 
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        FocusSurface(onClick = { vm.beginAddNas() }, corner = 12.dp) {
+        FocusSurface(
+            onClick = { vm.beginAddNas() },
+            corner = 12.dp,
+            requestFocus = vm.librarySources.isEmpty(),
+        ) {
             Text(
                 "添加 NAS",
                 color = KaraokeColors.textPrimary,
@@ -224,7 +226,7 @@ private fun LibraryPane(vm: AppViewModel) {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun SourceRow(vm: AppViewModel, source: LibrarySource) {
+private fun SourceRow(vm: AppViewModel, source: LibrarySource, requestFocus: Boolean = false) {
     val kindLabel = when (source.kind) {
         LibrarySourceKind.Nas -> "NAS"
         LibrarySourceKind.Usb -> "U盘"
@@ -260,7 +262,7 @@ private fun SourceRow(vm: AppViewModel, source: LibrarySource) {
         }
         Text(detail, color = KaraokeColors.textSecondary, fontSize = 13.sp, maxLines = 2)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FocusSurface(onClick = { vm.openLibrary(source) }, corner = 10.dp) {
+            FocusSurface(onClick = { vm.openLibrary(source) }, corner = 10.dp, requestFocus = requestFocus) {
                 Text(
                     "浏览",
                     color = KaraokeColors.textPrimary,
@@ -308,13 +310,14 @@ private fun NasConnectPane(vm: AppViewModel) {
         if (vm.editingSourceId == null) "添加媒体库 · 连接 NAS" else "编辑 NAS · 重新连接",
         "群晖请填账号密码；连接后选共享文件夹（如 music → 路径 /music，不要用 /volume1/…）",
     )
-    SettingField("显示名称", vm.settingsDisplayName, singleLine = true) { vm.settingsDisplayName = it }
-    SettingField("Base URL", vm.settingsBaseUrl, singleLine = true) { vm.settingsBaseUrl = it }
-    SettingField("用户名（可选）", vm.settingsUsername, singleLine = true) { vm.settingsUsername = it }
+    SettingField("显示名称", vm.settingsDisplayName, requestFocus = true) {
+        vm.settingsDisplayName = it
+    }
+    SettingField("Base URL", vm.settingsBaseUrl) { vm.settingsBaseUrl = it }
+    SettingField("用户名（可选）", vm.settingsUsername) { vm.settingsUsername = it }
     SettingField(
         "密码（可选）",
         vm.settingsPassword,
-        singleLine = true,
         isPassword = true,
         placeholder = if (vm.settingsUsername.isNotEmpty()) "••••••••（留空保留原密码）" else "如需 Basic 认证再填写",
     ) { vm.settingsPassword = it }
@@ -365,7 +368,7 @@ private fun NasDirPickerPane(vm: AppViewModel) {
     )
 
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        FocusSurface(onClick = { vm.dirPickerGoUp() }, corner = 10.dp) {
+        FocusSurface(onClick = { vm.dirPickerGoUp() }, corner = 10.dp, requestFocus = true) {
             Text(
                 "上级",
                 color = KaraokeColors.textPrimary,
@@ -451,11 +454,12 @@ private fun NasDirPickerPane(vm: AppViewModel) {
 @Composable
 private fun UsbEditorPane(vm: AppViewModel) {
     ShelfHeader("编辑 U 盘来源", "可指定曲库子目录（如 music / Karaoke）")
-    SettingField("显示名称", vm.settingsDisplayName, singleLine = true) { vm.settingsDisplayName = it }
+    SettingField("显示名称", vm.settingsDisplayName, requestFocus = true) {
+        vm.settingsDisplayName = it
+    }
     SettingField(
         "曲库子路径（相对 U 盘根）",
         vm.settingsRelativeMusicPath,
-        singleLine = true,
         placeholder = "留空 = U 盘根目录",
     ) { vm.settingsRelativeMusicPath = it }
 
@@ -495,40 +499,19 @@ private fun UsbEditorPane(vm: AppViewModel) {
 private fun SettingField(
     label: String,
     value: String,
-    singleLine: Boolean,
     isPassword: Boolean = false,
     placeholder: String? = null,
+    requestFocus: Boolean = false,
     onChange: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, color = KaraokeColors.textSecondary, fontSize = 14.sp)
-        FocusSurface(onClick = {}, corner = 12.dp) { focused ->
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        if (focused) KaraokeColors.surfaceStrong else KaraokeColors.surface,
-                        RoundedCornerShape(12.dp),
-                    )
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-            ) {
-                if (value.isEmpty() && placeholder != null) {
-                    Text(placeholder, color = KaraokeColors.textTertiary, fontSize = 17.sp)
-                }
-                BasicTextField(
-                    value = value,
-                    onValueChange = onChange,
-                    singleLine = singleLine,
-                    textStyle = TextStyle(color = KaraokeColors.textPrimary, fontSize = 17.sp),
-                    cursorBrush = SolidColor(KaraokeColors.textPrimary),
-                    visualTransformation = if (isPassword) {
-                        PasswordVisualTransformation()
-                    } else {
-                        VisualTransformation.None
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
+        TvSearchField(
+            value = value,
+            onValueChange = onChange,
+            hint = placeholder ?: "",
+            requestFocus = requestFocus,
+            password = isPassword,
+        )
     }
 }
