@@ -14,16 +14,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -34,17 +29,30 @@ import com.xgy.androidkaraoke.ui.components.BlockingOverlay
 import com.xgy.androidkaraoke.ui.components.FocusSurface
 import com.xgy.androidkaraoke.ui.components.ModalPanel
 import com.xgy.androidkaraoke.ui.components.ShelfHeader
+import com.xgy.androidkaraoke.ui.components.TvSearchField
+import com.xgy.androidkaraoke.ui.components.isRemoteVoiceKey
+import com.xgy.androidkaraoke.ui.components.rememberVoiceInput
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun ArtistSongsScreen(vm: AppViewModel) {
     val artist = vm.browsingArtist
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(artist) {
-        if (artist == null) runCatching { focus.requestFocus() }
-    }
+    val startVoice = rememberVoiceInput(
+        onResult = vm::updateArtistSearchQuery,
+        onUnavailable = { vm.showToast("这台电视没有语音识别，请用键盘右上角的「语音」") },
+    )
 
-    BlockingOverlay {
+    BlockingOverlay(
+        modifier = Modifier.onPreviewKeyEvent { event ->
+            if (artist != null || !event.isRemoteVoiceKey()) return@onPreviewKeyEvent false
+            if (event.type == androidx.compose.ui.input.key.KeyEventType.KeyDown &&
+                event.nativeKeyEvent.repeatCount == 0
+            ) {
+                startVoice()
+            }
+            true
+        },
+    ) {
         ModalPanel(
             modifier = Modifier
                 .width(900.dp)
@@ -57,37 +65,22 @@ fun ArtistSongsScreen(vm: AppViewModel) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (artist == null) {
-                    ShelfHeader("搜索歌星", "曲库真实歌星 · 姓名 / 首拼")
-                    FocusSurface(onClick = {}, corner = 12.dp) { focused ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    if (focused) KaraokeColors.surfaceStrong else KaraokeColors.surface,
-                                    RoundedCornerShape(12.dp),
-                                )
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                        ) {
-                            if (vm.artistSearchQuery.isEmpty()) {
-                                Text(
-                                    "输入歌星名，如 刀郎 / dl",
-                                    color = KaraokeColors.textTertiary,
-                                    fontSize = 17.sp,
-                                )
-                            }
-                            BasicTextField(
-                                value = vm.artistSearchQuery,
-                                onValueChange = { vm.updateArtistSearchQuery(it) },
-                                singleLine = true,
-                                textStyle = TextStyle(color = KaraokeColors.textPrimary, fontSize = 18.sp),
-                                cursorBrush = SolidColor(KaraokeColors.textPrimary),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .focusRequester(focus),
+                    ShelfHeader("搜索歌星", "姓名 / 首拼 · 确定重新打开键盘")
+                    TvSearchField(
+                        value = vm.artistSearchQuery,
+                        onValueChange = vm::updateArtistSearchQuery,
+                        hint = "输入歌星名，如 刀郎 / dl",
+                        requestFocus = true,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        FocusSurface(onClick = startVoice, corner = 10.dp) {
+                            Text(
+                                "语音",
+                                color = KaraokeColors.textPrimary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                fontSize = 15.sp,
                             )
                         }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         FocusSurface(onClick = { vm.dismissOverlay() }, corner = 10.dp) {
                             Text(
                                 "关闭",

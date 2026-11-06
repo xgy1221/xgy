@@ -2,7 +2,6 @@ package com.xgy.androidkaraoke.ui.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,16 +13,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -34,14 +28,29 @@ import com.xgy.androidkaraoke.ui.components.BlockingOverlay
 import com.xgy.androidkaraoke.ui.components.FocusSurface
 import com.xgy.androidkaraoke.ui.components.ModalPanel
 import com.xgy.androidkaraoke.ui.components.ShelfHeader
+import com.xgy.androidkaraoke.ui.components.TvSearchField
+import com.xgy.androidkaraoke.ui.components.isRemoteVoiceKey
+import com.xgy.androidkaraoke.ui.components.rememberVoiceInput
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun SearchScreen(vm: AppViewModel) {
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    val startVoice = rememberVoiceInput(
+        onResult = vm::updateSearchQuery,
+        onUnavailable = { vm.showToast("这台电视没有语音识别，请用键盘右上角的「语音」") },
+    )
 
-    BlockingOverlay {
+    BlockingOverlay(
+        modifier = Modifier.onPreviewKeyEvent { event ->
+            if (!event.isRemoteVoiceKey()) return@onPreviewKeyEvent false
+            if (event.type == androidx.compose.ui.input.key.KeyEventType.KeyDown &&
+                event.nativeKeyEvent.repeatCount == 0
+            ) {
+                startVoice()
+            }
+            true
+        },
+    ) {
         ModalPanel(
             modifier = Modifier
                 .width(900.dp)
@@ -53,34 +62,23 @@ fun SearchScreen(vm: AppViewModel) {
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ShelfHeader("搜索", "歌名 / 歌星 / 首拼 · 确认点歌入队")
-                FocusSurface(onClick = {}, corner = 12.dp) { focused ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                if (focused) KaraokeColors.surfaceStrong else KaraokeColors.surface,
-                                RoundedCornerShape(12.dp),
-                            )
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                    ) {
-                        if (vm.searchQuery.isEmpty()) {
-                            Text("搜索曲库歌名 / 歌星 / 首拼", color = KaraokeColors.textTertiary, fontSize = 17.sp)
-                        }
-                        BasicTextField(
-                            value = vm.searchQuery,
-                            onValueChange = { vm.updateSearchQuery(it) },
-                            singleLine = true,
-                            textStyle = TextStyle(color = KaraokeColors.textPrimary, fontSize = 18.sp),
-                            cursorBrush = SolidColor(KaraokeColors.textPrimary),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focus),
-                        )
-                    }
-                }
+                ShelfHeader("搜索", "歌名 / 歌星 / 首拼 · 确定重新打开键盘 · 语音键说话")
+                TvSearchField(
+                    value = vm.searchQuery,
+                    onValueChange = vm::updateSearchQuery,
+                    hint = "搜索曲库歌名 / 歌星 / 首拼",
+                    requestFocus = true,
+                )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FocusSurface(onClick = startVoice, corner = 10.dp) {
+                        Text(
+                            "语音",
+                            color = KaraokeColors.textPrimary,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            fontSize = 15.sp,
+                        )
+                    }
                     FocusSurface(onClick = { vm.dismissOverlay() }, corner = 10.dp) {
                         Text(
                             "关闭",

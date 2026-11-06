@@ -42,8 +42,10 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun RootScreen(vm: AppViewModel) {
-    BackHandler(enabled = vm.overlay != Overlay.None) {
-        vm.dismissOverlay()
+    val leaveHome = vm.overlay != Overlay.None || vm.selectedTab != MainTab.FreeSing
+    BackHandler(enabled = leaveHome) {
+        if (vm.overlay != Overlay.None) vm.dismissOverlay()
+        else vm.selectTab(MainTab.FreeSing)
     }
 
     val overlay = vm.overlay
