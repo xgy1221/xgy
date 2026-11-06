@@ -2,19 +2,15 @@ package com.xgy.androidkaraoke.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
 import com.xgy.androidkaraoke.theme.KaraokeColors
@@ -30,10 +26,6 @@ fun BlockingOverlay(
     contentAlignment: Alignment = Alignment.Center,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val gate = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        runCatching { gate.requestFocus() }
-    }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -44,9 +36,8 @@ fun BlockingOverlay(
                 indication = null,
                 onClick = { /* 吞掉点穿到首页的点击 */ },
             )
-            .focusRequester(gate)
-            .focusProperties { canFocus = true }
-            .focusable(),
+            // 遮罩不要抢走焦点，否则遥控确认键点在空白上，按钮要再按一次才到。
+            .focusProperties { canFocus = false },
         contentAlignment = contentAlignment,
         content = content,
     )

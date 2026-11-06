@@ -82,7 +82,7 @@ fun HomeScreen(vm: AppViewModel) {
                         fontSize = 14.sp,
                     )
                 }
-                FocusSurface(onClick = { vm.openSettingsLibrary() }, corner = 10.dp) {
+                FocusSurface(onClick = { vm.openSettingsLibrary() }, corner = 10.dp, requestFocus = true) {
                     Text(
                         "添加媒体库",
                         color = KaraokeColors.textPrimary,
@@ -111,6 +111,7 @@ fun HomeScreen(vm: AppViewModel) {
                     modifier = Modifier
                         .width(400.dp)
                         .height(220.dp),
+                    requestFocus = !vm.shouldShowLibraryGuide,
                 )
             }
             items(top, key = { it.id }) { tile ->
