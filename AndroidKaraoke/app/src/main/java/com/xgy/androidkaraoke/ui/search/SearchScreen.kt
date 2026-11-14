@@ -62,12 +62,13 @@ fun SearchScreen(vm: AppViewModel) {
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ShelfHeader("搜索", "歌名 / 歌星 / 首拼 · 确定重新打开键盘 · 语音键说话")
+                ShelfHeader("搜索", "歌名 / 歌星 / 首拼 · 返回直接关闭 · 语音键说话")
                 TvSearchField(
                     value = vm.searchQuery,
                     onValueChange = vm::updateSearchQuery,
                     hint = "搜索曲库歌名 / 歌星 / 首拼",
                     requestFocus = true,
+                    onBack = { vm.dismissOverlay() },
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

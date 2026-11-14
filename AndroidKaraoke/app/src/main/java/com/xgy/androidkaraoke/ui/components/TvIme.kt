@@ -17,11 +17,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreInterceptKeyBeforeSoftKeyboard
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -100,7 +102,7 @@ fun androidx.compose.ui.input.key.KeyEvent.isRemoteVoiceKey(): Boolean {
         code == AndroidKeyEvent.KEYCODE_ASSIST
 }
 
-@OptIn(ExperimentalTvMaterial3Api::class)
+@OptIn(ExperimentalTvMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun TvSearchField(
     value: String,
@@ -109,10 +111,12 @@ fun TvSearchField(
     modifier: Modifier = Modifier,
     requestFocus: Boolean = false,
     password: Boolean = false,
+    onBack: (() -> Unit)? = null,
 ) {
     val focus = remember { FocusRequester() }
     val showIme = rememberShowTvIme(focus)
     val view = LocalView.current
+    val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(requestFocus) {
         if (requestFocus) showIme()
     }
@@ -143,6 +147,20 @@ fun TvSearchField(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focus)
+                    .onPreInterceptKeyBeforeSoftKeyboard { event ->
+                        if (onBack == null) return@onPreInterceptKeyBeforeSoftKeyboard false
+                        if (event.nativeKeyEvent.keyCode != AndroidKeyEvent.KEYCODE_BACK) {
+                            return@onPreInterceptKeyBeforeSoftKeyboard false
+                        }
+                        if (event.type != KeyEventType.KeyDown || event.nativeKeyEvent.repeatCount != 0) {
+                            return@onPreInterceptKeyBeforeSoftKeyboard true
+                        }
+                        keyboard?.hide()
+                        view.context.getSystemService(InputMethodManager::class.java)
+                            ?.hideSoftInputFromWindow(view.windowToken, 0)
+                        onBack()
+                        true
+                    }
                     .onPreviewKeyEvent { event ->
                         val confirm = event.nativeKeyEvent.keyCode == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
                             event.nativeKeyEvent.keyCode == AndroidKeyEvent.KEYCODE_ENTER ||

@@ -65,12 +65,13 @@ fun ArtistSongsScreen(vm: AppViewModel) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (artist == null) {
-                    ShelfHeader("搜索歌星", "姓名 / 首拼 · 确定重新打开键盘")
+                    ShelfHeader("搜索歌星", "姓名 / 首拼 · 返回直接关闭")
                     TvSearchField(
                         value = vm.artistSearchQuery,
                         onValueChange = vm::updateArtistSearchQuery,
                         hint = "输入歌星名，如 刀郎 / dl",
                         requestFocus = true,
+                        onBack = { vm.dismissOverlay() },
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         FocusSurface(onClick = startVoice, corner = 10.dp) {
