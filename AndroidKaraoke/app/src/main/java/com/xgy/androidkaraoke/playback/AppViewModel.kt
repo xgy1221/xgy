@@ -228,9 +228,16 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     var libraryGuideDismissed by mutableStateOf(sourceStore.isLibraryGuideDismissed())
         private set
 
-    /** 尚无真实曲库且用户未关掉引导 */
+    /** 设置里已经有启用的 NAS 或 U 盘，不该再催着去添加。 */
+    val hasSavedLibrary: Boolean
+        get() = librarySources.any { it.enabled }
+
+    /** 完全没有已保存曲库、索引也还没开始，才提示去添加。 */
     val shouldShowLibraryGuide: Boolean
-        get() = !libraryGuideDismissed && libraryCatalog.isEmpty()
+        get() = !libraryGuideDismissed &&
+            libraryCatalog.isEmpty() &&
+            !hasSavedLibrary &&
+            !libraryIndexing
 
     val recentSongs: List<Song>
         get() {
@@ -771,8 +778,12 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     fun openArtistSearch() {
         if (libraryCatalog.isEmpty()) {
-            showToast("请先添加媒体库")
-            openSettingsLibrary()
+            if (hasSavedLibrary || libraryIndexing) {
+                showToast(if (libraryIndexing) "曲库还在读取" else "已保存的曲库这次没读到歌")
+            } else {
+                showToast("请先添加媒体库")
+                openSettingsLibrary()
+            }
             return
         }
         artistSearchQuery = ""

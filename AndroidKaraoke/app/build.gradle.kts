@@ -22,8 +22,8 @@ android {
         // Sony KD-65A9F = Android 10 (API 29). Keep minSdk ≤ 29.
         minSdk = 28
         targetSdk = 34
-        versionCode = 26
-        versionName = "0.5.11"
+        versionCode = 27
+        versionName = "0.5.12"
         // 账号只从本机 local.properties 读入，不提交到仓库。
         buildConfigField("String", "NAS_USERNAME", nasBuildConfig(nasLocal.getProperty("nas.username", "")))
         buildConfigField("String", "NAS_PASSWORD", nasBuildConfig(nasLocal.getProperty("nas.password", "")))

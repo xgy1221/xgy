@@ -48,8 +48,20 @@ fun SingersScreen(vm: AppViewModel, entryFocus: FocusRequester, tabFocus: FocusR
             ShelfHeader(
                 "歌星",
                 if (hasLibrary) "来自你的曲库 · 按常唱习惯排序"
+                else if (vm.libraryIndexing) "正在从已保存的曲库读取歌星"
+                else if (vm.hasSavedLibrary) "已保存的曲库这次没列出歌星"
                 else "添加曲库后，这里会列出真实歌星",
             )
+        }
+
+        if (!hasLibrary && (vm.libraryIndexing || vm.hasSavedLibrary)) {
+            Text(
+                text = if (vm.libraryIndexing) "正在读取已保存的曲库…" else "曲库已保存，这次没读到歌星",
+                color = KaraokeColors.textSecondary,
+                fontSize = 16.sp,
+                modifier = Modifier.padding(horizontal = 40.dp),
+            )
+            return
         }
 
         if (!hasLibrary) {

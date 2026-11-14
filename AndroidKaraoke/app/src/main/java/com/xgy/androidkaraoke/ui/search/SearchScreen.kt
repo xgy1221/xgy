@@ -102,6 +102,13 @@ fun SearchScreen(vm: AppViewModel) {
 
                 val results = vm.searchResults
                 when {
+                    vm.libraryCatalog.isEmpty() && (vm.libraryIndexing || vm.hasSavedLibrary) -> {
+                        Text(
+                            if (vm.libraryIndexing) "正在读取已保存的曲库…" else "曲库已保存，这次没读到歌曲",
+                            color = KaraokeColors.textSecondary,
+                            fontSize = 16.sp,
+                        )
+                    }
                     vm.libraryCatalog.isEmpty() -> {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(

@@ -81,6 +81,15 @@ fun HomeScreen(
             ShelfHeader("随心唱", "挑选今晚的第一首歌")
         }
 
+        if (!guide && vm.libraryCatalog.isEmpty() && (vm.libraryIndexing || vm.hasSavedLibrary)) {
+            Text(
+                text = if (vm.libraryIndexing) "正在连接已保存的 NAS 曲库…" else "NAS 已保存，这次没读到歌曲",
+                color = KaraokeColors.textSecondary,
+                fontSize = 16.sp,
+                modifier = Modifier.padding(horizontal = 40.dp),
+            )
+        }
+
         if (guide) {
             Row(
                 modifier = Modifier
