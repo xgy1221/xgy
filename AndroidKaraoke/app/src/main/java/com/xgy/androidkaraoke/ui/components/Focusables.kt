@@ -58,9 +58,11 @@ fun FocusSurface(
     navigateDown: FocusRequester? = null,
     navigateLeft: FocusRequester? = null,
     navigateRight: FocusRequester? = null,
+    highlighted: Boolean = false,
     content: @Composable (focused: Boolean) -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
+    val lit = focused || highlighted
     val fallback = remember { FocusRequester() }
     val requester = focusRequester ?: fallback
     val tvFocusEnabled = LocalTvFocusEnabled.current
@@ -94,12 +96,12 @@ fun FocusSurface(
             .clickable(onClick = onClick)
             .clip(shape)
             .border(
-                width = if (focused) 3.dp else 0.dp,
-                color = if (focused) Color.White else Color.Transparent,
+                width = if (lit) 3.dp else 0.dp,
+                color = if (lit) Color.White else Color.Transparent,
                 shape = shape,
             ),
     ) {
-        content(focused)
+        content(lit)
     }
 }
 

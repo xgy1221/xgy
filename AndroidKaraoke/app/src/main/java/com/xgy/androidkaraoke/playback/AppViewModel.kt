@@ -1660,7 +1660,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     companion object {
         private const val TAG = "KaraokeHome"
-        private const val NAS_SEED_REVISION = 1
+        private const val NAS_SEED_REVISION = 2
 
         /** 旧版 MockData 写入 SharedPreferences 的演示曲 id，需主动清掉。 */
         private val LEGACY_DEMO_SONG_IDS = setOf(

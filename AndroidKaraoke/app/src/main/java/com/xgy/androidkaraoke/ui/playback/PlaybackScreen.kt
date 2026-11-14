@@ -70,16 +70,22 @@ fun PlaybackScreen(vm: AppViewModel) {
     val app = LocalContext.current.applicationContext as KaraokeApp
     val player = remember { app.container.player }
     val playbackKeys = remember { FocusRequester() }
-    val menuFocus = remember { FocusRequester() }
     var chromeVisible by remember { mutableStateOf(true) }
     var idleTick by remember { mutableIntStateOf(0) }
+    var menuIndex by remember { mutableIntStateOf(PAUSE_MENU_INDEX) }
+    val menuActions = listOf<() -> Unit>(
+        { vm.seekBy(-10_000) },
+        { vm.seekBy(10_000) },
+        { vm.skipPrelude() },
+        { vm.cycleOrder() },
+        { vm.replay() },
+        { vm.togglePlayPause() },
+        { vm.toggleVocal() },
+        { vm.nextTrack() },
+        { vm.toggleFavorite() },
+    )
     LaunchedEffect(chromeVisible) {
-        if (chromeVisible) {
-            delay(48)
-            runCatching { menuFocus.requestFocus() }
-        } else {
-            runCatching { playbackKeys.requestFocus() }
-        }
+        if (!chromeVisible) runCatching { playbackKeys.requestFocus() }
     }
     LaunchedEffect(idleTick, chromeVisible) {
         if (!chromeVisible) return@LaunchedEffect
@@ -100,10 +106,14 @@ fun PlaybackScreen(vm: AppViewModel) {
                     event = event,
                     chromeVisible = chromeVisible,
                     onReveal = {
+                        menuIndex = PAUSE_MENU_INDEX
                         chromeVisible = true
                         idleTick++
                     },
                     onInteract = { idleTick++ },
+                    onLeft = { menuIndex = (menuIndex - 1).coerceAtLeast(0) },
+                    onRight = { menuIndex = (menuIndex + 1).coerceAtMost(menuActions.lastIndex) },
+                    onActivate = { menuActions[menuIndex].invoke() },
                 )
             },
     ) {
@@ -119,6 +129,7 @@ fun PlaybackScreen(vm: AppViewModel) {
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
                     this.player = player.videoPlayer
+                    subtitleView?.visibility = android.view.View.GONE
                 }
             },
             update = { view ->
@@ -137,7 +148,7 @@ fun PlaybackScreen(vm: AppViewModel) {
             }
         }
 
-        if (song?.hasMv != true) {
+        if (song?.hasMv != true && vm.durationSec <= 0) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -252,16 +263,16 @@ fun PlaybackScreen(vm: AppViewModel) {
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ControlBtn("后退", Icons.Outlined.Replay10) { vm.seekBy(-10_000) }
-                ControlBtn("快进", Icons.Outlined.Forward10) { vm.seekBy(10_000) }
-                ControlBtn("跳过前奏", Icons.Outlined.FastForward) { vm.skipPrelude() }
-                ControlBtn("顺序", Icons.Outlined.Shuffle) { vm.cycleOrder() }
-                ControlBtn("重唱", Icons.Outlined.Replay) { vm.replay() }
+                ControlBtn("后退", Icons.Outlined.Replay10, armed = menuIndex == 0) { vm.seekBy(-10_000) }
+                ControlBtn("快进", Icons.Outlined.Forward10, armed = menuIndex == 1) { vm.seekBy(10_000) }
+                ControlBtn("跳过前奏", Icons.Outlined.FastForward, armed = menuIndex == 2) { vm.skipPrelude() }
+                ControlBtn("顺序", Icons.Outlined.Shuffle, armed = menuIndex == 3) { vm.cycleOrder() }
+                ControlBtn("重唱", Icons.Outlined.Replay, armed = menuIndex == 4) { vm.replay() }
                 ControlBtn(
                     if (vm.isPlaying) "暂停" else "播放",
                     if (vm.isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
                     prominent = true,
-                    focusRequester = menuFocus,
+                    armed = menuIndex == PAUSE_MENU_INDEX,
                 ) { vm.togglePlayPause() }
                 ControlBtn(
                     when {
@@ -271,11 +282,13 @@ fun PlaybackScreen(vm: AppViewModel) {
                         else -> "原唱"
                     },
                     Icons.Outlined.RecordVoiceOver,
+                    armed = menuIndex == 6,
                 ) { vm.toggleVocal() }
-                ControlBtn("切歌", Icons.Outlined.SkipNext) { vm.nextTrack() }
+                ControlBtn("切歌", Icons.Outlined.SkipNext, armed = menuIndex == 7) { vm.nextTrack() }
                 ControlBtn(
                     "收藏",
                     if (vm.isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                    armed = menuIndex == 8,
                 ) { vm.toggleFavorite() }
             }
             Spacer(modifier = Modifier.height(14.dp))
@@ -295,6 +308,9 @@ private fun handlePlaybackKey(
     chromeVisible: Boolean,
     onReveal: () -> Unit,
     onInteract: () -> Unit,
+    onLeft: () -> Unit,
+    onRight: () -> Unit,
+    onActivate: () -> Unit,
 ): Boolean {
     val native = event.nativeKeyEvent
     val code = native.keyCode
@@ -324,11 +340,26 @@ private fun handlePlaybackKey(
         }
         return true
     }
-    if (down) onInteract()
-    if (!media) return false
-    if (down) performMediaKey(vm, code)
+    if (!down) return true
+    onInteract()
+    when (code) {
+        AndroidKeyEvent.KEYCODE_DPAD_LEFT -> onLeft()
+        AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> onRight()
+        AndroidKeyEvent.KEYCODE_DPAD_CENTER,
+        AndroidKeyEvent.KEYCODE_ENTER,
+        AndroidKeyEvent.KEYCODE_NUMPAD_ENTER,
+        AndroidKeyEvent.KEYCODE_BUTTON_SELECT,
+        AndroidKeyEvent.KEYCODE_BUTTON_A,
+        -> onActivate()
+        AndroidKeyEvent.KEYCODE_DPAD_UP,
+        AndroidKeyEvent.KEYCODE_DPAD_DOWN,
+        -> Unit
+        else -> if (media) performMediaKey(vm, code)
+    }
     return true
 }
+
+private const val PAUSE_MENU_INDEX = 5
 
 private fun performMediaKey(vm: AppViewModel, code: Int) {
     when (code) {
@@ -349,13 +380,13 @@ private fun ControlBtn(
     label: String,
     icon: ImageVector,
     prominent: Boolean = false,
-    focusRequester: FocusRequester? = null,
+    armed: Boolean = false,
     onClick: () -> Unit,
 ) {
     FocusSurface(
         onClick = onClick,
         corner = if (prominent) 28.dp else 14.dp,
-        focusRequester = focusRequester,
+        highlighted = armed,
     ) { focused ->
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
