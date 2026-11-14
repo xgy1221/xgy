@@ -52,12 +52,16 @@ fun GuessYouWantScreen(vm: AppViewModel) {
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Text(
-                        if (vm.libraryCatalog.isEmpty()) "曲库还没有歌曲，无法推荐"
-                        else "暂时没有更多可推荐曲目",
+                        when {
+                            vm.libraryCatalog.isNotEmpty() -> "暂时没有更多可推荐曲目"
+                            vm.libraryIndexing -> "正在读取已保存的曲库…"
+                            vm.hasSavedLibrary -> "曲库已保存，这次没读到歌曲"
+                            else -> "曲库还没有歌曲，无法推荐"
+                        },
                         color = KaraokeColors.textSecondary,
                         fontSize = 16.sp,
                     )
-                    if (vm.libraryCatalog.isEmpty()) {
+                    if (vm.libraryCatalog.isEmpty() && !vm.libraryIndexing && !vm.hasSavedLibrary) {
                         FocusSurface(onClick = { vm.openSettingsLibrary() }, corner = 10.dp) {
                             Text(
                                 "去添加媒体库",

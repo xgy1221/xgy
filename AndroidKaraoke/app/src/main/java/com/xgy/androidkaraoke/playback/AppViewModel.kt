@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
 import com.xgy.androidkaraoke.AppContainer
 import com.xgy.androidkaraoke.BrandConfig
+import com.xgy.androidkaraoke.BuildConfig
 import com.xgy.androidkaraoke.library.LibraryEntry
 import com.xgy.androidkaraoke.library.LibraryEntryKind
 import com.xgy.androidkaraoke.library.LibrarySource
@@ -179,6 +180,9 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     val phoneOrderCandidates = mutableStateListOf<LanAddresses.Candidate>()
     var phoneOrderTip by mutableStateOf<String?>(null)
         private set
+    /** 手机点歌成功后，右上角提示。 */
+    var phoneHint by mutableStateOf<String?>(null)
+        private set
 
     // ——— 搜索 ———
     var searchQuery by mutableStateOf("")
@@ -224,9 +228,16 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     var libraryGuideDismissed by mutableStateOf(sourceStore.isLibraryGuideDismissed())
         private set
 
-    /** 尚无真实曲库且用户未关掉引导 */
+    /** 设置里已经有启用的 NAS 或 U 盘，不该再催着去添加。 */
+    val hasSavedLibrary: Boolean
+        get() = librarySources.any { it.enabled }
+
+    /** 完全没有已保存曲库、索引也还没开始，才提示去添加。 */
     val shouldShowLibraryGuide: Boolean
-        get() = !libraryGuideDismissed && libraryCatalog.isEmpty()
+        get() = !libraryGuideDismissed &&
+            libraryCatalog.isEmpty() &&
+            !hasSavedLibrary &&
+            !libraryIndexing
 
     val recentSongs: List<Song>
         get() {
@@ -319,6 +330,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
 
     private var toastJob: Job? = null
+    private var phoneHintJob: Job? = null
     private var tickJob: Job? = null
     private var phoneServer: PhoneRequestServer? = null
     private var knownUsbIds: Set<String> = emptySet()
@@ -349,6 +361,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     init {
         migrateLegacyNasIfNeeded()
+        seedBundledNas()
         // 先清掉已知演示歌历史，避免「最近唱过」残留小半等
         listeningPrefs.removeSongIds(LEGACY_DEMO_SONG_IDS)
         bumpPrefs()
@@ -403,6 +416,44 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         if (path != cfg.normalizedPath) {
             container.nasConfigStore.save(cfg.copy(libraryPath = path))
         }
+    }
+
+    /**
+     * 把构建时带上的 NAS 账号写入加密存储，并指向音乐共享目录。
+     * File Station 用共享路径 `/music`，对应磁盘上的 `/volume1/music`。
+     */
+    private fun seedBundledNas() {
+        val seeded = container.credentialStore.applySeed(
+            revision = NAS_SEED_REVISION,
+            username = BuildConfig.NAS_USERNAME,
+            password = BuildConfig.NAS_PASSWORD,
+        )
+        if (!seeded) return
+        val path = SynologyFileStation.normalizeLibraryPathForSave("/volume1/music")
+        val existing = sourceStore.load().firstOrNull { it.kind == LibrarySourceKind.Nas }
+        val source = (existing ?: LibrarySource.defaultNas()).copy(
+            enabled = true,
+            displayName = existing?.displayName?.takeIf { it.isNotBlank() } ?: "NAS",
+            nasBaseUrl = existing?.nasBaseUrl?.takeIf { it.isNotBlank() } ?: BrandConfig.defaultNasBaseUrl,
+            nasLibraryPath = path,
+        )
+        sourceStore.upsert(source)
+        sourceStore.setActiveSourceId(source.id)
+        container.nasConfigStore.save(
+            NasConfig(
+                baseUrlString = source.nasBaseUrl ?: BrandConfig.defaultNasBaseUrl,
+                libraryPath = path,
+            ),
+        )
+    }
+
+    fun shutdownPlayback() {
+        tickJob?.cancel()
+        nowPlaying = null
+        nextSong = null
+        isPlaying = false
+        queue.clear()
+        player.stopForExit()
     }
 
     fun reloadSources(scanUsb: Boolean = true, announceUsb: Boolean = false) {
@@ -727,8 +778,12 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     fun openArtistSearch() {
         if (libraryCatalog.isEmpty()) {
-            showToast("请先添加媒体库")
-            openSettingsLibrary()
+            if (hasSavedLibrary || libraryIndexing) {
+                showToast(if (libraryIndexing) "曲库还在读取" else "已保存的曲库这次没读到歌")
+            } else {
+                showToast("请先添加媒体库")
+                openSettingsLibrary()
+            }
             return
         }
         artistSearchQuery = ""
@@ -867,28 +922,30 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         bumpPrefs()
 
         if (nowPlaying?.id == song.id) {
-            showToast("正在演唱：${song.title}")
+            val msg = "正在演唱：${song.title}"
+            if (fromPhone) showPhoneHint(msg) else showToast(msg)
             return
         }
         if (queue.any { it.id == song.id }) {
-            showToast("已在已点队列：${song.title}")
+            val msg = "已在已点队列：${song.title}"
+            if (fromPhone) showPhoneHint(msg) else showToast(msg)
             return
         }
 
         if (nowPlaying == null) {
             // 空闲时直接开唱；不把「正在播」留在已点列表里
             play(song)
-            showToast(
-                if (fromPhone) "手机点歌开始：${song.title}"
-                else "开始播放：${song.title}",
-            )
+            if (fromPhone) showPhoneHint("手机点歌：${song.title} · ${song.artist}\n开始播放")
+            else showToast("开始播放：${song.title}")
         } else {
             queue.add(song)
             if (nextSong == null) nextSong = song
-            showToast(
-                if (fromPhone) "手机点歌：${song.title}"
-                else "已加入已点：${song.title}",
-            )
+            val pos = queue.size
+            if (fromPhone) {
+                showPhoneHint("手机点歌：${song.title} · ${song.artist}\n已加入已点 · 第 $pos 首")
+            } else {
+                showToast("已加入已点：${song.title}")
+            }
         }
     }
 
@@ -1185,6 +1242,14 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     fun skipPrelude() {
         player.skipForward(30_000)
         currentTimeSec = (player.currentPositionMs() / 1000)
+    }
+
+    fun seekBy(deltaMs: Long) {
+        val duration = player.durationMs()
+        val target = (player.currentPositionMs() + deltaMs).coerceAtLeast(0)
+        val clamped = if (duration > 0) target.coerceAtMost(duration) else target
+        player.seekTo(clamped)
+        currentTimeSec = clamped / 1000
     }
 
     fun toggleVocal() {
@@ -1579,6 +1644,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                             }
                             total += result.getOrElse {
                                 Log.w(TAG, "NAS index failed: ${it.message}")
+                                showToast("NAS 没连上：${it.message ?: "请检查网络"}")
                                 0
                             }
                         }
@@ -1611,6 +1677,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     companion object {
         private const val TAG = "KaraokeHome"
+        private const val NAS_SEED_REVISION = 2
 
         /** 旧版 MockData 写入 SharedPreferences 的演示曲 id，需主动清掉。 */
         private val LEGACY_DEMO_SONG_IDS = setOf(
@@ -1645,12 +1712,19 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         phoneServerError = null
         val server = PhoneRequestServer(
             indexHtml = container.phoneOrderHtml,
-            catalogProvider = { libraryCatalog },
+            catalogProvider = { libraryCatalog.toList() },
             queueProvider = { queue.toList() },
+            nowPlayingProvider = { nowPlaying },
             onAddSong = { song ->
+                val done = java.util.concurrent.CountDownLatch(1)
                 viewModelScope.launch {
-                    addToQueue(song, fromPhone = true)
+                    try {
+                        addToQueue(song, fromPhone = true)
+                    } finally {
+                        done.countDown()
+                    }
                 }
+                done.await(3, java.util.concurrent.TimeUnit.SECONDS)
             },
         )
         phoneServer = server
@@ -1695,6 +1769,15 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         toastJob = viewModelScope.launch {
             delay(1800)
             if (toastMessage == message) toastMessage = null
+        }
+    }
+
+    fun showPhoneHint(message: String) {
+        phoneHint = message
+        phoneHintJob?.cancel()
+        phoneHintJob = viewModelScope.launch {
+            delay(4500)
+            if (phoneHint == message) phoneHint = null
         }
     }
 

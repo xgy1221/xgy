@@ -14,8 +14,10 @@ import androidx.compose.material.icons.outlined.QueueMusic
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +36,8 @@ fun TopBar(
     onQueue: () -> Unit,
     onWechat: () -> Unit,
     onSettings: () -> Unit,
+    topFocus: FocusRequester,
+    navigateDown: FocusRequester,
 ) {
     Row(
         modifier = Modifier
@@ -54,11 +58,22 @@ fun TopBar(
             fontSize = 14.sp,
         )
         Spacer(Modifier.weight(1f))
+        val queueFocus = remember { FocusRequester() }
+        val wechatFocus = remember { FocusRequester() }
+        val settingsFocus = remember { FocusRequester() }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TopAction("搜索", Icons.Outlined.Search, onSearch)
-            TopAction("已点${if (queueCount > 0) " · $queueCount" else ""}", Icons.Outlined.QueueMusic, onQueue)
-            TopAction("扫码点歌", Icons.Outlined.PhoneAndroid, onWechat)
-            TopAction("设置", Icons.Outlined.Settings, onSettings)
+            TopAction("搜索", Icons.Outlined.Search, onSearch, topFocus, null, queueFocus, navigateDown)
+            TopAction(
+                "已点${if (queueCount > 0) " · $queueCount" else ""}",
+                Icons.Outlined.QueueMusic,
+                onQueue,
+                queueFocus,
+                topFocus,
+                wechatFocus,
+                navigateDown,
+            )
+            TopAction("扫码点歌", Icons.Outlined.PhoneAndroid, onWechat, wechatFocus, queueFocus, settingsFocus, navigateDown)
+            TopAction("设置", Icons.Outlined.Settings, onSettings, settingsFocus, wechatFocus, null, navigateDown)
         }
     }
 }
@@ -69,8 +84,19 @@ private fun TopAction(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
+    focusRequester: FocusRequester,
+    navigateLeft: FocusRequester?,
+    navigateRight: FocusRequester?,
+    navigateDown: FocusRequester,
 ) {
-    FocusSurface(onClick = onClick, corner = 12.dp) { focused ->
+    FocusSurface(
+        onClick = onClick,
+        corner = 12.dp,
+        focusRequester = focusRequester,
+        navigateLeft = navigateLeft,
+        navigateRight = navigateRight,
+        navigateDown = navigateDown,
+    ) { focused ->
         Row(
             modifier = Modifier
                 .height(44.dp)

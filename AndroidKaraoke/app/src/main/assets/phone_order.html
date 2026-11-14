@@ -61,20 +61,38 @@ function render() {
     const py = (s.initials||'').toLowerCase();
     return hay.includes(q) || py.includes(q) || py.startsWith(q);
   });
-  list.innerHTML = filtered.map(s => `
-    <div class="song">
-      <div class="meta">
-        <div class="title">${escapeHtml(s.title)}</div>
-        <div class="artist">${escapeHtml(s.artist)}</div>
-      </div>
-      <button onclick="addSong('${s.id}')">点歌</button>
-    </div>`).join('') || '<div style="padding:18px;color:#777">曲库里没有匹配歌曲</div>';
+  list.textContent = '';
+  if (!filtered.length) {
+    list.innerHTML = '<div style="padding:18px;color:#777">曲库里没有匹配歌曲</div>';
+    return;
+  }
+  filtered.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'song';
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = s.title || '';
+    const artist = document.createElement('div');
+    artist.className = 'artist';
+    artist.textContent = s.artist || '';
+    meta.appendChild(title);
+    meta.appendChild(artist);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '点歌';
+    btn.onclick = () => addSong(s.id);
+    row.appendChild(meta);
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
 }
 async function addSong(id) {
   const res = await fetch('/api/queue', {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({id})
+    headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+    body: new URLSearchParams({id}).toString()
   }).then(r => r.json()).catch(() => ({ok:false,message:'网络错误'}));
   document.getElementById('status').textContent = res.message || (res.ok ? '已点歌' : '失败');
   refreshQueue();
@@ -82,9 +100,13 @@ async function addSong(id) {
 async function refreshQueue() {
   try {
     const q = await fetch('/api/queue').then(r => r.json());
-    document.getElementById('queue').innerHTML = (q.queue||[]).map((s,i)=>
+    const playing = q.nowPlaying
+      ? `<div class="q-item">正在播放 ${escapeHtml(q.nowPlaying.title)} · ${escapeHtml(q.nowPlaying.artist)}</div>`
+      : '';
+    const waiting = (q.queue||[]).map((s,i)=>
       `<div class="q-item">${i+1}. ${escapeHtml(s.title)} · ${escapeHtml(s.artist)}</div>`
-    ).join('') || '<div class="q-item">暂无已点</div>';
+    ).join('');
+    document.getElementById('queue').innerHTML = (playing + waiting) || '<div class="q-item">暂无已点</div>';
   } catch (_) {}
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}

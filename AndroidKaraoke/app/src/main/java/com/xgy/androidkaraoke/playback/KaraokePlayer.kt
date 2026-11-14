@@ -170,4 +170,16 @@ class KaraokePlayer(context: Context) {
         videoPlayer.release()
         audioPlayer.release()
     }
+
+    /** 退出应用时停掉音视频，避免 Activity 关掉后还在后台响。 */
+    fun stopForExit() {
+        videoPlayer.playWhenReady = false
+        audioPlayer.playWhenReady = false
+        videoPlayer.stop()
+        audioPlayer.stop()
+        videoPlayer.clearMediaItems()
+        audioPlayer.clearMediaItems()
+        song = null
+        usingSeparateAudio = false
+    }
 }

@@ -1,8 +1,13 @@
 package com.xgy.androidkaraoke.ui.playback
 
+import android.view.KeyEvent as AndroidKeyEvent
+import androidx.activity.compose.BackHandler
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,13 +32,25 @@ import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -42,6 +59,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import com.xgy.androidkaraoke.KaraokeApp
+import kotlinx.coroutines.delay
 import com.xgy.androidkaraoke.model.VocalMode
 import com.xgy.androidkaraoke.playback.AppViewModel
 import com.xgy.androidkaraoke.theme.KaraokeColors
@@ -53,21 +71,69 @@ fun PlaybackScreen(vm: AppViewModel) {
     val song = vm.nowPlaying
     val app = LocalContext.current.applicationContext as KaraokeApp
     val player = remember { app.container.player }
+    val playbackKeys = remember { FocusRequester() }
+    var chromeVisible by remember { mutableStateOf(true) }
+    var idleTick by remember { mutableIntStateOf(0) }
+    var menuIndex by remember { mutableIntStateOf(PAUSE_MENU_INDEX) }
+    val menuActions = listOf<() -> Unit>(
+        { vm.skipPrelude() },
+        { vm.cycleOrder() },
+        { vm.replay() },
+        { vm.togglePlayPause() },
+        { vm.toggleVocal() },
+        { vm.nextTrack() },
+        { vm.toggleFavorite() },
+    )
+    BackHandler(enabled = chromeVisible) {
+        chromeVisible = false
+    }
+    LaunchedEffect(chromeVisible) {
+        delay(48)
+        runCatching { playbackKeys.requestFocus() }
+    }
+    LaunchedEffect(idleTick, chromeVisible) {
+        if (!chromeVisible) return@LaunchedEffect
+        delay(5_000)
+        chromeVisible = false
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(Color.Black)
+            .focusRequester(playbackKeys)
+            .focusProperties { canFocus = true }
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                handlePlaybackKey(
+                    vm = vm,
+                    event = event,
+                    chromeVisible = chromeVisible,
+                    onReveal = {
+                        menuIndex = PAUSE_MENU_INDEX
+                        chromeVisible = true
+                        idleTick++
+                    },
+                    onInteract = { idleTick++ },
+                    onLeft = { menuIndex = (menuIndex - 1).coerceAtLeast(0) },
+                    onRight = { menuIndex = (menuIndex + 1).coerceAtMost(menuActions.lastIndex) },
+                    onActivate = { menuActions[menuIndex].invoke() },
+                )
+            },
     ) {
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     useController = false
+                    isFocusable = false
+                    isFocusableInTouchMode = false
+                    descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
                     layoutParams = FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
                     this.player = player.videoPlayer
+                    subtitleView?.visibility = android.view.View.GONE
                 }
             },
             update = { view ->
@@ -75,7 +141,9 @@ fun PlaybackScreen(vm: AppViewModel) {
                     view.player = player.videoPlayer
                 }
             },
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .focusProperties { canFocus = false },
         )
 
         DisposableEffect(Unit) {
@@ -84,7 +152,7 @@ fun PlaybackScreen(vm: AppViewModel) {
             }
         }
 
-        if (song?.hasMv != true) {
+        if (song?.hasMv != true && vm.durationSec <= 0) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -103,15 +171,10 @@ fun PlaybackScreen(vm: AppViewModel) {
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 36.dp),
+                .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                text = "正在播放：${song?.displayTitle ?: "—"}    下一首：${vm.nextSong?.title ?: "—"}",
-                color = KaraokeColors.textPrimary,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Medium,
-            )
+            KtvTicker(songTitle = song?.displayTitle, songArtist = song?.artist, next = vm.nextSong, waiting = vm.queue.size)
             Text(
                 text = buildString {
                     append(if (song?.hasMv == true) "MV" else "无MV")
@@ -129,6 +192,7 @@ fun PlaybackScreen(vm: AppViewModel) {
                 },
                 color = KaraokeColors.textSecondary,
                 fontSize = 15.sp,
+                modifier = Modifier.padding(top = 8.dp),
             )
             vm.playbackError?.let { err ->
                 Text(
@@ -165,7 +229,7 @@ fun PlaybackScreen(vm: AppViewModel) {
             }
         }
 
-        Column(
+        if (chromeVisible) Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -199,13 +263,14 @@ fun PlaybackScreen(vm: AppViewModel) {
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ControlBtn("跳过前奏", Icons.Outlined.FastForward) { vm.skipPrelude() }
-                ControlBtn("顺序", Icons.Outlined.Shuffle) { vm.cycleOrder() }
-                ControlBtn("重唱", Icons.Outlined.Replay) { vm.replay() }
+                ControlBtn("跳过前奏", Icons.Outlined.FastForward, armed = menuIndex == 0) { vm.skipPrelude() }
+                ControlBtn("顺序", Icons.Outlined.Shuffle, armed = menuIndex == 1) { vm.cycleOrder() }
+                ControlBtn("重唱", Icons.Outlined.Replay, armed = menuIndex == 2) { vm.replay() }
                 ControlBtn(
                     if (vm.isPlaying) "暂停" else "播放",
                     if (vm.isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
                     prominent = true,
+                    armed = menuIndex == PAUSE_MENU_INDEX,
                 ) { vm.togglePlayPause() }
                 ControlBtn(
                     when {
@@ -215,23 +280,148 @@ fun PlaybackScreen(vm: AppViewModel) {
                         else -> "原唱"
                     },
                     Icons.Outlined.RecordVoiceOver,
+                    armed = menuIndex == 4,
                 ) { vm.toggleVocal() }
-                ControlBtn("切歌", Icons.Outlined.SkipNext) { vm.nextTrack() }
+                ControlBtn("切歌", Icons.Outlined.SkipNext, armed = menuIndex == 5) { vm.nextTrack() }
                 ControlBtn(
                     "收藏",
                     if (vm.isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                    armed = menuIndex == 6,
                 ) { vm.toggleFavorite() }
             }
             Spacer(modifier = Modifier.height(14.dp))
-            FocusSurface(onClick = { vm.openGuess() }, corner = 10.dp) {
-                Text(
-                    text = "按【下键】或确认查看「猜你想唱」",
-                    color = KaraokeColors.textSecondary,
-                    fontSize = 15.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
+            Text(
+                text = "左右选择    确定执行    返回立刻收起。收起后左后退、右快进，上或下再打开",
+                color = KaraokeColors.textSecondary,
+                fontSize = 15.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
         }
+    }
+}
+
+private fun handlePlaybackKey(
+    vm: AppViewModel,
+    event: androidx.compose.ui.input.key.KeyEvent,
+    chromeVisible: Boolean,
+    onReveal: () -> Unit,
+    onInteract: () -> Unit,
+    onLeft: () -> Unit,
+    onRight: () -> Unit,
+    onActivate: () -> Unit,
+): Boolean {
+    val native = event.nativeKeyEvent
+    val code = native.keyCode
+    val dpad = code == AndroidKeyEvent.KEYCODE_DPAD_LEFT ||
+        code == AndroidKeyEvent.KEYCODE_DPAD_RIGHT ||
+        code == AndroidKeyEvent.KEYCODE_DPAD_UP ||
+        code == AndroidKeyEvent.KEYCODE_DPAD_DOWN ||
+        code == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
+        code == AndroidKeyEvent.KEYCODE_ENTER ||
+        code == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER ||
+        code == AndroidKeyEvent.KEYCODE_BUTTON_SELECT ||
+        code == AndroidKeyEvent.KEYCODE_BUTTON_A
+    val media = code == AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE ||
+        code == AndroidKeyEvent.KEYCODE_MEDIA_PLAY ||
+        code == AndroidKeyEvent.KEYCODE_MEDIA_PAUSE ||
+        code == AndroidKeyEvent.KEYCODE_MEDIA_NEXT ||
+        code == AndroidKeyEvent.KEYCODE_MEDIA_PREVIOUS ||
+        code == AndroidKeyEvent.KEYCODE_MEDIA_REWIND ||
+        code == AndroidKeyEvent.KEYCODE_MEDIA_FAST_FORWARD
+    if (!dpad && !media) return false
+    val down = event.type == KeyEventType.KeyDown && native.repeatCount == 0
+    if (!chromeVisible) {
+        if (!down) return true
+        when (code) {
+            AndroidKeyEvent.KEYCODE_DPAD_LEFT -> vm.seekBy(-10_000)
+            AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> vm.seekBy(10_000)
+            AndroidKeyEvent.KEYCODE_DPAD_UP,
+            AndroidKeyEvent.KEYCODE_DPAD_DOWN,
+            -> onReveal()
+            AndroidKeyEvent.KEYCODE_DPAD_CENTER,
+            AndroidKeyEvent.KEYCODE_ENTER,
+            AndroidKeyEvent.KEYCODE_NUMPAD_ENTER,
+            AndroidKeyEvent.KEYCODE_BUTTON_SELECT,
+            AndroidKeyEvent.KEYCODE_BUTTON_A,
+            -> vm.togglePlayPause()
+            else -> if (media) performMediaKey(vm, code)
+        }
+        return true
+    }
+    if (!down) return true
+    onInteract()
+    when (code) {
+        AndroidKeyEvent.KEYCODE_DPAD_LEFT -> onLeft()
+        AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> onRight()
+        AndroidKeyEvent.KEYCODE_DPAD_CENTER,
+        AndroidKeyEvent.KEYCODE_ENTER,
+        AndroidKeyEvent.KEYCODE_NUMPAD_ENTER,
+        AndroidKeyEvent.KEYCODE_BUTTON_SELECT,
+        AndroidKeyEvent.KEYCODE_BUTTON_A,
+        -> onActivate()
+        AndroidKeyEvent.KEYCODE_DPAD_UP,
+        AndroidKeyEvent.KEYCODE_DPAD_DOWN,
+        -> Unit
+        else -> if (media) performMediaKey(vm, code)
+    }
+    return true
+}
+
+private const val PAUSE_MENU_INDEX = 3
+
+@OptIn(ExperimentalTvMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun KtvTicker(songTitle: String?, songArtist: String?, next: com.xgy.androidkaraoke.model.Song?, waiting: Int) {
+    val line = buildString {
+        append("正在演唱：")
+        append(songTitle ?: "暂无")
+        if (!songArtist.isNullOrBlank()) append(" · ").append(songArtist)
+        append("　　下一首：")
+        if (next != null) {
+            append(next.displayTitle)
+            if (next.artist.isNotBlank()) append(" · ").append(next.artist)
+        } else {
+            append("暂无")
+        }
+        if (waiting > 0) append("　　已点 ").append(waiting).append(" 首")
+        append("　　　")
+    }
+    val scrolling = remember(line) { line.repeat(4) }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(46.dp)
+            .background(Color.Black.copy(alpha = 0.62f)),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            text = scrolling,
+            color = Color(0xFFFFE08A),
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Visible,
+            modifier = Modifier.basicMarquee(
+                iterations = Int.MAX_VALUE,
+                initialDelayMillis = 400,
+                velocity = 46.dp,
+            ),
+        )
+    }
+}
+
+
+private fun performMediaKey(vm: AppViewModel, code: Int) {
+    when (code) {
+        AndroidKeyEvent.KEYCODE_MEDIA_REWIND,
+        AndroidKeyEvent.KEYCODE_MEDIA_PREVIOUS,
+        -> vm.seekBy(-10_000)
+        AndroidKeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
+        -> vm.seekBy(10_000)
+        AndroidKeyEvent.KEYCODE_MEDIA_NEXT,
+        -> vm.nextTrack()
+        else -> vm.togglePlayPause()
     }
 }
 
@@ -241,9 +431,15 @@ private fun ControlBtn(
     label: String,
     icon: ImageVector,
     prominent: Boolean = false,
+    armed: Boolean = false,
     onClick: () -> Unit,
 ) {
-    FocusSurface(onClick = onClick, corner = if (prominent) 28.dp else 14.dp) { focused ->
+    FocusSurface(
+        onClick = onClick,
+        corner = if (prominent) 28.dp else 14.dp,
+        highlighted = armed,
+        focusable = false,
+    ) { focused ->
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),

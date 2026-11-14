@@ -111,7 +111,7 @@ fun PhoneOrderScreen(vm: AppViewModel) {
                         Text(tip, color = KaraokeColors.danger, fontSize = 14.sp)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        FocusSurface(onClick = { vm.openPhoneOrder() }, corner = 12.dp) {
+                        FocusSurface(onClick = { vm.openPhoneOrder() }, corner = 12.dp, requestFocus = true) {
                             Text(
                                 "刷新二维码",
                                 color = KaraokeColors.textPrimary,

@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,6 +25,10 @@ import com.xgy.androidkaraoke.ui.components.FocusSurface
 fun CategoryTabs(
     selected: MainTab,
     onSelect: (MainTab) -> Unit,
+    tabFocus: FocusRequester,
+    singerTabFocus: FocusRequester,
+    navigateUp: FocusRequester,
+    navigateDown: FocusRequester,
 ) {
     // 仅保留：随心唱 / 歌星
     val tabs = listOf(MainTab.FreeSing, MainTab.Singers)
@@ -33,7 +38,15 @@ fun CategoryTabs(
     ) {
         items(tabs) { tab ->
             val active = tab == selected
-            FocusSurface(onClick = { onSelect(tab) }, corner = 10.dp) { focused ->
+            FocusSurface(
+                onClick = { onSelect(tab) },
+                corner = 10.dp,
+                focusRequester = if (tab == MainTab.FreeSing) tabFocus else singerTabFocus,
+                navigateUp = navigateUp,
+                navigateDown = navigateDown,
+                navigateLeft = if (tab == MainTab.Singers) tabFocus else null,
+                navigateRight = if (tab == MainTab.FreeSing) singerTabFocus else null,
+            ) { focused ->
                 Box(
                     modifier = Modifier
                         .height(44.dp)

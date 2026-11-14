@@ -18,6 +18,12 @@
         android:name="android.hardware.touchscreen"
         android:required="false" />
 
+    <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
+
     <application
         android:name=".KaraokeApp"
         android:allowBackup="false"

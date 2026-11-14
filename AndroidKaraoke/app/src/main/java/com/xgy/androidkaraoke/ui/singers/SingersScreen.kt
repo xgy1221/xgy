@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.PersonSearch
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,7 +33,7 @@ import com.xgy.androidkaraoke.ui.components.ShelfHeader
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun SingersScreen(vm: AppViewModel) {
+fun SingersScreen(vm: AppViewModel, entryFocus: FocusRequester, tabFocus: FocusRequester) {
     val artists = vm.libraryArtists
     val recommended = vm.recommendedArtists
     val hasLibrary = vm.libraryCatalog.isNotEmpty()
@@ -47,8 +48,20 @@ fun SingersScreen(vm: AppViewModel) {
             ShelfHeader(
                 "歌星",
                 if (hasLibrary) "来自你的曲库 · 按常唱习惯排序"
+                else if (vm.libraryIndexing) "正在从已保存的曲库读取歌星"
+                else if (vm.hasSavedLibrary) "已保存的曲库这次没列出歌星"
                 else "添加曲库后，这里会列出真实歌星",
             )
+        }
+
+        if (!hasLibrary && (vm.libraryIndexing || vm.hasSavedLibrary)) {
+            Text(
+                text = if (vm.libraryIndexing) "正在读取已保存的曲库…" else "曲库已保存，这次没读到歌星",
+                color = KaraokeColors.textSecondary,
+                fontSize = 16.sp,
+                modifier = Modifier.padding(horizontal = 40.dp),
+            )
+            return
         }
 
         if (!hasLibrary) {
@@ -69,7 +82,12 @@ fun SingersScreen(vm: AppViewModel) {
                         fontSize = 14.sp,
                     )
                 }
-                FocusSurface(onClick = { vm.openSettingsLibrary() }, corner = 10.dp) {
+                FocusSurface(
+                    onClick = { vm.openSettingsLibrary() },
+                    corner = 10.dp,
+                    focusRequester = entryFocus,
+                    navigateUp = tabFocus,
+                ) {
                     Text(
                         "去添加媒体库",
                         color = KaraokeColors.textPrimary,
@@ -93,6 +111,8 @@ fun SingersScreen(vm: AppViewModel) {
                     onClick = { vm.openArtistSearch() },
                     modifier = Modifier.width(220.dp).height(180.dp),
                     icon = Icons.Outlined.PersonSearch,
+                    focusRequester = entryFocus,
+                    navigateUp = tabFocus,
                 )
             }
             items(recommended.take(6), key = { "rec-${it.id}" }) { artist ->
@@ -103,6 +123,7 @@ fun SingersScreen(vm: AppViewModel) {
                     onClick = { vm.openArtistSongs(artist.name) },
                     modifier = Modifier.width(280.dp).height(180.dp),
                     badge = if (artist.habitWeight > 0f) "常唱" else null,
+                    navigateUp = tabFocus,
                 )
             }
         }
@@ -128,6 +149,7 @@ fun SingersScreen(vm: AppViewModel) {
                         tint = artist.coverColor,
                         onClick = { vm.openArtistSongs(artist.name) },
                         modifier = Modifier.size(140.dp),
+                        navigateUp = tabFocus,
                     )
                 }
             }

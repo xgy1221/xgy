@@ -36,6 +36,21 @@ class SecureCredentialStore(context: Context) {
             .apply()
     }
 
+    /**
+     * 每个 revision 只写入一次。密码来自本机构建配置，不写进仓库。
+     * 用户后来在设置里改过账号时，不会被下一次启动盖掉。
+     */
+    fun applySeed(revision: Int, username: String, password: String): Boolean {
+        if (revision <= 0 || username.isBlank() || password.isBlank()) return false
+        if (prefs.getInt(KEY_SEED, 0) >= revision) return false
+        prefs.edit()
+            .putString(KEY_USER, username)
+            .putString(KEY_PASS, password)
+            .putInt(KEY_SEED, revision)
+            .apply()
+        return true
+    }
+
     fun clear() {
         prefs.edit().remove(KEY_USER).remove(KEY_PASS).apply()
     }
@@ -44,5 +59,6 @@ class SecureCredentialStore(context: Context) {
         private const val FILE_NAME = "nas_secure_creds"
         private const val KEY_USER = "username"
         private const val KEY_PASS = "password"
+        private const val KEY_SEED = "seed_revision"
     }
 }
