@@ -1,6 +1,7 @@
 package com.xgy.androidkaraoke.ui.playback
 
 import android.view.KeyEvent as AndroidKeyEvent
+import androidx.activity.compose.BackHandler
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -83,6 +84,9 @@ fun PlaybackScreen(vm: AppViewModel) {
         { vm.nextTrack() },
         { vm.toggleFavorite() },
     )
+    BackHandler(enabled = chromeVisible) {
+        chromeVisible = false
+    }
     LaunchedEffect(chromeVisible) {
         delay(48)
         runCatching { playbackKeys.requestFocus() }
@@ -287,7 +291,7 @@ fun PlaybackScreen(vm: AppViewModel) {
             }
             Spacer(modifier = Modifier.height(14.dp))
             Text(
-                text = "左右选择    确定执行    5 秒后收起。收起后左后退、右快进，上或下再打开",
+                text = "左右选择    确定执行    返回立刻收起。收起后左后退、右快进，上或下再打开",
                 color = KaraokeColors.textSecondary,
                 fontSize = 15.sp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
