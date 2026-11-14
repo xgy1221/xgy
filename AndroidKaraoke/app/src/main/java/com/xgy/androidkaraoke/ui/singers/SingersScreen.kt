@@ -33,7 +33,7 @@ import com.xgy.androidkaraoke.ui.components.ShelfHeader
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun SingersScreen(vm: AppViewModel, entryFocus: FocusRequester) {
+fun SingersScreen(vm: AppViewModel, entryFocus: FocusRequester, tabFocus: FocusRequester) {
     val artists = vm.libraryArtists
     val recommended = vm.recommendedArtists
     val hasLibrary = vm.libraryCatalog.isNotEmpty()
@@ -74,6 +74,7 @@ fun SingersScreen(vm: AppViewModel, entryFocus: FocusRequester) {
                     onClick = { vm.openSettingsLibrary() },
                     corner = 10.dp,
                     focusRequester = entryFocus,
+                    navigateUp = tabFocus,
                 ) {
                     Text(
                         "去添加媒体库",
@@ -99,6 +100,7 @@ fun SingersScreen(vm: AppViewModel, entryFocus: FocusRequester) {
                     modifier = Modifier.width(220.dp).height(180.dp),
                     icon = Icons.Outlined.PersonSearch,
                     focusRequester = entryFocus,
+                    navigateUp = tabFocus,
                 )
             }
             items(recommended.take(6), key = { "rec-${it.id}" }) { artist ->
@@ -109,6 +111,7 @@ fun SingersScreen(vm: AppViewModel, entryFocus: FocusRequester) {
                     onClick = { vm.openArtistSongs(artist.name) },
                     modifier = Modifier.width(280.dp).height(180.dp),
                     badge = if (artist.habitWeight > 0f) "常唱" else null,
+                    navigateUp = tabFocus,
                 )
             }
         }
@@ -134,6 +137,7 @@ fun SingersScreen(vm: AppViewModel, entryFocus: FocusRequester) {
                         tint = artist.coverColor,
                         onClick = { vm.openArtistSongs(artist.name) },
                         modifier = Modifier.size(140.dp),
+                        navigateUp = tabFocus,
                     )
                 }
             }

@@ -96,6 +96,7 @@ fun HomeScreen(
                     corner = 10.dp,
                     requestFocus = true,
                     focusRequester = entryFocus,
+                    navigateUp = tabFocus,
                     navigateDown = miniKey,
                 ) {
                     Text(
@@ -108,6 +109,7 @@ fun HomeScreen(
                 FocusSurface(
                     onClick = { vm.dismissLibraryGuide() },
                     corner = 10.dp,
+                    navigateUp = tabFocus,
                     navigateDown = miniKey,
                 ) {
                     Text(

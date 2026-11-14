@@ -26,6 +26,8 @@ fun CategoryTabs(
     selected: MainTab,
     onSelect: (MainTab) -> Unit,
     tabFocus: FocusRequester,
+    singerTabFocus: FocusRequester,
+    navigateUp: FocusRequester,
     navigateDown: FocusRequester,
 ) {
     // 仅保留：随心唱 / 歌星
@@ -39,8 +41,11 @@ fun CategoryTabs(
             FocusSurface(
                 onClick = { onSelect(tab) },
                 corner = 10.dp,
-                focusRequester = if (tab == MainTab.FreeSing) tabFocus else null,
+                focusRequester = if (tab == MainTab.FreeSing) tabFocus else singerTabFocus,
+                navigateUp = navigateUp,
                 navigateDown = navigateDown,
+                navigateLeft = if (tab == MainTab.Singers) tabFocus else null,
+                navigateRight = if (tab == MainTab.FreeSing) singerTabFocus else null,
             ) { focused ->
                 Box(
                     modifier = Modifier

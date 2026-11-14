@@ -64,6 +64,8 @@ fun RootScreen(vm: AppViewModel) {
         overlay == Overlay.Playback ||
         overlay == Overlay.Guess
     val tabFocus = remember { FocusRequester() }
+    val singerTabFocus = remember { FocusRequester() }
+    val topFocus = remember { FocusRequester() }
     val entryFocus = remember { FocusRequester() }
     LaunchedEffect(overlay, vm.selectedTab, vm.shouldShowLibraryGuide) {
         if (overlay != Overlay.None) return@LaunchedEffect
@@ -95,19 +97,22 @@ fun RootScreen(vm: AppViewModel) {
                         onQueue = { vm.openQueue() },
                         onWechat = { vm.openPhoneOrder() },
                         onSettings = { vm.openSettings() },
+                        topFocus = topFocus,
                         navigateDown = tabFocus,
                     )
                     CategoryTabs(
                         selected = vm.selectedTab,
                         onSelect = vm::selectTab,
                         tabFocus = tabFocus,
+                        singerTabFocus = singerTabFocus,
+                        navigateUp = topFocus,
                         navigateDown = entryFocus,
                     )
                     Spacer(modifier = Modifier.height(18.dp))
                     Box(modifier = Modifier.weight(1f)) {
                         when (vm.selectedTab) {
                             MainTab.FreeSing -> HomeScreen(vm, entryFocus, tabFocus)
-                            MainTab.Singers -> SingersScreen(vm, entryFocus)
+                            MainTab.Singers -> SingersScreen(vm, entryFocus, tabFocus)
                             else -> HomeScreen(vm, entryFocus, tabFocus)
                         }
                     }
