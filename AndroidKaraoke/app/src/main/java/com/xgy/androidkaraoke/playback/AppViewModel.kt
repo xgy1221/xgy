@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
 import com.xgy.androidkaraoke.AppContainer
 import com.xgy.androidkaraoke.BrandConfig
+import com.xgy.androidkaraoke.BuildConfig
 import com.xgy.androidkaraoke.library.LibraryEntry
 import com.xgy.androidkaraoke.library.LibraryEntryKind
 import com.xgy.androidkaraoke.library.LibrarySource
@@ -349,6 +350,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     init {
         migrateLegacyNasIfNeeded()
+        seedBundledNas()
         // 先清掉已知演示歌历史，避免「最近唱过」残留小半等
         listeningPrefs.removeSongIds(LEGACY_DEMO_SONG_IDS)
         bumpPrefs()
@@ -403,6 +405,44 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         if (path != cfg.normalizedPath) {
             container.nasConfigStore.save(cfg.copy(libraryPath = path))
         }
+    }
+
+    /**
+     * 把构建时带上的 NAS 账号写入加密存储，并指向音乐共享目录。
+     * File Station 用共享路径 `/music`，对应磁盘上的 `/volume1/music`。
+     */
+    private fun seedBundledNas() {
+        val seeded = container.credentialStore.applySeed(
+            revision = NAS_SEED_REVISION,
+            username = BuildConfig.NAS_USERNAME,
+            password = BuildConfig.NAS_PASSWORD,
+        )
+        if (!seeded) return
+        val path = SynologyFileStation.normalizeLibraryPathForSave("/volume1/music")
+        val existing = sourceStore.load().firstOrNull { it.kind == LibrarySourceKind.Nas }
+        val source = (existing ?: LibrarySource.defaultNas()).copy(
+            enabled = true,
+            displayName = existing?.displayName?.takeIf { it.isNotBlank() } ?: "NAS",
+            nasBaseUrl = existing?.nasBaseUrl?.takeIf { it.isNotBlank() } ?: BrandConfig.defaultNasBaseUrl,
+            nasLibraryPath = path,
+        )
+        sourceStore.upsert(source)
+        sourceStore.setActiveSourceId(source.id)
+        container.nasConfigStore.save(
+            NasConfig(
+                baseUrlString = source.nasBaseUrl ?: BrandConfig.defaultNasBaseUrl,
+                libraryPath = path,
+            ),
+        )
+    }
+
+    fun shutdownPlayback() {
+        tickJob?.cancel()
+        nowPlaying = null
+        nextSong = null
+        isPlaying = false
+        queue.clear()
+        player.stopForExit()
     }
 
     fun reloadSources(scanUsb: Boolean = true, announceUsb: Boolean = false) {
@@ -1587,6 +1627,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                             }
                             total += result.getOrElse {
                                 Log.w(TAG, "NAS index failed: ${it.message}")
+                                showToast("NAS 没连上：${it.message ?: "请检查网络"}")
                                 0
                             }
                         }
@@ -1619,6 +1660,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     companion object {
         private const val TAG = "KaraokeHome"
+        private const val NAS_SEED_REVISION = 1
 
         /** 旧版 MockData 写入 SharedPreferences 的演示曲 id，需主动清掉。 */
         private val LEGACY_DEMO_SONG_IDS = setOf(

@@ -1,7 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+val nasLocal = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+fun nasBuildConfig(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
 android {
     namespace = "com.xgy.androidkaraoke"
@@ -12,8 +22,11 @@ android {
         // Sony KD-65A9F = Android 10 (API 29). Keep minSdk ≤ 29.
         minSdk = 28
         targetSdk = 34
-        versionCode = 19
-        versionName = "0.5.4"
+        versionCode = 20
+        versionName = "0.5.5"
+        // 账号只从本机 local.properties 读入，不提交到仓库。
+        buildConfigField("String", "NAS_USERNAME", nasBuildConfig(nasLocal.getProperty("nas.username", "")))
+        buildConfigField("String", "NAS_PASSWORD", nasBuildConfig(nasLocal.getProperty("nas.password", "")))
         vectorDrawables.useSupportLibrary = true
     }
 

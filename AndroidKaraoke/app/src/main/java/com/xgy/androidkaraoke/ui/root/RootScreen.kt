@@ -1,5 +1,6 @@
 package com.xgy.androidkaraoke.ui.root
 
+import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -42,10 +44,16 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun RootScreen(vm: AppViewModel) {
-    val leaveHome = vm.overlay != Overlay.None || vm.selectedTab != MainTab.FreeSing
-    BackHandler(enabled = leaveHome) {
-        if (vm.overlay != Overlay.None) vm.dismissOverlay()
-        else vm.selectTab(MainTab.FreeSing)
+    val activity = LocalContext.current as? Activity
+    BackHandler {
+        when {
+            vm.overlay != Overlay.None -> vm.dismissOverlay()
+            vm.selectedTab != MainTab.FreeSing -> vm.selectTab(MainTab.FreeSing)
+            else -> {
+                vm.shutdownPlayback()
+                activity?.finish()
+            }
+        }
     }
 
     val overlay = vm.overlay

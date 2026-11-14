@@ -100,6 +100,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        storageVm?.shutdownPlayback()
         runCatching { unregisterReceiver(mediaReceiver) }
         storageVm = null
         super.onDestroy()
