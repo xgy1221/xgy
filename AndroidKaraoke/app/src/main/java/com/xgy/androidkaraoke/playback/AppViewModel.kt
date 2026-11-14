@@ -180,6 +180,9 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     val phoneOrderCandidates = mutableStateListOf<LanAddresses.Candidate>()
     var phoneOrderTip by mutableStateOf<String?>(null)
         private set
+    /** 手机点歌成功后，右上角提示。 */
+    var phoneHint by mutableStateOf<String?>(null)
+        private set
 
     // ——— 搜索 ———
     var searchQuery by mutableStateOf("")
@@ -320,6 +323,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
 
     private var toastJob: Job? = null
+    private var phoneHintJob: Job? = null
     private var tickJob: Job? = null
     private var phoneServer: PhoneRequestServer? = null
     private var knownUsbIds: Set<String> = emptySet()
@@ -907,28 +911,30 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         bumpPrefs()
 
         if (nowPlaying?.id == song.id) {
-            showToast("正在演唱：${song.title}")
+            val msg = "正在演唱：${song.title}"
+            if (fromPhone) showPhoneHint(msg) else showToast(msg)
             return
         }
         if (queue.any { it.id == song.id }) {
-            showToast("已在已点队列：${song.title}")
+            val msg = "已在已点队列：${song.title}"
+            if (fromPhone) showPhoneHint(msg) else showToast(msg)
             return
         }
 
         if (nowPlaying == null) {
             // 空闲时直接开唱；不把「正在播」留在已点列表里
             play(song)
-            showToast(
-                if (fromPhone) "手机点歌开始：${song.title}"
-                else "开始播放：${song.title}",
-            )
+            if (fromPhone) showPhoneHint("手机点歌：${song.title} · ${song.artist}\n开始播放")
+            else showToast("开始播放：${song.title}")
         } else {
             queue.add(song)
             if (nextSong == null) nextSong = song
-            showToast(
-                if (fromPhone) "手机点歌：${song.title}"
-                else "已加入已点：${song.title}",
-            )
+            val pos = queue.size
+            if (fromPhone) {
+                showPhoneHint("手机点歌：${song.title} · ${song.artist}\n已加入已点 · 第 $pos 首")
+            } else {
+                showToast("已加入已点：${song.title}")
+            }
         }
     }
 
@@ -1695,12 +1701,19 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         phoneServerError = null
         val server = PhoneRequestServer(
             indexHtml = container.phoneOrderHtml,
-            catalogProvider = { libraryCatalog },
+            catalogProvider = { libraryCatalog.toList() },
             queueProvider = { queue.toList() },
+            nowPlayingProvider = { nowPlaying },
             onAddSong = { song ->
+                val done = java.util.concurrent.CountDownLatch(1)
                 viewModelScope.launch {
-                    addToQueue(song, fromPhone = true)
+                    try {
+                        addToQueue(song, fromPhone = true)
+                    } finally {
+                        done.countDown()
+                    }
                 }
+                done.await(3, java.util.concurrent.TimeUnit.SECONDS)
             },
         )
         phoneServer = server
@@ -1745,6 +1758,15 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         toastJob = viewModelScope.launch {
             delay(1800)
             if (toastMessage == message) toastMessage = null
+        }
+    }
+
+    fun showPhoneHint(message: String) {
+        phoneHint = message
+        phoneHintJob?.cancel()
+        phoneHintJob = viewModelScope.launch {
+            delay(4500)
+            if (phoneHint == message) phoneHint = null
         }
     }
 

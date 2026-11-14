@@ -3,7 +3,9 @@ package com.xgy.androidkaraoke.ui.playback
 import android.view.KeyEvent as AndroidKeyEvent
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +49,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -164,15 +167,10 @@ fun PlaybackScreen(vm: AppViewModel) {
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 36.dp),
+                .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                text = "正在播放：${song?.displayTitle ?: "—"}    下一首：${vm.nextSong?.title ?: "—"}",
-                color = KaraokeColors.textPrimary,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Medium,
-            )
+            KtvTicker(songTitle = song?.displayTitle, songArtist = song?.artist, next = vm.nextSong, waiting = vm.queue.size)
             Text(
                 text = buildString {
                     append(if (song?.hasMv == true) "MV" else "无MV")
@@ -190,6 +188,7 @@ fun PlaybackScreen(vm: AppViewModel) {
                 },
                 color = KaraokeColors.textSecondary,
                 fontSize = 15.sp,
+                modifier = Modifier.padding(top = 8.dp),
             )
             vm.playbackError?.let { err ->
                 Text(
@@ -365,6 +364,49 @@ private fun handlePlaybackKey(
 }
 
 private const val PAUSE_MENU_INDEX = 3
+
+@OptIn(ExperimentalTvMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun KtvTicker(songTitle: String?, songArtist: String?, next: com.xgy.androidkaraoke.model.Song?, waiting: Int) {
+    val line = buildString {
+        append("正在演唱：")
+        append(songTitle ?: "暂无")
+        if (!songArtist.isNullOrBlank()) append(" · ").append(songArtist)
+        append("　　下一首：")
+        if (next != null) {
+            append(next.displayTitle)
+            if (next.artist.isNotBlank()) append(" · ").append(next.artist)
+        } else {
+            append("暂无")
+        }
+        if (waiting > 0) append("　　已点 ").append(waiting).append(" 首")
+        append("　　　")
+    }
+    val scrolling = remember(line) { line.repeat(4) }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(46.dp)
+            .background(Color.Black.copy(alpha = 0.62f)),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            text = scrolling,
+            color = Color(0xFFFFE08A),
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Visible,
+            modifier = Modifier.basicMarquee(
+                iterations = Int.MAX_VALUE,
+                initialDelayMillis = 400,
+                velocity = 46.dp,
+            ),
+        )
+    }
+}
+
 
 private fun performMediaKey(vm: AppViewModel, code: Int) {
     when (code) {

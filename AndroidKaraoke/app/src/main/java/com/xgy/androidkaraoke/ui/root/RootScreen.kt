@@ -130,6 +130,19 @@ fun RootScreen(vm: AppViewModel) {
         }
 
         // zIndex 须高于 BlockingOverlay(10)，否则搜索/已点里的 toast 被挡住
+        vm.phoneHint?.let { msg ->
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .zIndex(30f)
+                    .padding(top = 64.dp, end = 28.dp)
+                    .background(KaraokeColors.surfaceStrong, RoundedCornerShape(14.dp))
+                    .padding(horizontal = 22.dp, vertical = 14.dp),
+            ) {
+                Text(text = msg, color = KaraokeColors.textPrimary, fontSize = 20.sp)
+            }
+        }
+
         vm.toastMessage?.let { msg ->
             Box(
                 modifier = Modifier

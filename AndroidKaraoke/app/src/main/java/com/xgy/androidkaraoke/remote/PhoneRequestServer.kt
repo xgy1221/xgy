@@ -23,6 +23,7 @@ class PhoneRequestServer(
     private val indexHtml: String,
     private val catalogProvider: () -> List<Song>,
     private val queueProvider: () -> List<Song>,
+    private val nowPlayingProvider: () -> Song? = { null },
     private val onAddSong: (Song) -> Unit,
 ) {
     private val running = AtomicBoolean(false)
@@ -109,6 +110,8 @@ class PhoneRequestServer(
             }
 
             when {
+                method == "OPTIONS" ->
+                    writeResponse(socket, 204, "text/plain; charset=utf-8", "")
                 method == "GET" && (path == "/" || path == "/index.html") ->
                     writeResponse(socket, 200, "text/html; charset=utf-8", indexHtml)
                 method == "GET" && path == "/api/catalog" ->
@@ -152,12 +155,8 @@ class PhoneRequestServer(
                 val kv = it.split('=', limit = 2)
                 if (kv.size == 2 && kv[0] == "id") URLDecoder.decode(kv[1], "UTF-8") else null
             }.firstOrNull()
-        val idFromBody = try {
-            if (body.isBlank()) null else JSONObject(body).optString("id").takeIf { it.isNotBlank() }
-        } catch (_: Exception) {
-            null
-        }
-        val id = idFromBody ?: idFromQuery ?: return null
+        val bodyId = idFromBody(body)
+        val id = bodyId ?: idFromQuery ?: return null
         return catalogProvider().find { it.id == id }
     }
 
@@ -178,18 +177,46 @@ class PhoneRequestServer(
         return JSONObject().put("songs", arr).toString()
     }
 
+    private fun idFromBody(body: String): String? {
+        val trimmed = body.trim()
+        if (trimmed.isEmpty()) return null
+        if (trimmed.startsWith("{")) {
+            return try {
+                JSONObject(trimmed).optString("id").takeIf { it.isNotBlank() }
+            } catch (_: Exception) {
+                null
+            }
+        }
+        return trimmed.split('&').firstNotNullOfOrNull { part ->
+            val kv = part.split('=', limit = 2)
+            if (kv.size == 2 && kv[0] == "id") {
+                URLDecoder.decode(kv[1], "UTF-8").takeIf { it.isNotBlank() }
+            } else {
+                null
+            }
+        }
+    }
+
     private fun queueJson(): String {
         val arr = JSONArray()
         queueProvider().forEach { song ->
             arr.put(JSONObject().put("id", song.id).put("title", song.title).put("artist", song.artist))
         }
-        return JSONObject().put("queue", arr).toString()
+        val obj = JSONObject().put("queue", arr)
+        nowPlayingProvider()?.let { song ->
+            obj.put(
+                "nowPlaying",
+                JSONObject().put("id", song.id).put("title", song.title).put("artist", song.artist),
+            )
+        }
+        return obj.toString()
     }
 
     private fun writeResponse(socket: Socket, code: Int, contentType: String, body: String) {
         val bytes = body.toByteArray(Charset.forName("UTF-8"))
         val status = when (code) {
             200 -> "OK"
+            204 -> "No Content"
             400 -> "Bad Request"
             404 -> "Not Found"
             else -> "OK"
@@ -199,6 +226,8 @@ class PhoneRequestServer(
             append("Content-Type: $contentType\r\n")
             append("Content-Length: ${bytes.size}\r\n")
             append("Access-Control-Allow-Origin: *\r\n")
+            append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
+            append("Access-Control-Allow-Headers: Content-Type\r\n")
             append("Connection: close\r\n")
             append("\r\n")
         }
