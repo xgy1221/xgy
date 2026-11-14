@@ -59,6 +59,7 @@ fun FocusSurface(
     navigateLeft: FocusRequester? = null,
     navigateRight: FocusRequester? = null,
     highlighted: Boolean = false,
+    focusable: Boolean = true,
     content: @Composable (focused: Boolean) -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -87,7 +88,7 @@ fun FocusSurface(
             }
             // focusProperties 必须写在 clickable 前面，否则 canFocus 不生效，焦点会掉进空白。
             .focusProperties {
-                canFocus = tvFocusEnabled
+                canFocus = tvFocusEnabled && focusable
                 navigateUp?.let { up = it }
                 navigateDown?.let { down = it }
                 navigateLeft?.let { left = it }

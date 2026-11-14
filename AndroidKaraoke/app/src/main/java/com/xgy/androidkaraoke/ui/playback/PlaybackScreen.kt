@@ -21,12 +21,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.FastForward
-import androidx.compose.material.icons.outlined.Forward10
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Replay
-import androidx.compose.material.icons.outlined.Replay10
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.runtime.Composable
@@ -74,8 +72,6 @@ fun PlaybackScreen(vm: AppViewModel) {
     var idleTick by remember { mutableIntStateOf(0) }
     var menuIndex by remember { mutableIntStateOf(PAUSE_MENU_INDEX) }
     val menuActions = listOf<() -> Unit>(
-        { vm.seekBy(-10_000) },
-        { vm.seekBy(10_000) },
         { vm.skipPrelude() },
         { vm.cycleOrder() },
         { vm.replay() },
@@ -85,7 +81,8 @@ fun PlaybackScreen(vm: AppViewModel) {
         { vm.toggleFavorite() },
     )
     LaunchedEffect(chromeVisible) {
-        if (!chromeVisible) runCatching { playbackKeys.requestFocus() }
+        delay(48)
+        runCatching { playbackKeys.requestFocus() }
     }
     LaunchedEffect(idleTick, chromeVisible) {
         if (!chromeVisible) return@LaunchedEffect
@@ -98,7 +95,7 @@ fun PlaybackScreen(vm: AppViewModel) {
             .fillMaxSize()
             .background(Color.Black)
             .focusRequester(playbackKeys)
-            .focusProperties { canFocus = !chromeVisible }
+            .focusProperties { canFocus = true }
             .focusable()
             .onPreviewKeyEvent { event ->
                 handlePlaybackKey(
@@ -263,11 +260,9 @@ fun PlaybackScreen(vm: AppViewModel) {
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ControlBtn("后退", Icons.Outlined.Replay10, armed = menuIndex == 0) { vm.seekBy(-10_000) }
-                ControlBtn("快进", Icons.Outlined.Forward10, armed = menuIndex == 1) { vm.seekBy(10_000) }
-                ControlBtn("跳过前奏", Icons.Outlined.FastForward, armed = menuIndex == 2) { vm.skipPrelude() }
-                ControlBtn("顺序", Icons.Outlined.Shuffle, armed = menuIndex == 3) { vm.cycleOrder() }
-                ControlBtn("重唱", Icons.Outlined.Replay, armed = menuIndex == 4) { vm.replay() }
+                ControlBtn("跳过前奏", Icons.Outlined.FastForward, armed = menuIndex == 0) { vm.skipPrelude() }
+                ControlBtn("顺序", Icons.Outlined.Shuffle, armed = menuIndex == 1) { vm.cycleOrder() }
+                ControlBtn("重唱", Icons.Outlined.Replay, armed = menuIndex == 2) { vm.replay() }
                 ControlBtn(
                     if (vm.isPlaying) "暂停" else "播放",
                     if (vm.isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
@@ -282,18 +277,18 @@ fun PlaybackScreen(vm: AppViewModel) {
                         else -> "原唱"
                     },
                     Icons.Outlined.RecordVoiceOver,
-                    armed = menuIndex == 6,
+                    armed = menuIndex == 4,
                 ) { vm.toggleVocal() }
-                ControlBtn("切歌", Icons.Outlined.SkipNext, armed = menuIndex == 7) { vm.nextTrack() }
+                ControlBtn("切歌", Icons.Outlined.SkipNext, armed = menuIndex == 5) { vm.nextTrack() }
                 ControlBtn(
                     "收藏",
                     if (vm.isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
-                    armed = menuIndex == 8,
+                    armed = menuIndex == 6,
                 ) { vm.toggleFavorite() }
             }
             Spacer(modifier = Modifier.height(14.dp))
             Text(
-                text = "左右选择    确定执行    5 秒后自动隐藏",
+                text = "左右选择    确定执行    5 秒后收起。收起后左后退、右快进，上或下再打开",
                 color = KaraokeColors.textSecondary,
                 fontSize = 15.sp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -333,10 +328,20 @@ private fun handlePlaybackKey(
     if (!dpad && !media) return false
     val down = event.type == KeyEventType.KeyDown && native.repeatCount == 0
     if (!chromeVisible) {
-        // 菜单收起时，方向键只把它叫出来，不切歌、不快进。
-        if (down) {
-            if (media) performMediaKey(vm, code)
-            onReveal()
+        if (!down) return true
+        when (code) {
+            AndroidKeyEvent.KEYCODE_DPAD_LEFT -> vm.seekBy(-10_000)
+            AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> vm.seekBy(10_000)
+            AndroidKeyEvent.KEYCODE_DPAD_UP,
+            AndroidKeyEvent.KEYCODE_DPAD_DOWN,
+            -> onReveal()
+            AndroidKeyEvent.KEYCODE_DPAD_CENTER,
+            AndroidKeyEvent.KEYCODE_ENTER,
+            AndroidKeyEvent.KEYCODE_NUMPAD_ENTER,
+            AndroidKeyEvent.KEYCODE_BUTTON_SELECT,
+            AndroidKeyEvent.KEYCODE_BUTTON_A,
+            -> vm.togglePlayPause()
+            else -> if (media) performMediaKey(vm, code)
         }
         return true
     }
@@ -359,7 +364,7 @@ private fun handlePlaybackKey(
     return true
 }
 
-private const val PAUSE_MENU_INDEX = 5
+private const val PAUSE_MENU_INDEX = 3
 
 private fun performMediaKey(vm: AppViewModel, code: Int) {
     when (code) {
@@ -387,6 +392,7 @@ private fun ControlBtn(
         onClick = onClick,
         corner = if (prominent) 28.dp else 14.dp,
         highlighted = armed,
+        focusable = false,
     ) { focused ->
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
